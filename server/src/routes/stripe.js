@@ -7,7 +7,7 @@ const router = Router();
 
 // Stripe needs the raw body to verify the signature, so this router is
 // mounted before the JSON body parser.
-router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const stripe = getStripe();
   if (!stripe || !config.stripe.webhookSecret) return res.status(404).end();
   let event;
@@ -17,7 +17,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) =>
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
   if (['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.expired'].includes(event.type)) {
-    const result = applySession(event.data.object);
+    const result = await applySession(event.data.object);
     if (result?.justPaid) notifyNewOrder(result.order);
   }
   res.json({ received: true });

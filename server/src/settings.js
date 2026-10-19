@@ -1,4 +1,4 @@
-import { getDb } from './db.js';
+import { db } from './db.js';
 
 // Everything a shop owner can customise from the admin panel (or with
 // `npm run configure`). New keys added here appear automatically in existing
@@ -19,6 +19,11 @@ export const DEFAULT_SETTINGS = {
     text: '#111827',
     radius: 12,
     font: 'Inter',
+    // 'auto' follows the visitor's device and shows a light/dark switch,
+    // 'light' or 'dark' force one look.
+    mode: 'auto',
+    // Dark-mode colours. Empty values are derived from the light theme.
+    dark: { primary: '', accent: '', background: '', surface: '', text: '' },
   },
   announcement: '',
   hero: {
@@ -43,6 +48,11 @@ export const DEFAULT_SETTINGS = {
     cod: { enabled: true, fee: 0 },
     bank: { enabled: true, details: '' },
     card: { enabled: false },
+  },
+  login: {
+    // Needs the provider enabled in the shop's Supabase project (see docs/NEW_CLIENT.md).
+    google: false,
+    apple: false,
   },
   checkout: {
     requirePhone: true,
@@ -75,15 +85,28 @@ export function deepMerge(base, patch) {
   return out;
 }
 
-export function getSettings() {
-  const row = getDb().prepare("SELECT value FROM settings WHERE key = 'store'").get();
-  return deepMerge(DEFAULT_SETTINGS, row ? JSON.parse(row.value) : {});
+// Settings are read on almost every request; cache them briefly per instance.
+let cache = null;
+const TTL_MS = 5000;
+
+export async function getSettings() {
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
+  const row = await db().one("SELECT value FROM settings WHERE key = 'store'");
+  const value = deepMerge(DEFAULT_SETTINGS, row?.value ?? {});
+  cache = { value, at: Date.now() };
+  return value;
 }
 
-export function updateSettings(patch) {
-  const next = deepMerge(getSettings(), patch);
-  getDb()
-    .prepare("INSERT INTO settings (key, value) VALUES ('store', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-    .run(JSON.stringify(next));
+export async function updateSettings(patch) {
+  const next = deepMerge(await getSettings(), patch);
+  await db().query(
+    "INSERT INTO settings (key, value) VALUES ('store', $1) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+    [JSON.stringify(next)],
+  );
+  cache = { value: next, at: Date.now() };
   return next;
+}
+
+export function clearSettingsCache() {
+  cache = null;
 }

@@ -21,6 +21,13 @@
   --success-soft: #f0fdf4;
   --warning: #d97706;
   --warning-soft: #fffbeb;
+  --warning-text: #92400e;
+  --info: #2563eb;
+  --info-soft: #eff6ff;
+  --violet: #7c3aed;
+  --violet-soft: #f5f3ff;
+  --overlay: rgb(0 0 0 / 0.4);
+  --toast-bg: #18181b;
   --radius-sm: calc(var(--radius) * 0.66);
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
   --shadow: 0 4px 16px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.04);
@@ -28,6 +35,34 @@
   --container: 1240px;
   --header-h: 64px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Dark appearance: theme colours come from ShopContext; these are the fixed status colours. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --danger: #f87171;
+  --danger-soft: rgb(248 113 113 / 0.14);
+  --success: #4ade80;
+  --success-soft: rgb(74 222 128 / 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgb(251 191 36 / 0.12);
+  --warning-text: #fcd34d;
+  --info: #60a5fa;
+  --info-soft: rgb(96 165 250 / 0.14);
+  --violet: #a78bfa;
+  --violet-soft: rgb(167 139 250 / 0.14);
+  --overlay: rgb(0 0 0 / 0.6);
+  --toast-bg: #2a2d35;
+  --shadow: 0 4px 16px rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 18px 48px rgb(0 0 0 / 0.5);
+}
+/* Before the settings load (theme-init.js already chose dark). */
+:root[data-theme='dark']:not([style]) {
+  --bg: #0f1115;
+  --surface: #181b21;
+  --text: #e8eaee;
+  --primary: #e5e7eb;
+  --primary-contrast: #111;
 }
 
 *,
@@ -227,7 +262,7 @@ hr {
   color: var(--text);
 }
 .btn-danger {
-  background: var(--danger);
+  background: #dc2626;
   color: #fff;
 }
 .btn-danger:hover {
@@ -416,7 +451,7 @@ input[type='number'] {
   letter-spacing: 0.02em;
 }
 .badge-sale {
-  background: var(--danger);
+  background: #dc2626;
   color: #fff;
 }
 .badge-dark {
@@ -456,12 +491,12 @@ input[type='number'] {
   color: var(--warning);
 }
 .status-processing {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--info-soft);
+  color: var(--info);
 }
 .status-shipped {
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 .status-delivered,
 .status-paid {
@@ -608,7 +643,7 @@ input[type='number'] {
   padding: 12px 16px;
   border-radius: var(--radius-sm);
   background: var(--warning-soft);
-  color: color-mix(in srgb, var(--warning) 70%, #000);
+  color: var(--warning-text);
   margin-bottom: 16px;
 }
 
@@ -629,7 +664,7 @@ input[type='number'] {
   gap: 10px;
   padding: 8px 8px 8px 16px;
   border-radius: var(--radius-sm);
-  background: #18181b;
+  background: var(--toast-bg);
   color: #fff;
   box-shadow: var(--shadow-lg);
   animation: toast-in 0.25s var(--ease);

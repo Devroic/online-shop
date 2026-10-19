@@ -1,23 +1,22 @@
 // Fills an empty shop with demo data so the template can be tried out:
 //   npm run seed            (adds demo data if there are no products)
 //   npm run seed -- --reset (wipes catalog + orders first)
-import fs from 'node:fs';
-import path from 'node:path';
-import sharp from 'sharp';
-import { getDb } from '../db.js';
-import { config } from '../config.js';
+import { closeDb, db, initDb } from '../db.js';
 import { updateSettings } from '../settings.js';
-import { slugify } from '../utils.js';
+import { ensureBucket, saveFile } from '../storage.js';
 import { createAdmin, ensureInitialData } from './bootstrap.js';
+import { saveCategory, saveProduct } from '../routes/admin.js';
 
-const db = getDb();
+await initDb();
+await ensureBucket();
 const reset = process.argv.includes('--reset');
 
 if (reset) {
-  db.exec('DELETE FROM order_items; DELETE FROM order_events; DELETE FROM orders; DELETE FROM product_images; DELETE FROM product_variants; DELETE FROM products; DELETE FROM categories; DELETE FROM coupons;');
+  await db().query('TRUNCATE order_items, order_events, orders, product_images, product_variants, products, categories, coupons RESTART IDENTITY CASCADE');
 }
-if (db.prepare('SELECT COUNT(*) AS n FROM products').get().n) {
+if ((await db().one('SELECT COUNT(*)::int AS n FROM products')).n) {
   console.log('Products already exist; use --reset to replace them with demo data.');
+  await closeDb();
   process.exit(0);
 }
 
@@ -26,8 +25,8 @@ const PALETTES = [
   ['#ddd6fe', '#8b5cf6'], ['#fbcfe8', '#ec4899'], ['#a5f3fc', '#06b6d4'], ['#e5e7eb', '#6b7280'],
 ];
 
-/** Abstract placeholder product photo, generated locally (no network needed). */
-async function placeholder(seed, i) {
+/** Abstract placeholder product photo (SVG), generated locally. */
+function placeholder(seed, i) {
   const [a, b] = PALETTES[(seed + i) % PALETTES.length];
   const cx = 300 + ((seed * 37) % 200);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800">
@@ -36,10 +35,7 @@ async function placeholder(seed, i) {
     <circle cx="${cx}" cy="420" r="${190 - i * 20}" fill="${b}" opacity="0.85"/>
     <rect x="${180 + i * 40}" y="${200 + (seed % 3) * 30}" width="200" height="200" rx="36" fill="#ffffff" opacity="0.55"/>
     <ellipse cx="400" cy="690" rx="230" ry="26" fill="#000" opacity="0.06"/></svg>`;
-  fs.mkdirSync(config.uploadsDir, { recursive: true });
-  const name = `demo-${seed}-${i}.webp`;
-  await sharp(Buffer.from(svg)).webp({ quality: 80 }).toFile(path.join(config.uploadsDir, name));
-  return `/uploads/${name}`;
+  return saveFile(Buffer.from(svg), 'image/svg+xml');
 }
 
 const categories = [
@@ -78,32 +74,38 @@ updateSettings({
   contact: { email: 'info@example.com', phone: '210 000 0000', address: 'Οδός Παραδείγματος 1, Αθήνα', hours: 'Δευ-Παρ 9:00-17:00' },
   payments: { bank: { details: 'Τράπεζα: Demo Bank\nIBAN: GR00 0000 0000 0000 0000 0000 000\nΔικαιούχος: Demo Store' } },
 });
-if (!db.prepare("SELECT id FROM users WHERE role = 'admin'").get()) {
+if (!(await db().one("SELECT id FROM users WHERE role = 'admin' LIMIT 1"))) {
   await createAdmin('admin@example.com', 'admin1234');
   console.log('Demo admin: admin@example.com / admin1234  (change it!)');
 }
 await ensureInitialData();
 
-const catIds = categories.map(([name, description], i) =>
-  db.prepare('INSERT INTO categories (name, slug, description, sort_order) VALUES (?, ?, ?, ?)').run(name, slugify(name), description, i).lastInsertRowid,
-);
-
-for (const [i, [name, cat, price, compare, featured, variants, description]] of products.entries()) {
-  const id = db
-    .prepare(
-      `INSERT INTO products (name, slug, description, price, compare_at_price, sku, stock, category_id, featured, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
-    )
-    .run(name, slugify(name), description, price, compare, `SKU-${100 + i}`, variants ? 0 : 5 + ((i * 7) % 30), catIds[cat], featured ? 1 : 0, `-${i} hours`)
-    .lastInsertRowid;
-  for (let k = 0; k < 3; k++) {
-    db.prepare('INSERT INTO product_images (product_id, url, sort_order) VALUES (?, ?, ?)').run(id, await placeholder(i, k), k);
-  }
-  variants?.forEach((v, k) => {
-    db.prepare('INSERT INTO product_variants (product_id, name, sku, stock, sort_order) VALUES (?, ?, ?, ?, ?)').run(id, v, `SKU-${100 + i}-${v}`, k === 0 ? 0 : 3 + k * 2, k);
-  });
+const catIds = [];
+for (const [i, [name, description]] of categories.entries()) {
+  catIds.push((await saveCategory(null, { name, description, image: null, sortOrder: i, active: true })).id);
 }
 
-db.prepare("INSERT OR IGNORE INTO coupons (code, type, value, min_order) VALUES ('WELCOME10', 'percent', 10, 0)").run();
+for (const [i, [name, cat, price, compare, featured, variants, description]] of products.entries()) {
+  const images = [];
+  for (let k = 0; k < 3; k++) images.push(await placeholder(i, k));
+  const p = await saveProduct(null, {
+    name,
+    description,
+    price,
+    compareAtPrice: compare,
+    sku: `SKU-${100 + i}`,
+    stock: variants ? 0 : 5 + ((i * 7) % 30),
+    trackStock: true,
+    categoryId: catIds[cat],
+    featured,
+    active: true,
+    images,
+    variants: (variants || []).map((v, k) => ({ name: v, sku: `SKU-${100 + i}-${v}`, price: null, stock: k === 0 ? 0 : 3 + k * 2 })),
+  });
+  // Spread creation times so "newest" ordering looks natural.
+  await db().query("UPDATE products SET created_at = now() - make_interval(hours => $1) WHERE id = $2", [i, p.id]);
+}
 
+await db().query("INSERT INTO coupons (code, type, value, min_order) VALUES ('WELCOME10', 'percent', 10, 0) ON CONFLICT DO NOTHING");
 console.log(`Seeded ${categories.length} categories and ${products.length} products.`);
+await closeDb();

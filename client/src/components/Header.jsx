@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Search, ShoppingBag, User, X } from 'lucide-react';
+import { Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -39,6 +39,17 @@ function SearchBox({ autoFocus, onDone }) {
         autoFocus={autoFocus}
       />
     </form>
+  );
+}
+
+export function AppearanceToggle({ className = '' }) {
+  const { settings, appearance, toggleAppearance } = useShop();
+  if (settings.theme.mode !== 'auto') return null;
+  const dark = appearance === 'dark';
+  return (
+    <button className={`icon-btn ${className}`} onClick={toggleAppearance} aria-label={dark ? t('Light mode') : t('Dark mode')} title={dark ? t('Light mode') : t('Dark mode')}>
+      {dark ? <Sun size={21} /> : <Moon size={21} />}
+    </button>
   );
 }
 
@@ -97,6 +108,7 @@ export default function Header() {
           <button className="icon-btn only-mobile" onClick={() => setSearchOpen((v) => !v)} aria-label={t('Search')}>
             {searchOpen ? <X size={22} /> : <Search size={22} />}
           </button>
+          <AppearanceToggle className="only-desktop" />
           <Link to={user ? '/account' : '/login'} className="icon-btn" aria-label={t('Account')}>
             <User size={22} />
           </Link>
@@ -116,9 +128,12 @@ export default function Header() {
       <aside className={`sheet sheet-left ${menuOpen ? 'open' : ''}`} aria-hidden={!menuOpen} aria-label={t('Menu')}>
         <div className="sheet-head">
           <Logo />
-          <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label={t('Close')}>
-            <X size={22} />
-          </button>
+          <div className="row-gap">
+            <AppearanceToggle />
+            <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label={t('Close')}>
+              <X size={22} />
+            </button>
+          </div>
         </div>
         <nav className="mobile-nav">
           <NavLink to="/products" end>

@@ -5,15 +5,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 process.env.NODE_ENV = 'test';
+// Never pick up a developer's .env (it could point at a real shop's database).
+process.env.DOTENV_CONFIG_PATH = 'does-not-exist.env';
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'shop-test-'));
+process.env.PGLITE_DIR = 'memory://';
+// TEST_DATABASE_URL runs the suite against a real Postgres (empty database);
+// otherwise the embedded one is used.
+if (process.env.TEST_DATABASE_URL) process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+else delete process.env.DATABASE_URL;
+delete process.env.SUPABASE_URL;
 
 const { default: request } = await import('supertest');
-const { openDb, setDb } = await import('../src/db.js');
+const { initDb, db } = await import('../src/db.js');
 const { createApp } = await import('../src/app.js');
 const { createAdmin, ensureInitialData } = await import('../src/scripts/bootstrap.js');
 
 let app;
-let db;
 let admin;
 let productId;
 let variantProductId;
@@ -21,17 +28,19 @@ let variantId;
 let courierId;
 
 before(async () => {
-  db = openDb(':memory:');
-  setDb(db);
+  await initDb();
   await ensureInitialData();
   await createAdmin('admin@test.dev', 'password123');
   app = createApp();
   admin = request.agent(app);
   await admin.post('/api/auth/login').send({ email: 'admin@test.dev', password: 'password123' }).expect(200);
-  courierId = db.prepare("SELECT id FROM shipping_methods WHERE requires_address = 1").get().id;
+  courierId = (await db().one('SELECT id FROM shipping_methods WHERE requires_address LIMIT 1')).id;
 });
 
 const address = { street: 'Ermou 1', city: 'Athens', postalCode: '10563' };
+const stockOf = async (id) => (await db().one('SELECT stock FROM products WHERE id = $1', [id])).stock;
+const variantStock = async (id) => (await db().one('SELECT stock FROM product_variants WHERE id = $1', [id])).stock;
+
 const checkout = (extra) => ({
   email: 'buyer@test.dev',
   name: 'Test Buyer',
@@ -96,8 +105,8 @@ test('checkout creates order, decrements stock, ignores client prices', async ()
   assert.equal(o.subtotal, 4000);
   assert.equal(o.total, 4350);
   assert.equal(o.number, String(1000 + o.id));
-  assert.equal(db.prepare('SELECT stock FROM products WHERE id = ?').get(productId).stock, 0);
-  assert.equal(db.prepare('SELECT stock FROM product_variants WHERE id = ?').get(variantId).stock, 0);
+  assert.equal(await stockOf(productId), 0);
+  assert.equal(await variantStock(variantId), 0);
 
   // Guest can view with token, not without.
   await request(app).get(`/api/orders/${o.number}`).expect(404);
@@ -110,8 +119,8 @@ test('checkout creates order, decrements stock, ignores client prices', async ()
 
   // Cancelling restores stock.
   await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'cancelled' }).expect(200);
-  assert.equal(db.prepare('SELECT stock FROM products WHERE id = ?').get(productId).stock, 2);
-  assert.equal(db.prepare('SELECT stock FROM product_variants WHERE id = ?').get(variantId).stock, 1);
+  assert.equal(await stockOf(productId), 2);
+  assert.equal(await variantStock(variantId), 1);
 });
 
 test('coupons apply and respect limits', async () => {
@@ -155,4 +164,28 @@ test('stats and csv export', async () => {
   assert.ok(stats.body.allTime.orders >= 1);
   const csv = await admin.get('/api/admin/orders.csv').expect(200);
   assert.match(csv.text, /number,date,customer/);
+});
+
+test('concurrent checkouts cannot oversell the last item', async () => {
+  const p = await admin.post('/api/admin/products').send({ name: 'Last one', price: 500, stock: 1 }).expect(201);
+  const results = await Promise.all(
+    [1, 2, 3].map(() => request(app).post('/api/orders').send(checkout({ items: [{ productId: p.body.id, quantity: 1 }] }))),
+  );
+  assert.equal(results.filter((r) => r.status === 201).length, 1);
+  assert.ok(results.filter((r) => r.status === 409).length === 2);
+  assert.equal(await stockOf(p.body.id), 0);
+});
+
+test('login is case-insensitive and social-only accounts get a clear error', async () => {
+  await request(app).post('/api/auth/login').send({ email: 'ADMIN@test.dev', password: 'password123' }).expect(200);
+  await db().query("INSERT INTO users (email, name, auth_provider) VALUES ('g@test.dev', 'G', 'google')");
+  const r = await request(app).post('/api/auth/login').send({ email: 'g@test.dev', password: 'whatever1' }).expect(401);
+  assert.equal(r.body.details.provider, 'google');
+});
+
+test('image upload stores file and returns a URL', async () => {
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>');
+  const r = await admin.post('/api/admin/uploads').attach('files', svg, { filename: 'a.svg', contentType: 'image/svg+xml' }).expect(201);
+  assert.match(r.body.urls[0], /^\/uploads\/.+\.svg$/);
+  await admin.post('/api/admin/uploads').attach('files', Buffer.from('hi'), { filename: 'a.txt', contentType: 'text/plain' }).expect(400);
 });

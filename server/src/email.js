@@ -1,10 +1,11 @@
 import nodemailer from 'nodemailer';
 import { config } from './config.js';
+import { waitUntil } from '@vercel/functions';
 import { getSettings } from './settings.js';
 import { formatMoney } from './utils.js';
 
 let transport;
-function getTransport() {
+function smtpTransport() {
   if (transport !== undefined) return transport;
   transport = config.smtp.host
     ? nodemailer.createTransport({
@@ -17,27 +18,43 @@ function getTransport() {
   return transport;
 }
 
-/** Sends an email; without SMTP settings it is logged instead, so dev never breaks. */
+export const emailConfigured = () => !!(config.resendKey || config.smtp.host);
+
+/**
+ * Sends one email through Resend (RESEND_API_KEY) or SMTP. Without either it
+ * only logs, so development never breaks. Never throws: an email problem
+ * must not make an order fail.
+ */
 export async function sendMail({ to, subject, html, replyTo }) {
   if (!to) return;
-  const settings = getSettings();
-  const t = getTransport();
-  if (!t) {
-    if (!config.isTest) console.log(`[mail] (SMTP not configured) to=${to} subject="${subject}"`);
-    return;
-  }
+  const settings = await getSettings();
+  const from = config.mailFrom || `"${settings.storeName}" <${config.smtp.user || 'onboarding@resend.dev'}>`;
   try {
-    await t.sendMail({
-      from: config.smtp.from || `"${settings.storeName}" <${config.smtp.user}>`,
-      to,
-      subject,
-      html,
-      replyTo,
-    });
+    if (config.resendKey) {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to: [to], subject, html, reply_to: replyTo }),
+      });
+      if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+    } else if (smtpTransport()) {
+      await smtpTransport().sendMail({ from, to, subject, html, replyTo });
+    } else if (!config.isTest) {
+      console.log(`[mail] (email not configured) to=${to} subject="${subject}"`);
+    }
   } catch (err) {
-    // Emails must never make an order fail.
     console.error('[mail] failed:', err.message);
   }
+}
+
+/**
+ * Runs work after the response has been sent. On Vercel the function would
+ * otherwise be frozen as soon as it responds and the emails would be lost.
+ */
+export function background(promise) {
+  const p = Promise.resolve(promise).catch((err) => console.error('[background]', err));
+  waitUntil(p);
+  return p;
 }
 
 const esc = (s) =>
@@ -84,8 +101,8 @@ function orderTable(order, settings) {
 
 const orderLink = (order) => `${config.publicUrl}/order/${order.number}?token=${order.accessToken}`;
 
-export function sendOrderConfirmation(order) {
-  const s = getSettings();
+export async function sendOrderConfirmation(order) {
+  const s = await getSettings();
   const gr = el(s);
   const bank =
     order.paymentMethod === 'bank' && s.payments.bank.details
@@ -108,8 +125,8 @@ export function sendOrderConfirmation(order) {
   });
 }
 
-export function sendAdminNewOrder(order) {
-  const s = getSettings();
+export async function sendAdminNewOrder(order) {
+  const s = await getSettings();
   const to = s.notifications.orderEmail || s.contact.email;
   const body = `<h2 style="margin-top:0">New order #${esc(order.number)}</h2>
     <p>${esc(order.customerName)} · ${esc(order.email)} · ${esc(order.phone)}<br>Payment: ${esc(order.paymentMethod)}</p>
@@ -118,8 +135,8 @@ export function sendAdminNewOrder(order) {
   return sendMail({ to, subject: `New order #${order.number} – ${formatMoney(order.total, s)}`, html: layout(s, body) });
 }
 
-export function sendStatusUpdate(order) {
-  const s = getSettings();
+export async function sendStatusUpdate(order) {
+  const s = await getSettings();
   const gr = el(s);
   const statusText = STATUS_TEXT[gr ? 'el' : 'en'][order.status];
   const tracking = order.trackingNumber
@@ -131,8 +148,8 @@ export function sendStatusUpdate(order) {
   return sendMail({ to: order.email, subject: `#${order.number}: ${statusText}`, html: layout(s, body) });
 }
 
-export function sendPasswordReset(user, token) {
-  const s = getSettings();
+export async function sendPasswordReset(user, token) {
+  const s = await getSettings();
   const gr = el(s);
   const link = `${config.publicUrl}/account/reset?token=${token}`;
   const body = `<p>${gr ? 'Λάβαμε αίτημα επαναφοράς κωδικού.' : 'We received a request to reset your password.'}</p>
@@ -143,8 +160,20 @@ export function sendPasswordReset(user, token) {
   return sendMail({ to: user.email, subject: gr ? 'Επαναφορά κωδικού' : 'Password reset', html: layout(s, body) });
 }
 
-export function sendContactMessage(msg) {
-  const s = getSettings();
+export async function sendContactMessage(msg) {
+  const s = await getSettings();
   const body = `<p><strong>${esc(msg.name)}</strong> &lt;${esc(msg.email)}&gt; ${esc(msg.phone)}</p><p style="white-space:pre-line">${esc(msg.message)}</p>`;
   return sendMail({ to: s.contact.email, subject: `Contact form: ${msg.name}`, html: layout(s, body), replyTo: msg.email });
+}
+
+export async function sendWelcome(user) {
+  const s = await getSettings();
+  const gr = el(s);
+  const body = `<h2 style="margin-top:0">${gr ? 'Καλώς ήρθατε' : 'Welcome'}, ${esc(user.name)}!</h2>
+    <p>${gr ? 'Ο λογαριασμός σας στο' : 'Your account at'} <strong>${esc(s.storeName)}</strong> ${gr ? 'δημιουργήθηκε.' : 'is ready.'}</p>
+    <p>${gr ? 'Από τον λογαριασμό σας μπορείτε να βλέπετε τις παραγγελίες σας και να αποθηκεύσετε τη διεύθυνσή σας για γρηγορότερες αγορές.' : 'From your account you can follow your orders and save your address for faster checkout.'}</p>
+    <p style="margin-top:24px"><a href="${config.publicUrl}/products" style="background:${esc(s.theme.primary)};color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${
+      gr ? 'Ξεκινήστε τις αγορές' : 'Start shopping'
+    }</a></p>`;
+  return sendMail({ to: user.email, subject: gr ? `Καλώς ήρθατε στο ${s.storeName}` : `Welcome to ${s.storeName}`, html: layout(s, body) });
 }

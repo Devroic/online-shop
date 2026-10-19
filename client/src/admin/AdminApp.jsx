@@ -9,6 +9,7 @@ import { useShop } from '../context/ShopContext.jsx';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
 import { PageLoader } from '../components/ui.jsx';
+import { AppearanceToggle } from '../components/Header.jsx';
 import Dashboard from './Dashboard.jsx';
 import { ProductList, ProductEdit } from './Products.jsx';
 import Categories from './Categories.jsx';
@@ -81,6 +82,7 @@ export default function AdminApp() {
           <button onClick={logout}>
             <LogOut size={16} /> {t('Sign out')}
           </button>
+          <AppearanceToggle className="a-theme-toggle" />
         </div>
       </aside>
       <div className={`a-backdrop ${navOpen ? 'open' : ''}`} onClick={() => setNavOpen(false)} />

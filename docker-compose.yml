@@ -1,3 +1,6 @@
+# Alternative to Vercel: run one shop on your own server.
+# Put DATABASE_URL (Supabase or any Postgres) and the other variables in .env.
+# Without DATABASE_URL the embedded database is stored in the shop-data volume.
 services:
   shop:
     build: .

@@ -1,14 +1,14 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { config } from './config.js';
-import { getDb } from './db.js';
+import { db } from './db.js';
 import { HttpError } from './utils.js';
 
 const COOKIE = 'shop_session';
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const hashPassword = (pw) => bcrypt.hash(pw, 10);
-export const checkPassword = (pw, hash) => bcrypt.compare(pw, hash);
+export const checkPassword = (pw, hash) => (hash ? bcrypt.compare(pw, hash) : Promise.resolve(false));
 
 export function publicUser(u) {
   if (!u) return null;
@@ -18,7 +18,9 @@ export function publicUser(u) {
     name: u.name,
     phone: u.phone,
     role: u.role,
-    address: u.address ? JSON.parse(u.address) : null,
+    address: u.address ?? null,
+    provider: u.auth_provider,
+    hasPassword: !!u.password_hash,
     createdAt: u.created_at,
   };
 }
@@ -39,18 +41,23 @@ export function clearSession(res) {
 }
 
 /** Attaches `req.user` when a valid session cookie is present. Never rejects. */
-export function loadUser(req, _res, next) {
+export async function loadUser(req, _res, next) {
   const token = req.cookies?.[COOKIE];
+  req.user = null;
   if (token) {
+    let sub;
     try {
-      const { sub } = jwt.verify(token, config.jwtSecret);
-      req.user = getDb().prepare('SELECT * FROM users WHERE id = ?').get(sub) || null;
+      ({ sub } = jwt.verify(token, config.jwtSecret));
     } catch {
-      req.user = null;
+      /* expired or tampered: treat as signed out */
     }
+    if (sub) req.user = await db().one('SELECT * FROM users WHERE id = $1', [sub]);
   }
   next();
 }
+
+/** Emails are stored lowercase so lookups are case-insensitive. */
+export const normEmail = (email) => String(email).trim().toLowerCase();
 
 export function requireUser(req, _res, next) {
   if (!req.user) throw new HttpError(401, 'Please sign in');

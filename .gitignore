@@ -1,8 +1,13 @@
 node_modules/
 dist/
 data/
-!clients/
 .env
+.env.*
+!.env.example
 *.log
 .DS_Store
 coverage/
+.vercel/
+# Real client files contain emails, IBANs and passwords: keep them out of git.
+clients/*
+!clients/example.json

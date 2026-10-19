@@ -107,7 +107,8 @@ function Profile() {
         onSubmit={async (e) => {
           e.preventDefault();
           try {
-            await api.put('/auth/me/password', pw);
+            const r = await api.put('/auth/me/password', pw);
+            setUser(r.user);
             setPw({ currentPassword: '', newPassword: '' });
             setErrors({});
             toast.success(t('Password changed'));
@@ -116,8 +117,10 @@ function Profile() {
           }
         }}
       >
-        <h3>{t('Change password')}</h3>
+        <h3>{user.hasPassword ? t('Change password') : t('Set a password')}</h3>
+        {!user.hasPassword && <p className="muted small">{t('You sign in with {provider}. You can also set a password to sign in with your email.', { provider: user.provider === 'apple' ? 'Apple' : 'Google' })}</p>}
         <div className="grid-2">
+          {user.hasPassword && (
           <Field
             label={t('Current password')}
             type="password"
@@ -126,6 +129,7 @@ function Profile() {
             onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })}
             error={errors.currentPassword}
           />
+          )}
           <Field
             label={t('New password')}
             type="password"
@@ -136,7 +140,7 @@ function Profile() {
             hint={t('At least 8 characters')}
           />
         </div>
-        <button className="btn btn-outline">{t('Change password')}</button>
+        <button className="btn btn-outline">{user.hasPassword ? t('Change password') : t('Set a password')}</button>
       </form>
     </div>
   );

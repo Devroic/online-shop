@@ -2,7 +2,8 @@
   "name": "online-shop-template",
   "version": "1.0.0",
   "private": true,
-  "description": "Online shop template: React storefront + admin, Node/Express API, SQLite.",
+  "type": "module",
+  "description": "Online shop template: React storefront + admin, Node/Express API, PostgreSQL (Supabase). Deploys to Vercel.",
   "workspaces": [
     "server",
     "client"

@@ -137,7 +137,7 @@
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 0.4);
+  background: var(--overlay);
   z-index: 90;
   opacity: 0;
   pointer-events: none;
@@ -1421,4 +1421,67 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* ------------------------------------------------------------ social login */
+
+.social-login {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0 4px;
+}
+.btn-social {
+  background: var(--bg);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.btn-social:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+.btn-apple {
+  background: #000;
+  border-color: #000;
+  color: #fff;
+}
+.btn-apple:hover {
+  background: #1f1f1f;
+  color: #fff;
+  border-color: #1f1f1f;
+}
+:root[data-theme='dark'] .btn-apple {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 6px 0 2px;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ------------------------------------------------------------- dark tweaks */
+
+:root[data-theme='dark'] .announcement {
+  background: var(--surface);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+:root[data-theme='dark'] .category-tile-fill {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--surface)), var(--surface));
+}
+:root[data-theme='dark'] .product-card-media,
+:root[data-theme='dark'] .gallery-main {
+  background: #1d2026;
 }

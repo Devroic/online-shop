@@ -1,6 +1,6 @@
-import { getDb } from '../db.js';
+import { db } from '../db.js';
 import { config } from '../config.js';
-import { hashPassword } from '../auth.js';
+import { hashPassword, normEmail } from '../auth.js';
 import { getSettings } from '../settings.js';
 
 const PAGES = {
@@ -31,19 +31,23 @@ const SHIPPING = {
 
 /** Creates pages, shipping methods and the first admin on a brand-new database. */
 export async function ensureInitialData() {
-  const db = getDb();
-  const lang = getSettings().language === 'en' ? 'en' : 'el';
+  const lang = (await getSettings()).language === 'en' ? 'en' : 'el';
+  const count = async (table) => (await db().one(`SELECT COUNT(*)::int AS n FROM ${table}`)).n;
 
-  if (!db.prepare('SELECT COUNT(*) AS n FROM pages').get().n) {
-    const ins = db.prepare('INSERT INTO pages (slug, title, content) VALUES (?, ?, ?)');
-    for (const p of PAGES[lang]) ins.run(...p);
+  if (!(await count('pages'))) {
+    for (const [slug, title, content] of PAGES[lang]) {
+      await db().query('INSERT INTO pages (slug, title, content) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [slug, title, content]);
+    }
   }
-  if (!db.prepare('SELECT COUNT(*) AS n FROM shipping_methods').get().n) {
-    const ins = db.prepare('INSERT INTO shipping_methods (name, description, price, free_over, requires_address, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
-    SHIPPING[lang].forEach((m, i) => ins.run(...m, i));
+  if (!(await count('shipping_methods'))) {
+    for (const [i, [name, description, price, freeOver, requiresAddress]] of SHIPPING[lang].entries()) {
+      await db().query(
+        'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+        [name, description, price, freeOver, !!requiresAddress, i],
+      );
+    }
   }
-  const hasAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
-  if (!hasAdmin) {
+  if (!(await db().one("SELECT id FROM users WHERE role = 'admin' LIMIT 1"))) {
     if (config.admin.email && config.admin.password) {
       await createAdmin(config.admin.email, config.admin.password);
       console.log(`Created admin account ${config.admin.email}`);
@@ -54,12 +58,11 @@ export async function ensureInitialData() {
 }
 
 export async function createAdmin(email, password, name = 'Admin') {
-  const db = getDb();
   const hash = await hashPassword(password);
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  if (existing) {
-    db.prepare("UPDATE users SET role = 'admin', password_hash = ? WHERE id = ?").run(hash, existing.id);
-    return existing.id;
-  }
-  return db.prepare("INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, 'admin')").run(email, hash, name).lastInsertRowid;
+  const row = await db().one(
+    `INSERT INTO users (email, password_hash, name, role) VALUES ($1, $2, $3, 'admin')
+     ON CONFLICT (email) DO UPDATE SET role = 'admin', password_hash = excluded.password_hash RETURNING id`,
+    [normEmail(email), hash, name],
+  );
+  return row.id;
 }

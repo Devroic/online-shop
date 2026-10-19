@@ -505,4 +505,38 @@ export default {
   'Search engines (SEO)': 'Μηχανές αναζήτησης (SEO)',
   'Page title': 'Τίτλος σελίδας',
   'About 150 characters, shown in Google results.': 'Περίπου 150 χαρακτήρες, εμφανίζεται στα αποτελέσματα της Google.',
+
+  // Appearance & sign-in
+  Auto: 'Αυτόματο',
+  'Light & dark appearance': 'Φωτεινή & σκοτεινή εμφάνιση',
+  'Automatic (recommended)': 'Αυτόματα (προτείνεται)',
+  'Follows each visitor’s device, with a light/dark switch in the header': 'Ακολουθεί τη συσκευή κάθε επισκέπτη, με διακόπτη φωτεινό/σκοτεινό στην κορυφή',
+  'Always light': 'Πάντα φωτεινό',
+  'Always dark': 'Πάντα σκοτεινό',
+  'Preview light': 'Προεπισκόπηση φωτεινού',
+  'Preview dark': 'Προεπισκόπηση σκοτεινού',
+  'Dark mode colours': 'Χρώματα σκοτεινού θέματος',
+  'Leave empty to have them calculated from the colours above.': 'Αφήστε τα κενά για να υπολογιστούν αυτόματα από τα παραπάνω χρώματα.',
+  'Light mode': 'Φωτεινό θέμα',
+  'Dark mode': 'Σκούρο θέμα',
+  'Customer sign-in': 'Σύνδεση πελατών',
+  'Email & password sign-in is always available. Google and Apple sign-in must first be enabled in the shop’s Supabase project (see the setup guide).':
+    'Η σύνδεση με email και κωδικό είναι πάντα διαθέσιμη. Η σύνδεση με Google και Apple πρέπει πρώτα να ενεργοποιηθεί στο Supabase project του καταστήματος (δείτε τον οδηγό εγκατάστασης).',
+  'Sign in with Google': 'Σύνδεση με Google',
+  'Sign in with Apple': 'Σύνδεση με Apple',
+  'Requires an Apple Developer account (paid yearly by the shop owner).': 'Απαιτεί λογαριασμό Apple Developer (ετήσια συνδρομή που πληρώνει ο ιδιοκτήτης).',
+  'SUPABASE_URL and SUPABASE_ANON_KEY are not set on the server, so these buttons are hidden from customers.':
+    'Τα SUPABASE_URL και SUPABASE_ANON_KEY δεν έχουν οριστεί στον server, οπότε τα κουμπιά δεν εμφανίζονται στους πελάτες.',
+  'Redirect URL to add in Supabase → Authentication → URL Configuration:': 'Redirect URL για το Supabase → Authentication → URL Configuration:',
+  'Email sending (Resend or SMTP) is not configured on the server, so emails are not sent yet.':
+    'Η αποστολή email (Resend ή SMTP) δεν έχει ρυθμιστεί στον server, οπότε δεν στέλνονται email ακόμα.',
+  'Continue with Google': 'Συνέχεια με Google',
+  'Continue with Apple': 'Συνέχεια με Apple',
+  'Sign-in failed. Please try again.': 'Η σύνδεση απέτυχε. Δοκιμάστε ξανά.',
+  'or with email': 'ή με email',
+  'Set a password': 'Ορισμός κωδικού',
+  'You sign in with {provider}. You can also set a password to sign in with your email.':
+    'Συνδέεστε με {provider}. Μπορείτε επίσης να ορίσετε κωδικό για σύνδεση με το email σας.',
+  'This account was created with {provider}. Use that button above, or reset your password.':
+    'Ο λογαριασμός δημιουργήθηκε με {provider}. Χρησιμοποιήστε το αντίστοιχο κουμπί παραπάνω ή κάντε επαναφορά κωδικού.',
 };

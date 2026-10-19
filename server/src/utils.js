@@ -56,10 +56,10 @@ export function normalizeSearch(text) {
 }
 
 /** Returns `base` or `base-2`, `base-3`… so it is unique in `table.slug`. */
-export function uniqueSlug(db, table, base, excludeId) {
+export async function uniqueSlug(conn, table, base, excludeId) {
   let slug = base;
   for (let i = 2; ; i++) {
-    const row = db.prepare(`SELECT id FROM ${table} WHERE slug = ?`).get(slug);
+    const row = await conn.one(`SELECT id FROM ${table} WHERE slug = $1`, [slug]);
     if (!row || row.id === excludeId) return slug;
     slug = `${base}-${i}`;
   }
@@ -77,6 +77,16 @@ export function parseJson(value, fallback = null) {
   } catch {
     return fallback;
   }
+}
+
+/** Collects positional parameters for dynamic SQL: `where.push(\`x = ${p(v)}\`)`. */
+export function params() {
+  const list = [];
+  const p = (value) => {
+    list.push(value);
+    return `$${list.length}`;
+  };
+  return { list, p };
 }
 
 export function formatMoney(cents, settings) {

@@ -5,6 +5,7 @@ import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
 import { FONT_OPTIONS, applyTheme, useShop } from '../context/ShopContext.jsx';
+import { darkPalette } from '../lib/theme.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { Field, PageLoader, Spinner, fieldErrors } from '../components/ui.jsx';
 import { ImageUploader, MoneyInput, PageHeader, Toggle } from './components.jsx';
@@ -18,13 +19,18 @@ const PRESETS = [
   ['Violet', { primary: '#4c1d95', accent: '#7c3aed', background: '#ffffff', surface: '#f6f4fd', text: '#1e1033' }],
 ];
 
-function ColorField({ label, value, onChange }) {
+function ColorField({ label, value, onChange, placeholder }) {
   return (
     <div className="field color-field">
       <label>{label}</label>
       <div className="color-input">
-        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} />
-        <input className="input" value={value} onChange={(e) => onChange(e.target.value)} maxLength={7} />
+        <input type="color" value={value || placeholder} onChange={(e) => onChange(e.target.value)} aria-label={label} />
+        <input className="input" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} maxLength={7} />
+        {placeholder && value && (
+          <button type="button" className="link-btn small" onClick={() => onChange('')}>
+            {t('Auto')}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -102,9 +108,29 @@ function General({ s, set }) {
   );
 }
 
-function Appearance({ s, set }) {
+function Appearance({ s, set, preview, setPreview }) {
   const th = s.theme;
+  const auto = darkPalette({ ...th, dark: {} });
   return (
+    <>
+    <section className="card">
+      <h3>{t('Light & dark appearance')}</h3>
+      <div className="options">
+        {[
+          ['auto', t('Automatic (recommended)'), t('Follows each visitor’s device, with a light/dark switch in the header')],
+          ['light', t('Always light'), ''],
+          ['dark', t('Always dark'), ''],
+        ].map(([v, label, hint]) => (
+          <label key={v} className={`option ${th.mode === v ? 'active' : ''}`}>
+            <input type="radio" name="mode" checked={th.mode === v} onChange={() => set('theme.mode', v)} />
+            <div className="grow">
+              <strong>{label}</strong>
+              {hint && <div className="muted small">{hint}</div>}
+            </div>
+          </label>
+        ))}
+      </div>
+    </section>
     <section className="card">
       <h3>{t('Colour presets')}</h3>
       <div className="presets">
@@ -139,6 +165,16 @@ function Appearance({ s, set }) {
           <input type="range" min="0" max="24" value={th.radius} onChange={(e) => set('theme.radius', Number(e.target.value))} />
         </div>
       </div>
+      {th.mode === 'auto' && (
+      <div className="seg mt">
+        <button type="button" className={preview === 'light' ? 'active' : ''} onClick={() => setPreview('light')}>
+          {t('Preview light')}
+        </button>
+        <button type="button" className={preview === 'dark' ? 'active' : ''} onClick={() => setPreview('dark')}>
+          {t('Preview dark')}
+        </button>
+      </div>
+      )}
       <div className="theme-preview">
         <button type="button" className="btn btn-primary">
           {t('Add to cart')}
@@ -152,6 +188,20 @@ function Appearance({ s, set }) {
         <span className="badge badge-sale">-20%</span>
       </div>
     </section>
+    {th.mode !== 'light' && (
+      <section className="card">
+        <h3>{t('Dark mode colours')}</h3>
+        <p className="muted small">{t('Leave empty to have them calculated from the colours above.')}</p>
+        <div className="color-grid">
+          <ColorField label={t('Primary (buttons, header bar)')} value={th.dark.primary} placeholder={auto.primary} onChange={(v) => set('theme.dark.primary', v)} />
+          <ColorField label={t('Accent (links, highlights)')} value={th.dark.accent} placeholder={auto.accent} onChange={(v) => set('theme.dark.accent', v)} />
+          <ColorField label={t('Background')} value={th.dark.background} placeholder={auto.background} onChange={(v) => set('theme.dark.background', v)} />
+          <ColorField label={t('Surface (cards, sections)')} value={th.dark.surface} placeholder={auto.surface} onChange={(v) => set('theme.dark.surface', v)} />
+          <ColorField label={t('Text')} value={th.dark.text} placeholder={auto.text} onChange={(v) => set('theme.dark.text', v)} />
+        </div>
+      </section>
+    )}
+    </>
   );
 }
 
@@ -223,6 +273,22 @@ function Checkout({ s, set, meta, pages }) {
         </div>
       </section>
       <section className="card">
+        <h3>{t('Customer sign-in')}</h3>
+        <p className="muted small">{t('Email & password sign-in is always available. Google and Apple sign-in must first be enabled in the shop’s Supabase project (see the setup guide).')}</p>
+        <Toggle checked={s.login.google} onChange={(v) => set('login.google', v)} label={t('Sign in with Google')} />
+        <Toggle checked={s.login.apple} onChange={(v) => set('login.apple', v)} label={t('Sign in with Apple')} hint={t('Requires an Apple Developer account (paid yearly by the shop owner).')} />
+        {(s.login.google || s.login.apple) && !meta.socialLoginConfigured && (
+          <p className="notice small">
+            <Info size={16} /> {t('SUPABASE_URL and SUPABASE_ANON_KEY are not set on the server, so these buttons are hidden from customers.')}
+          </p>
+        )}
+        {(s.login.google || s.login.apple) && meta.supabaseUrl && (
+          <p className="muted small">
+            {t('Redirect URL to add in Supabase → Authentication → URL Configuration:')} <code className="code">{window.location.origin}/auth/callback</code>
+          </p>
+        )}
+      </section>
+      <section className="card">
         <h3>{t('Checkout')}</h3>
         <Toggle checked={s.checkout.allowGuest} onChange={(v) => set('checkout.allowGuest', v)} label={t('Allow guest checkout')} hint={t('Recommended: customers can order without creating an account.')} />
         <Toggle checked={s.checkout.requirePhone} onChange={(v) => set('checkout.requirePhone', v)} label={t('Phone number is required')} />
@@ -269,9 +335,9 @@ function Advanced({ s, set, meta }) {
           placeholder={s.contact.email}
           hint={t('If empty, the contact email is used.')}
         />
-        {!meta.smtpConfigured && (
+        {!meta.emailConfigured && (
           <p className="notice small">
-            <Info size={16} /> {t('Email (SMTP) is not configured on the server, so emails are not sent yet.')}
+            <Info size={16} /> {t('Email sending (Resend or SMTP) is not configured on the server, so emails are not sent yet.')}
           </p>
         )}
       </section>
@@ -291,7 +357,8 @@ const setPath = (obj, path, value) => {
 
 export default function Settings() {
   const { data, setData } = useFetch('/admin/settings');
-  const { settings: live, pages, reload } = useShop();
+  const { settings: live, pages, reload, appearance } = useShop();
+  const [preview, setPreview] = useState(appearance);
   const [s, setS] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -302,9 +369,9 @@ export default function Settings() {
   }, [data]);
   // Live-preview colours; restore the published theme when leaving.
   useEffect(() => {
-    if (s) applyTheme(s.theme);
-  }, [s?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => applyTheme(live.theme), [live.theme]);
+    if (s) applyTheme(s.theme, s.theme.mode === 'auto' ? preview : s.theme.mode);
+  }, [s?.theme, preview]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => applyTheme(live.theme, appearance), [live.theme, appearance]);
 
   if (!s) return <PageLoader />;
   const set = (path, value) => setS((cur) => setPath(cur, path, value));
@@ -328,7 +395,7 @@ export default function Settings() {
     }
   };
 
-  const props = { s, set, meta: s._meta || {}, pages, errors };
+  const props = { s, set, meta: s._meta || {}, pages, errors, preview, setPreview };
   return (
     <>
       <PageHeader

@@ -12,6 +12,8 @@ import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
 import stripeRoutes from './routes/stripe.js';
 import { getSettings } from './settings.js';
+import { initDb } from './db.js';
+import { ensureInitialData } from './scripts/bootstrap.js';
 
 export function createApp() {
   const app = express();
@@ -24,10 +26,11 @@ export function createApp() {
         directives: {
           defaultSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+          // Supabase Auth (Google/Apple sign-in) is called from the browser.
+          connectSrc: ["'self'", 'https://*.supabase.co'],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
           scriptSrc: ["'self'"],
-          connectSrc: ["'self'"],
           frameSrc: ["'self'", 'https://www.google.com', 'https://maps.google.com'],
           formAction: ["'self'", 'https://checkout.stripe.com'],
           upgradeInsecureRequests: config.isProd ? [] : null,
@@ -36,6 +39,19 @@ export function createApp() {
       crossOriginEmbedderPolicy: false,
     }),
   );
+
+  // Connect + migrate on the first request of each (serverless) instance.
+  let booted;
+  app.use(async (_req, _res, next) => {
+    try {
+      booted ??= initDb().then(ensureInitialData);
+      await booted;
+      next();
+    } catch (err) {
+      booted = undefined;
+      next(err);
+    }
+  });
 
   app.use('/api/stripe', stripeRoutes);
   app.use(express.json({ limit: '1mb' }));
@@ -65,9 +81,9 @@ export function createApp() {
     const indexFile = path.join(config.clientDist, 'index.html');
     const indexHtml = fs.readFileSync(indexFile, 'utf8');
     app.use(express.static(config.clientDist, { index: false, maxAge: '1y', immutable: true }));
-    app.get('/{*splat}', (_req, res) => {
+    app.get('/{*splat}', async (_req, res) => {
       // Inject title/description so link previews show the shop's name.
-      const s = getSettings();
+      const s = await getSettings();
       const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
       const html = indexHtml
         .replace(/<title>.*?<\/title>/, `<title>${esc(s.seo.title || s.storeName)}</title>`)

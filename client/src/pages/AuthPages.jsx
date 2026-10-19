@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import { t } from '../lib/i18n.js';
 import { Field, Spinner, fieldErrors, useTitle } from '../components/ui.jsx';
+import SocialLogin from '../components/SocialLogin.jsx';
 
 /** Only allow redirects inside the shop. */
 const safeNext = (next, fallback) => (next && next.startsWith('/') && !next.startsWith('//') ? next : fallback);
@@ -23,6 +24,7 @@ export function Login() {
     <div className="container narrow">
       <div className="card auth-card">
         <h1>{t('Sign in')}</h1>
+        <SocialLogin next={safeNext(params.get('next'), '/account')} />
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -32,7 +34,15 @@ export function Login() {
               const u = await login(form.email, form.password);
               navigate(safeNext(params.get('next'), u.role === 'admin' ? '/admin' : '/account'), { replace: true });
             } catch (err) {
-              setError(err.status === 429 ? t('Too many attempts, please try again later') : t('Wrong email or password'));
+              setError(
+                err.status === 429
+                  ? t('Too many attempts, please try again later')
+                  : err.details?.provider
+                    ? t('This account was created with {provider}. Use that button above, or reset your password.', {
+                        provider: err.details.provider === 'apple' ? 'Apple' : 'Google',
+                      })
+                    : t('Wrong email or password'),
+              );
               setBusy(false);
             }
           }}
@@ -79,6 +89,7 @@ export function Register() {
       <div className="card auth-card">
         <h1>{t('Create an account')}</h1>
         <p className="muted">{t('Faster checkout and all your orders in one place.')}</p>
+        <SocialLogin next={safeNext(params.get('next'), '/account')} />
         <form
           onSubmit={async (e) => {
             e.preventDefault();

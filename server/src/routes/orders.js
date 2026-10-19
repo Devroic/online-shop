@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
-import { getDb } from '../db.js';
+import { db } from '../db.js';
 import { getSettings } from '../settings.js';
 import { requireUser } from '../auth.js';
 import { HttpError, notFound, validate } from '../utils.js';
 import { createOrder, getOrder, serializeOrder, updateOrder } from '../services/orders.js';
 import { createCheckoutSession, refreshCardPayment, stripeReady } from '../services/payments.js';
-import { sendAdminNewOrder, sendOrderConfirmation } from '../email.js';
+import { background, sendAdminNewOrder, sendOrderConfirmation } from '../email.js';
 import { addressSchema } from './auth.js';
 import { config } from '../config.js';
 
@@ -39,17 +39,16 @@ const checkoutSchema = z.object({
 });
 
 export function notifyNewOrder(order) {
-  sendOrderConfirmation(order);
-  sendAdminNewOrder(order);
+  return background(Promise.all([sendOrderConfirmation(order), sendAdminNewOrder(order)]));
 }
 
 router.post('/', checkoutLimiter, async (req, res) => {
   const data = validate(checkoutSchema, req.body);
-  const settings = getSettings();
+  const settings = await getSettings();
   if (settings.checkout.requirePhone && !data.phone) {
     throw new HttpError(400, 'Validation failed', { phone: 'required' });
   }
-  const order = createOrder(data, { user: req.user, stripeReady: stripeReady() });
+  const order = await createOrder(data, { user: req.user, stripeReady: stripeReady() });
 
   if (order.paymentMethod === 'card') {
     try {
@@ -57,7 +56,7 @@ router.post('/', checkoutLimiter, async (req, res) => {
       return res.status(201).json({ order, redirectUrl: url });
     } catch (err) {
       console.error('[stripe] session failed:', err.message);
-      updateOrder(order.id, { status: 'cancelled', paymentStatus: 'failed' }, { actor: 'stripe' });
+      await updateOrder(order.id, { status: 'cancelled', paymentStatus: 'failed' }, { actor: 'stripe' });
       throw new HttpError(502, 'Card payment is unavailable right now. Please choose another payment method.');
     }
   }
@@ -65,31 +64,29 @@ router.post('/', checkoutLimiter, async (req, res) => {
   res.status(201).json({ order });
 });
 
-router.get('/mine', requireUser, (req, res) => {
-  const rows = getDb()
-    .prepare(
-      `SELECT o.*, (SELECT SUM(quantity) FROM order_items WHERE order_id = o.id) AS item_count
-       FROM orders o WHERE user_id = ? ORDER BY id DESC LIMIT 200`,
-    )
-    .all(req.user.id);
+router.get('/mine', requireUser, async (req, res) => {
+  const rows = await db().all(
+    `SELECT o.*, (SELECT SUM(quantity)::int FROM order_items WHERE order_id = o.id) AS item_count
+     FROM orders o WHERE user_id = $1 ORDER BY id DESC LIMIT 200`,
+    [req.user.id],
+  );
   res.json(rows.map((o) => serializeOrder(o)));
 });
 
 /** "Track my order": exchanges order number + email for the order link. */
-router.post('/lookup', checkoutLimiter, (req, res) => {
+router.post('/lookup', checkoutLimiter, async (req, res) => {
   const { number, email } = validate(z.object({ number: z.string().trim().max(40), email: z.string().trim().max(200) }), req.body);
-  const order = getOrder({ number: number.replace(/^#/, '') });
+  const order = await getOrder({ number: number.replace(/^#/, '') });
   if (!order || order.email.toLowerCase() !== email.toLowerCase()) throw notFound('Order not found');
   res.json({ number: order.number, token: order.accessToken });
 });
 
 /** Order page: visible to its owner, an admin, or anyone holding the secret link token. */
 router.get('/:number', async (req, res) => {
-  let order = getOrder({ number: req.params.number });
+  let order = await getOrder({ number: req.params.number });
   const allowed =
     order &&
-    (req.query.token === order.accessToken ||
-      (req.user && (req.user.role === 'admin' || req.user.id === order.userId)));
+    (req.query.token === order.accessToken || (req.user && (req.user.role === 'admin' || req.user.id === order.userId)));
   if (!allowed) throw notFound('Order not found');
 
   if (order.paymentMethod === 'card' && order.paymentStatus === 'pending') {
@@ -98,7 +95,7 @@ router.get('/:number', async (req, res) => {
     if (result.justPaid) notifyNewOrder(order);
   }
   const { adminNotes, ...visible } = order;
-  const settings = getSettings();
+  const settings = await getSettings();
   res.json({
     order: visible,
     bankDetails: order.paymentMethod === 'bank' ? settings.payments.bank.details : undefined,

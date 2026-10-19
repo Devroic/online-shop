@@ -25,10 +25,16 @@ export const api = {
   put: (url, body) => request('PUT', url, body),
   patch: (url, body) => request('PATCH', url, body),
   del: (url) => request('DELETE', url),
-  upload: (files, kind) => {
-    const fd = new FormData();
-    for (const f of files) fd.append('files', f);
-    return request('POST', `/admin/uploads${kind ? `?kind=${kind}` : ''}`, fd);
+  /** Resizes photos in the browser, then uploads them (one request per file keeps each small). */
+  upload: async (files, kind) => {
+    const { resizeImage } = await import('./resizeImage.js');
+    const urls = [];
+    for (const f of files) {
+      const fd = new FormData();
+      fd.append('files', await resizeImage(f, kind === 'logo' ? 600 : 1600));
+      urls.push(...(await request('POST', '/admin/uploads', fd)).urls);
+    }
+    return { urls };
   },
 };
 
