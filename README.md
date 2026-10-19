@@ -1,92 +1,103 @@
-# Online Shop Template
+# Online Shop
 
-Πλήρες ηλεκτρονικό κατάστημα που προσαρμόζεται σε κάθε πελάτη (όνομα, λογότυπο, χρώματα,
-γραμματοσειρά, φωτεινό/σκοτεινό θέμα, προϊόντα, αποστολές, πληρωμές, σελίδες) **χωρίς αλλαγές στον κώδικα**.
-Ένα repository για όλους τους πελάτες· κάθε πελάτης είναι ένα ξεχωριστό project στο Vercel με δική του βάση.
+A complete online shop that is customised per client (name, logo, colours, font, light/dark
+appearance, products, shipping, payments, pages) **without code changes**. One repository serves
+every client: each client is a separate Vercel project with its own Supabase database, so a
+`git push` updates all shops at once.
 
 | | |
 |---|---|
-| Frontend | React 19 + Vite + React Router (κατάστημα + admin, το admin φορτώνει ξεχωριστά) |
-| Backend | Node.js + Express 5, ως Vercel Function |
-| Βάση & φωτογραφίες | PostgreSQL + Storage στο **Supabase** του κάθε πελάτη |
-| Email | **Resend** (ή SMTP) |
-| Πληρωμές | Κάρτα μέσω **Stripe** (προεπιλογή), προαιρετικά αντικαταβολή / τραπεζική κατάθεση |
-| Σύνδεση πελατών | Email/κωδικός, **Google**, **Apple** (μέσω Supabase Auth) |
-| Γλώσσες | Ελληνικά / Αγγλικά |
+| Frontend | React 19 + Vite + React Router (storefront + admin; the admin is a separate bundle) |
+| Backend | Node.js + Express 5, running as a Vercel Function |
+| Database & images | PostgreSQL + Storage in each client's **Supabase** project |
+| Email | **Resend** (SMTP also supported) |
+| Payments | Card via **Stripe** (default), optional cash on delivery / bank transfer |
+| Customer sign-in | Email & password, **Google**, **Apple** (via Supabase Auth) |
+| Languages | Greek / English |
 
-## Τοπική ανάπτυξη
+## Local development
 
-Δεν χρειάζεται να εγκαταστήσετε βάση ή λογαριασμούς: χωρίς `DATABASE_URL` χρησιμοποιείται ενσωματωμένη
-PostgreSQL (PGlite) στον φάκελο `data/`, και οι φωτογραφίες αποθηκεύονται στο `data/uploads/`.
+Nothing to install or configure: without `DATABASE_URL` an embedded PostgreSQL (PGlite) is used
+in `data/`, images are stored in `data/uploads/`, emails are printed to the terminal.
 
 ```bash
 npm install
-npm run seed      # demo προϊόντα + admin: admin@example.com / admin1234
-npm run dev       # κατάστημα: http://localhost:5173 · admin: /admin
+npm run seed      # demo products + admin: admin@example.com / admin1234
+npm run dev       # shop: http://localhost:5173 · admin: /admin
 ```
 
 ```bash
-npm test                                   # tests του API (ενσωματωμένη βάση)
-TEST_DATABASE_URL=postgres://… npm test    # τα ίδια tests σε πραγματική, κενή PostgreSQL
-npm run build                              # build του React app
+npm test                                   # API tests (embedded database)
+TEST_DATABASE_URL=postgres://… npm test    # same tests against a real, empty PostgreSQL
+npm run build                              # build the React app
+npm run questionnaire                      # rebuild docs/client-questionnaire.pdf
 ```
 
-> Η ενσωματωμένη βάση ανοίγει από ένα πρόγραμμα τη φορά: σταματήστε το `npm run dev` πριν τρέξετε `npm run seed`.
+> The embedded database can be opened by one process at a time: stop `npm run dev` before `npm run seed`.
 
-## Νέος πελάτης
+To try real services locally, fill in the optional keys in `.env` (copy `.env.example`).
 
-1. [Ερωτηματολόγιο](docs/CLIENT_QUESTIONNAIRE.md) στον πελάτη.
-2. [Οδηγός «νέος πελάτης»](docs/NEW_CLIENT.md): Supabase → Resend → Stripe → Vercel → domain →
-   `npm run configure -- clients/<πελάτης>.json` → έλεγχοι → backup.
+## New client
 
-Τα αρχεία `clients/*.json` και `.env.*` των πελατών **δεν** ανεβαίνουν στο git (περιέχουν IBAN, email, κωδικούς).
+1. Send the client the fillable [questionnaire](docs/client-questionnaire.pdf).
+2. Follow the step-by-step [new client guide](docs/NEW_CLIENT.md) (in Greek):
+   Supabase → Resend → Stripe → `npm run configure` → Vercel → domain → checks → backup.
+   It includes copy-paste templates for the client's `.env` and `clients/<client>.json`.
 
-## Λειτουργίες
+Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain emails, IBANs and passwords.
 
-**Κατάστημα**
-- Αρχική με banner, κατηγορίες, προτεινόμενα και νέα προϊόντα
-- Κατάλογος με αναζήτηση χωρίς τόνους («κουπα» → «Κούπα»), κατηγορίες, φίλτρα, ταξινόμηση
-- Σελίδα προϊόντος: gallery (swipe στο κινητό), επιλογές με δικό τους απόθεμα/τιμή, χαμηλό απόθεμα, σχετικά προϊόντα
-- Καλάθι που επανελέγχει τιμές/απόθεμα στον server, μπάρα «τόσα € για δωρεάν αποστολή»
-- Checkout σε μία σελίδα, αγορά χωρίς λογαριασμό, κουπόνια, αποστολές, πληρωμές
-- Λογαριασμός με email ή Google/Apple, ιστορικό παραγγελιών, αποθηκευμένη διεύθυνση, επαναφορά κωδικού
-- Φωτεινό/σκοτεινό θέμα: ακολουθεί τη συσκευή, με διακόπτη στην κορυφή
-- Email: επιβεβαίωση παραγγελίας, καλωσόρισμα, ενημέρωση αποστολής, επαναφορά κωδικού
+## Features
+
+**Storefront**
+- Home page with hero banner, categories, featured and new products
+- Catalog with accent-insensitive search («κουπα» finds «Κούπα»), categories, filters, sorting
+- Product page: swipeable gallery, options (size/colour…) with their own stock and price, low-stock notice, related products
+- Cart re-checks prices and stock on the server; "€X more for free shipping" bar
+- One-page checkout, guest checkout, discount codes, shipping methods, payment methods
+- Accounts with email or Google/Apple, order history, saved address, password reset
+- Light/dark appearance that follows the device, with a switch in the header
+- Emails: order confirmation, welcome, shipping updates, password reset
 
 **Admin**
-- Dashboard (έσοδα, γράφημα, δημοφιλέστερα, χαμηλό απόθεμα)
-- Παραγγελίες: κατάσταση με ένα κλικ, αριθμός αποστολής, email στον πελάτη, εκτύπωση, CSV
-- Προϊόντα: φωτογραφίες με drag & drop (σμίκρυνση σε WebP στον browser), επιλογές, προσφορές, απόθεμα
-- Μαζική εισαγωγή/ενημέρωση προϊόντων από Excel (.xlsx/.csv) με έτοιμο πρότυπο και προεπισκόπηση
-- Κατηγορίες, κουπόνια, αποστολές, σελίδες, μηνύματα, πελάτες/διαχειριστές
-- Ρυθμίσεις: λογότυπο, χρώματα (φωτεινά & σκοτεινά) με ζωντανή προεπισκόπηση, γραμματοσειρά, banner,
-  πληρωμές, σύνδεση με Google/Apple, SEO
+- Dashboard (revenue, chart, best sellers, low stock)
+- Orders: one-click status changes, tracking number, customer email, print, CSV export
+- Products: drag & drop photos (resized to WebP in the browser), options, sale prices, stock
+- Bulk import/update of products from Excel (.xlsx/.csv) with a template and preview
+- Categories, discount codes, shipping methods, pages, messages, customers/admins
+- Settings: logo, colours (light & dark) with live preview, font, banner, payments, Google/Apple sign-in, SEO
 
-## Ασφάλεια
-- Τιμές, εκπτώσεις και απόθεμα υπολογίζονται μόνο στον server, σε transaction· δύο ταυτόχρονες
-  παραγγελίες δεν μπορούν να πουλήσουν το ίδιο τελευταίο τεμάχιο
-- Κωδικοί με bcrypt, session σε httpOnly cookie, rate limiting, CSP, έλεγχος εισόδων με zod
-- Row Level Security στη βάση: το δημόσιο API του Supabase δεν έχει πρόσβαση στους πίνακες
-- Οι σελίδες παραγγελιών επισκεπτών ανοίγουν μόνο με μυστικό σύνδεσμο
+## Security
+- Prices, discounts and stock are calculated on the server inside a transaction; two simultaneous
+  orders cannot sell the same last item
+- Passwords hashed with bcrypt, session in an httpOnly cookie, rate limiting, CSP, input validation with zod
+- Row Level Security on every table: Supabase's public API cannot read the shop's data
+- Guest order pages open only with a secret link
 
-## Δομή
+## Structure
 
 ```
 api/index.js               Vercel Function (Express app)
 vercel.json                build, routing, headers
 server/src/
-  app.js, index.js         Express app / τοπικός server
-  db.js                    PostgreSQL (Supabase ή PGlite) + migrations
-  settings.js              ρυθμίσεις καταστήματος
-  storage.js               φωτογραφίες (Supabase Storage ή τοπικά)
-  email.js                 email (Resend ή SMTP)
-  services/                catalog, orders (τιμές/απόθεμα), payments (Stripe)
+  app.js, index.js         Express app / local server
+  db.js                    PostgreSQL (Supabase or PGlite) + migrations
+  settings.js              shop settings and defaults
+  storage.js               images (Supabase Storage or local)
+  email.js                 email (Resend or SMTP)
+  services/                catalog, orders (pricing/stock), payments (Stripe)
   routes/                  public, auth (+Google/Apple), orders, admin, stripe
   scripts/                 seed, configure, create-admin
 client/src/
-  pages/, admin/           κατάστημα, admin panel
-  lib/theme.js             χρώματα, φωτεινό/σκοτεινό θέμα
-  lib/locales/el.js        ελληνικές μεταφράσεις
-.github/workflows/         νυχτερινά backup
-docs/                      ερωτηματολόγιο, οδηγός νέου πελάτη
+  pages/, admin/           storefront, admin panel
+  lib/theme.js             colours, light/dark appearance
+  lib/productImport.js     Excel import parsing
+  lib/locales/el.js        Greek translations (UI text is written in English)
+scripts/questionnaire/     builds the client questionnaire PDF
+.github/workflows/         nightly database backups
+docs/                      questionnaire, new client guide (Greek)
 ```
+
+## Changing the database
+
+Add a new entry at the end of the `migrations` array in `server/src/db.js` (never edit one that has
+shipped). Every shop applies it automatically on its next request after deploy.

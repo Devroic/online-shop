@@ -85,7 +85,7 @@
 ## Βήμα 6. Vercel (το site)
 
 - Πήγαινε στο https://vercel.com (ο **δικός σου** λογαριασμός) → **Add New → Project**.
-- Διάλεξε το repository `online-shop-template` και δώσε όνομα project `shop-margarita`.
+- Διάλεξε το repository `online-shop` και δώσε όνομα project `shop-margarita`.
 - Άνοιξε **Environment Variables**. Αντέγραψε **όλο** το περιεχόμενο του `.env.margarita` και κάνε paste στο πρώτο πεδίο «Key». Το Vercel τα χωρίζει μόνο του.
 - Πάτα **Deploy** και περίμενε ~1 λεπτό.
 - Πήγαινε **Settings → Domains → Add** και πρόσθεσε `margarita.gr` και `www.margarita.gr`.
