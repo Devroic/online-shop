@@ -238,13 +238,51 @@ async function connect() {
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
     const dir = config.pgliteDir;
-    if (dir !== 'memory://') fs.mkdirSync(path.dirname(dir), { recursive: true });
+    let unlock = () => {};
+    if (dir !== 'memory://') {
+      fs.mkdirSync(path.dirname(dir), { recursive: true });
+      unlock = lockLocalDb(dir);
+    }
     const db = new PGlite(dir, { parsers: { 20: (v) => Number(v) } });
     await db.waitReady;
     root = wrap(db, 'pglite');
     txRunner = (fn) => db.transaction((tx) => fn(wrap(tx, 'pglite')));
-    closer = () => db.close();
+    closer = async () => {
+      await db.close();
+      unlock();
+    };
   }
+}
+
+/**
+ * The embedded database must only be opened by one process: a second one
+ * (e.g. `npm run seed` while `npm run dev` runs) can corrupt it. A lock file
+ * with the owner's PID stops that with a clear message.
+ */
+function lockLocalDb(dir) {
+  const lock = `${dir}.lock`;
+  try {
+    const pid = Number(fs.readFileSync(lock, 'utf8'));
+    let alive = false;
+    try {
+      process.kill(pid, 0);
+      alive = pid !== process.pid;
+    } catch {
+      /* process is gone: stale lock */
+    }
+    if (alive) {
+      throw new Error(
+        `The local database (${dir}) is already in use by another process (PID ${pid}). ` +
+          'Stop it first (e.g. the running "npm run dev"), then try again.',
+      );
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+  fs.writeFileSync(lock, String(process.pid));
+  const release = () => fs.rmSync(lock, { force: true });
+  process.once('exit', release);
+  return release;
 }
 
 async function migrate() {

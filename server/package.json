@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "NODE_ENV=production node src/index.js",
+    "start": "node -e \"process.env.NODE_ENV ||= 'production'; import('./src/index.js')\"",
     "seed": "node src/scripts/seed.js",
     "configure": "node src/scripts/configure.js",
     "create-admin": "node src/scripts/create-admin.js",

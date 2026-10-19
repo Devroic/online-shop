@@ -14,7 +14,9 @@ import NotFound from './NotFound.jsx';
 function Gallery({ images, name }) {
   const [active, setActive] = useState(0);
   const track = useRef(null);
-  useEffect(() => setActive(0), [images]);
+  useEffect(() => {
+    setActive(0);
+  }, [images]);
 
   const go = (i) => {
     setActive(i);

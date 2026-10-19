@@ -33,7 +33,8 @@ npm run build                              # build the React app
 npm run questionnaire                      # rebuild docs/client-questionnaire.pdf
 ```
 
-> The embedded database can be opened by one process at a time: stop `npm run dev` before `npm run seed`.
+> The embedded database can be opened by one process at a time: stop `npm run dev` before `npm run seed`
+> (a second process stops with a clear message instead of damaging it). If it ever gets damaged, delete `data/` and run `npm run seed` again.
 
 To try real services locally, fill in the optional keys in `.env` (copy `.env.example`).
 

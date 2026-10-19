@@ -33,7 +33,9 @@ export default function AdminApp() {
     const id = setInterval(counts.reload, 60000);
     return () => clearInterval(id);
   }, [user, counts.reload]);
-  useEffect(() => setNavOpen(false), [location.pathname]);
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
   useEffect(() => {
     document.title = `Admin | ${settings.storeName}`;
   }, [location.pathname, settings.storeName]);

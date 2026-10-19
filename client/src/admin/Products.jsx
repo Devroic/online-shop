@@ -14,7 +14,9 @@ import ProductImport from './ProductImport.jsx';
 function StockCell({ product, onSaved }) {
   const [value, setValue] = useState(product.stock);
   const toast = useToast();
-  useEffect(() => setValue(product.stock), [product.stock]);
+  useEffect(() => {
+    setValue(product.stock);
+  }, [product.stock]);
   if (!product.trackStock) return <span className="muted">∞</span>;
   if (product.variants.length) {
     return (

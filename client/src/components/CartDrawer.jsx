@@ -57,7 +57,9 @@ export default function CartDrawer() {
   const { quote, problemFor } = useQuote({ enabled: drawerOpen });
   const location = useLocation();
 
-  useEffect(() => closeDrawer(), [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    closeDrawer();
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     document.body.classList.toggle('no-scroll', drawerOpen);
     const onKey = (e) => e.key === 'Escape' && closeDrawer();

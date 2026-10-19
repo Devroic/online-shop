@@ -23,7 +23,11 @@ const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  // Braces matter: newer browsers return a Promise from scrollTo, and React
+  // would treat a returned value as the effect's cleanup function.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return null;
 }
 
