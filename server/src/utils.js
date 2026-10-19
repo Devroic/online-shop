@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { transliterate } from './i18n.js';
 
 export class HttpError extends Error {
   constructor(status, message, details) {
@@ -25,34 +26,23 @@ export function validate(schema, data) {
   return result.data;
 }
 
-const GREEK = {
-  α: 'a', ά: 'a', β: 'v', γ: 'g', δ: 'd', ε: 'e', έ: 'e', ζ: 'z', η: 'i', ή: 'i',
-  θ: 'th', ι: 'i', ί: 'i', ϊ: 'i', ΐ: 'i', κ: 'k', λ: 'l', μ: 'm', ν: 'n', ξ: 'x',
-  ο: 'o', ό: 'o', π: 'p', ρ: 'r', σ: 's', ς: 's', τ: 't', υ: 'y', ύ: 'y', ϋ: 'y',
-  ΰ: 'y', φ: 'f', χ: 'ch', ψ: 'ps', ω: 'o', ώ: 'o',
-};
-
-/** URL-friendly slug; transliterates Greek so product URLs stay readable. */
+/** URL-friendly slug; non-Latin letters are transliterated so product URLs stay readable. */
 export function slugify(text) {
-  return String(text)
-    .toLowerCase()
-    .replace(/ο[υύ]/g, 'ou')
-    .replace(/([αε])[υύ]/g, (_, v) => `${GREEK[v]}v`)
-    .replace(/[Ͱ-Ͽἀ-῿]/g, (ch) => GREEK[ch] ?? '')
+  return transliterate(String(text).toLowerCase())
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80) || 'item';
 }
 
-/** Lowercase + strip accents, so "κουπα" finds "Κούπα" and "cafe" finds "Café". */
+/** Lowercase + strip accents, so "cafe" finds "Café" (and the same for Greek). */
 export function normalizeSearch(text) {
   return String(text ?? '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/ς/g, 'σ');
+    .replace(/\u03c2/g, '\u03c3'); // Greek final sigma → sigma
 }
 
 /** Returns `base` or `base-2`, `base-3`… so it is unique in `table.slug`. */

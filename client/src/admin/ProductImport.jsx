@@ -17,7 +17,7 @@ async function readFile(file) {
 
 async function downloadTemplate() {
   const { default: writeExcelFile } = await import('write-excel-file/browser');
-  const [header, ...rows] = templateRows();
+  const [header, ...rows] = templateRows(t);
   await writeExcelFile([header.map((value) => ({ value, fontWeight: 'bold' })), ...rows.map((r) => r.map((value) => ({ value })))], {
     columns: COLUMNS.map((c) => ({ width: c.width })),
     stickyRowsCount: 1,

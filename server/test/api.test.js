@@ -20,6 +20,15 @@ const { initDb, db } = await import('../src/db.js');
 const { createApp } = await import('../src/app.js');
 const { createAdmin, ensureInitialData } = await import('../src/scripts/bootstrap.js');
 
+// Greek test words, written as escapes so the source stays ASCII:
+const GR = {
+  clothes: '\u03a1\u03bf\u03cd\u03c7\u03b1', // capitalised, with accent; slug "roucha"
+  mug: '\u039a\u03bf\u03cd\u03c0\u03b1', // capitalised, with accent; slug "koupa"
+  mugSearch: '\u03ba\u03bf\u03c5\u03c0', // lowercase prefix without accent
+  kitchen: '\u039a\u03bf\u03c5\u03b6\u03af\u03bd\u03b1', // capitalised, with accent
+  kitchenPlain: '\u03ba\u03bf\u03c5\u03b6\u03b9\u03bd\u03b1', // lowercase, no accent
+};
+
 let app;
 let admin;
 let productId;
@@ -59,12 +68,12 @@ test('admin endpoints reject anonymous users', async () => {
 });
 
 test('admin creates category and products', async () => {
-  const cat = await admin.post('/api/admin/categories').send({ name: 'Ρούχα' }).expect(201);
+  const cat = await admin.post('/api/admin/categories').send({ name: GR.clothes }).expect(201);
   assert.equal(cat.body.slug, 'roucha');
 
   const p = await admin
     .post('/api/admin/products')
-    .send({ name: 'Κούπα', price: 1000, stock: 2, categoryId: cat.body.id })
+    .send({ name: GR.mug, price: 1000, stock: 2, categoryId: cat.body.id })
     .expect(201);
   productId = p.body.id;
   assert.equal(p.body.slug, 'koupa');
@@ -80,7 +89,7 @@ test('admin creates category and products', async () => {
 });
 
 test('catalog lists active products with search', async () => {
-  const res = await request(app).get('/api/products?q=κουπ').expect(200);
+  const res = await request(app).get(`/api/products?q=${encodeURIComponent(GR.mugSearch)}`).expect(200);
   assert.equal(res.body.total, 1);
   await request(app).get('/api/products/koupa').expect(200);
 });
@@ -202,9 +211,9 @@ test('image upload stores file and returns a URL', async () => {
 
 test('bulk import creates and updates products, categories and options', async () => {
   const batch = [
-    { name: 'Import Mug', price: 1290, stock: 20, trackStock: true, categoryName: 'Κουζίνα', variants: [] },
+    { name: 'Import Mug', price: 1290, stock: 20, trackStock: true, categoryName: GR.kitchen, variants: [] },
     {
-      name: 'Import Tee', price: 1990, stock: 0, trackStock: true, categoryName: 'κουζινα',
+      name: 'Import Tee', price: 1990, stock: 0, trackStock: true, categoryName: GR.kitchenPlain,
       variants: [{ name: 'S', price: null, stock: 5 }, { name: 'M', price: 2190, stock: 2 }],
     },
   ];
@@ -213,7 +222,7 @@ test('bulk import creates and updates products, categories and options', async (
   const r1 = await admin.post('/api/admin/products/import').send({ products: batch }).expect(200);
   assert.deepEqual([r1.body.created, r1.body.updated, r1.body.errors.length], [2, 0, 0]);
   // One category despite different case/accents.
-  assert.equal((await db().one("SELECT COUNT(*)::int AS n FROM categories WHERE search_name = 'κουζινα'")).n, 1);
+  assert.equal((await db().one('SELECT COUNT(*)::int AS n FROM categories WHERE search_name = $1', [GR.kitchenPlain])).n, 1);
 
   const tee = (await request(app).get('/api/products?q=import tee').expect(200)).body.items[0];
   await admin.put(`/api/admin/products/${tee.id}`).send({ ...tee, images: ['/uploads/x.svg'], variants: tee.variants.map((v) => ({ id: v.id, name: v.name, price: v.priceOverride, stock: v.stock })) }).expect(200);

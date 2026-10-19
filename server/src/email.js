@@ -3,6 +3,7 @@ import { config } from './config.js';
 import { waitUntil } from '@vercel/functions';
 import { getSettings } from './settings.js';
 import { formatMoney } from './utils.js';
+import { translator } from './i18n.js';
 
 let transport;
 function smtpTransport() {
@@ -72,16 +73,13 @@ function layout(settings, body) {
   </div></body></html>`;
 }
 
-const el = (settings) => settings.language === 'el';
+const STATUS_TEXT = { pending: 'Pending', processing: 'Processing', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' };
 
-const STATUS_TEXT = {
-  el: { pending: 'Σε αναμονή', processing: 'Σε επεξεργασία', shipped: 'Απεστάλη', delivered: 'Παραδόθηκε', cancelled: 'Ακυρώθηκε' },
-  en: { pending: 'Pending', processing: 'Processing', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' },
-};
+const button = (href, label, color) =>
+  `<a href="${href}" style="background:${esc(color)};color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${esc(label)}</a>`;
 
-function orderTable(order, settings) {
+function orderTable(order, settings, t) {
   const m = (c) => formatMoney(c, settings);
-  const gr = el(settings);
   const rows = order.items
     .map(
       (i) => `<tr><td style="padding:6px 0">${esc(i.name)}${i.variantName ? ` <span style="color:#71717a">(${esc(i.variantName)})</span>` : ''} × ${i.quantity}</td>
@@ -91,11 +89,11 @@ function orderTable(order, settings) {
   const line = (label, value) =>
     `<tr><td style="padding:4px 0;color:#52525b">${label}</td><td style="padding:4px 0;text-align:right">${value}</td></tr>`;
   return `<table style="width:100%;border-collapse:collapse;border-top:1px solid #e4e4e7;margin-top:12px">${rows}
-    ${line(gr ? 'Υποσύνολο' : 'Subtotal', m(order.subtotal))}
-    ${order.discount ? line(gr ? 'Έκπτωση' : 'Discount', '-' + m(order.discount)) : ''}
-    ${line(`${gr ? 'Αποστολή' : 'Shipping'} (${esc(order.shippingName)})`, m(order.shippingCost))}
-    ${order.paymentFee ? line(gr ? 'Χρέωση πληρωμής' : 'Payment fee', m(order.paymentFee)) : ''}
-    <tr><td style="padding:8px 0;font-weight:bold;border-top:1px solid #e4e4e7">${gr ? 'Σύνολο' : 'Total'}</td>
+    ${line(t('Subtotal'), m(order.subtotal))}
+    ${order.discount ? line(t('Discount'), '-' + m(order.discount)) : ''}
+    ${line(`${t('Shipping')} (${esc(order.shippingName)})`, m(order.shippingCost))}
+    ${order.paymentFee ? line(t('Payment fee'), m(order.paymentFee)) : ''}
+    <tr><td style="padding:8px 0;font-weight:bold;border-top:1px solid #e4e4e7">${t('Total')}</td>
     <td style="padding:8px 0;font-weight:bold;text-align:right;border-top:1px solid #e4e4e7">${m(order.total)}</td></tr></table>`;
 }
 
@@ -103,77 +101,66 @@ const orderLink = (order) => `${config.publicUrl}/order/${order.number}?token=${
 
 export async function sendOrderConfirmation(order) {
   const s = await getSettings();
-  const gr = el(s);
+  const t = translator(s.language);
   const bank =
     order.paymentMethod === 'bank' && s.payments.bank.details
       ? `<div style="background:#f4f4f5;padding:12px;border-radius:8px;margin-top:16px;white-space:pre-line">
-         <strong>${gr ? 'Στοιχεία τραπεζικής κατάθεσης' : 'Bank transfer details'}</strong><br>${esc(s.payments.bank.details)}<br>
-         ${gr ? 'Αιτιολογία' : 'Reference'}: <strong>${esc(order.number)}</strong></div>`
+         <strong>${t('Bank transfer details')}</strong><br>${esc(s.payments.bank.details)}<br>
+         ${t('Reference')}: <strong>${esc(order.number)}</strong></div>`
       : '';
-  const body = `<h2 style="margin-top:0">${gr ? 'Ευχαριστούμε για την παραγγελία σας!' : 'Thank you for your order!'}</h2>
-    <p>${gr ? 'Γεια σας' : 'Hi'} ${esc(order.customerName)},<br>${
-      gr ? 'λάβαμε την παραγγελία σας' : 'we have received your order'
-    } <strong>#${esc(order.number)}</strong>.</p>
-    ${orderTable(order, s)}${bank}
-    <p style="margin-top:24px"><a href="${orderLink(order)}" style="background:${esc(s.theme.primary)};color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${
-      gr ? 'Προβολή παραγγελίας' : 'View order'
-    }</a></p>`;
-  return sendMail({
-    to: order.email,
-    subject: `${gr ? 'Επιβεβαίωση παραγγελίας' : 'Order confirmation'} #${order.number}`,
-    html: layout(s, body),
-  });
+  const body = `<h2 style="margin-top:0">${t('Thank you for your order!')}</h2>
+    <p>${t('Hi {name},', { name: esc(order.customerName) })}<br>${t('we have received your order {number}.', { number: `<strong>#${esc(order.number)}</strong>` })}</p>
+    ${orderTable(order, s, t)}${bank}
+    <p style="margin-top:24px">${button(orderLink(order), t('View order'), s.theme.primary)}</p>`;
+  return sendMail({ to: order.email, subject: `${t('Order confirmation')} #${order.number}`, html: layout(s, body) });
 }
 
+/** Sent to the shop owner; always in the shop's language. */
 export async function sendAdminNewOrder(order) {
   const s = await getSettings();
+  const t = translator(s.language);
   const to = s.notifications.orderEmail || s.contact.email;
-  const body = `<h2 style="margin-top:0">New order #${esc(order.number)}</h2>
-    <p>${esc(order.customerName)} · ${esc(order.email)} · ${esc(order.phone)}<br>Payment: ${esc(order.paymentMethod)}</p>
-    ${orderTable(order, s)}
-    <p><a href="${config.publicUrl}/admin/orders/${order.id}">Open in admin</a></p>`;
-  return sendMail({ to, subject: `New order #${order.number} – ${formatMoney(order.total, s)}`, html: layout(s, body) });
+  const body = `<h2 style="margin-top:0">${t('New order')} #${esc(order.number)}</h2>
+    <p>${esc(order.customerName)} · ${esc(order.email)} · ${esc(order.phone)}<br>${t('Payment')}: ${esc(order.paymentMethod)}</p>
+    ${orderTable(order, s, t)}
+    <p>${button(`${config.publicUrl}/admin/orders/${order.id}`, t('Open in admin'), s.theme.primary)}</p>`;
+  return sendMail({ to, subject: `${t('New order')} #${order.number} – ${formatMoney(order.total, s)}`, html: layout(s, body) });
 }
 
 export async function sendStatusUpdate(order) {
   const s = await getSettings();
-  const gr = el(s);
-  const statusText = STATUS_TEXT[gr ? 'el' : 'en'][order.status];
-  const tracking = order.trackingNumber
-    ? `<p>${gr ? 'Αριθμός αποστολής' : 'Tracking number'}: <strong>${esc(order.trackingNumber)}</strong></p>`
-    : '';
-  const body = `<h2 style="margin-top:0">${gr ? 'Ενημέρωση παραγγελίας' : 'Order update'} #${esc(order.number)}</h2>
-    <p>${gr ? 'Η κατάσταση της παραγγελίας σας είναι τώρα' : 'Your order status is now'}: <strong>${statusText}</strong></p>
-    ${tracking}<p><a href="${orderLink(order)}">${gr ? 'Προβολή παραγγελίας' : 'View order'}</a></p>`;
+  const t = translator(s.language);
+  const statusText = t(STATUS_TEXT[order.status]);
+  const tracking = order.trackingNumber ? `<p>${t('Tracking number')}: <strong>${esc(order.trackingNumber)}</strong></p>` : '';
+  const body = `<h2 style="margin-top:0">${t('Order update')} #${esc(order.number)}</h2>
+    <p>${t('Your order status is now')}: <strong>${statusText}</strong></p>
+    ${tracking}<p>${button(orderLink(order), t('View order'), s.theme.primary)}</p>`;
   return sendMail({ to: order.email, subject: `#${order.number}: ${statusText}`, html: layout(s, body) });
 }
 
 export async function sendPasswordReset(user, token) {
   const s = await getSettings();
-  const gr = el(s);
+  const t = translator(s.language);
   const link = `${config.publicUrl}/account/reset?token=${token}`;
-  const body = `<p>${gr ? 'Λάβαμε αίτημα επαναφοράς κωδικού.' : 'We received a request to reset your password.'}</p>
-    <p><a href="${link}">${gr ? 'Ορισμός νέου κωδικού' : 'Choose a new password'}</a></p>
-    <p style="color:#71717a;font-size:13px">${
-      gr ? 'Ο σύνδεσμος λήγει σε 1 ώρα. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το email.' : 'The link expires in 1 hour. If you did not ask for this, ignore this email.'
-    }</p>`;
-  return sendMail({ to: user.email, subject: gr ? 'Επαναφορά κωδικού' : 'Password reset', html: layout(s, body) });
+  const body = `<p>${t('We received a request to reset your password.')}</p>
+    <p>${button(link, t('Choose a new password'), s.theme.primary)}</p>
+    <p style="color:#71717a;font-size:13px">${t('The link expires in 1 hour. If you did not ask for this, ignore this email.')}</p>`;
+  return sendMail({ to: user.email, subject: t('Password reset'), html: layout(s, body) });
 }
 
 export async function sendContactMessage(msg) {
   const s = await getSettings();
+  const t = translator(s.language);
   const body = `<p><strong>${esc(msg.name)}</strong> &lt;${esc(msg.email)}&gt; ${esc(msg.phone)}</p><p style="white-space:pre-line">${esc(msg.message)}</p>`;
-  return sendMail({ to: s.contact.email, subject: `Contact form: ${msg.name}`, html: layout(s, body), replyTo: msg.email });
+  return sendMail({ to: s.contact.email, subject: `${t('Contact form')}: ${msg.name}`, html: layout(s, body), replyTo: msg.email });
 }
 
 export async function sendWelcome(user) {
   const s = await getSettings();
-  const gr = el(s);
-  const body = `<h2 style="margin-top:0">${gr ? 'Καλώς ήρθατε' : 'Welcome'}, ${esc(user.name)}!</h2>
-    <p>${gr ? 'Ο λογαριασμός σας στο' : 'Your account at'} <strong>${esc(s.storeName)}</strong> ${gr ? 'δημιουργήθηκε.' : 'is ready.'}</p>
-    <p>${gr ? 'Από τον λογαριασμό σας μπορείτε να βλέπετε τις παραγγελίες σας και να αποθηκεύσετε τη διεύθυνσή σας για γρηγορότερες αγορές.' : 'From your account you can follow your orders and save your address for faster checkout.'}</p>
-    <p style="margin-top:24px"><a href="${config.publicUrl}/products" style="background:${esc(s.theme.primary)};color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${
-      gr ? 'Ξεκινήστε τις αγορές' : 'Start shopping'
-    }</a></p>`;
-  return sendMail({ to: user.email, subject: gr ? `Καλώς ήρθατε στο ${s.storeName}` : `Welcome to ${s.storeName}`, html: layout(s, body) });
+  const t = translator(s.language);
+  const body = `<h2 style="margin-top:0">${t('Welcome, {name}!', { name: esc(user.name) })}</h2>
+    <p>${t('Your account at {store} is ready.', { store: `<strong>${esc(s.storeName)}</strong>` })}</p>
+    <p>${t('From your account you can follow your orders and save your address for faster checkout.')}</p>
+    <p style="margin-top:24px">${button(`${config.publicUrl}/products`, t('Start shopping'), s.theme.primary)}</p>`;
+  return sendMail({ to: user.email, subject: t('Welcome to {store}', { store: s.storeName }), html: layout(s, body) });
 }

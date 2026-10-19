@@ -62,8 +62,8 @@ function General({ s, set }) {
         <h3>{t('Region')}</h3>
         <div className="grid-3">
           <Field as="select" label={t('Language')} value={s.language} onChange={(e) => set('language', e.target.value)}>
-            <option value="el">Ελληνικά</option>
-            <option value="en">English</option>
+            <option value="el">{t('Greek')}</option>
+            <option value="en">{t('English')}</option>
           </Field>
           <Field as="select" label={t('Currency')} value={s.currency} onChange={(e) => set('currency', e.target.value)}>
             {['EUR', 'USD', 'GBP', 'CHF', 'RON', 'BGN', 'PLN', 'CZK', 'SEK', 'DKK', 'NOK'].map((c) => (
@@ -72,12 +72,12 @@ function General({ s, set }) {
           </Field>
           <Field as="select" label={t('Number & date format')} value={s.locale} onChange={(e) => set('locale', e.target.value)}>
             {[
-              ['el-GR', 'Ελλάδα (1.234,50 €)'],
-              ['el-CY', 'Κύπρος (1.234,50 €)'],
-              ['en-IE', 'Ireland (€1,234.50)'],
-              ['en-GB', 'UK (£1,234.50)'],
-              ['en-US', 'US ($1,234.50)'],
-              ['de-DE', 'Deutschland (1.234,50 €)'],
+              ['el-GR', `${t('Greece')} (1.234,50 €)`],
+              ['el-CY', `${t('Cyprus')} (1.234,50 €)`],
+              ['en-IE', `${t('Ireland')} (€1,234.50)`],
+              ['en-GB', `${t('United Kingdom')} (£1,234.50)`],
+              ['en-US', `${t('United States')} ($1,234.50)`],
+              ['de-DE', `${t('Germany')} (1.234,50 €)`],
             ].map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
@@ -267,7 +267,7 @@ function Checkout({ s, set, meta, pages }) {
               label={t('Bank details shown to the customer')}
               value={s.payments.bank.details}
               onChange={(e) => set('payments.bank.details', e.target.value)}
-              placeholder={'Τράπεζα: …\nIBAN: GR…\nΔικαιούχος: …'}
+              placeholder={t('Bank: …\nIBAN: …\nAccount holder: …')}
             />
           )}
         </div>

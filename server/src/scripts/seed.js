@@ -2,7 +2,8 @@
 //   npm run seed            (adds demo data if there are no products)
 //   npm run seed -- --reset (wipes catalog + orders first)
 import { closeDb, db, initDb } from '../db.js';
-import { updateSettings } from '../settings.js';
+import { getSettings, updateSettings } from '../settings.js';
+import { translator } from '../i18n.js';
 import { ensureBucket, saveFile } from '../storage.js';
 import { createAdmin, ensureInitialData } from './bootstrap.js';
 import { saveCategory, saveProduct } from '../routes/admin.js';
@@ -38,44 +39,48 @@ function placeholder(seed, i) {
   return saveFile(Buffer.from(svg), 'image/svg+xml');
 }
 
+// Demo content in English; translated to the shop's language (see ../locales).
+const t = translator((await getSettings()).language);
+
 const categories = [
-  ['Ρούχα', 'Άνετα και ποιοτικά ρούχα για κάθε μέρα.'],
-  ['Αξεσουάρ', 'Τσάντες, καπέλα και μικρές λεπτομέρειες που κάνουν τη διαφορά.'],
-  ['Σπίτι', 'Αντικείμενα που κάνουν το σπίτι πιο ζεστό.'],
-  ['Δώρα', 'Ιδέες για δώρα για όλους.'],
+  ['Clothing', 'Comfortable, quality clothes for every day.'],
+  ['Accessories', 'Bags, hats and the small details that make a difference.'],
+  ['Home', 'Things that make a home feel warmer.'],
+  ['Gifts', 'Gift ideas for everyone.'],
 ];
 
 const sizes = ['S', 'M', 'L', 'XL'];
+// [name, category index, price, compare-at price, featured, options, description]
 const products = [
-  ['Βαμβακερό T-shirt', 0, 1990, 2490, true, sizes, 'Μαλακό t-shirt από 100% οργανικό βαμβάκι. Κλασική γραμμή που ταιριάζει με τα πάντα.'],
-  ['Φούτερ με κουκούλα', 0, 4490, null, true, sizes, 'Ζεστό φούτερ με εσωτερικό fleece και μεγάλη τσέπη καγκουρό.'],
-  ['Λινό πουκάμισο', 0, 3990, null, false, sizes, 'Δροσερό λινό πουκάμισο, ιδανικό για το καλοκαίρι.'],
-  ['Τζιν παντελόνι', 0, 5490, 6990, false, ['28', '30', '32', '34', '36'], 'Straight fit τζιν από ανθεκτικό denim.'],
-  ['Πάνινη τσάντα', 1, 1490, null, true, null, 'Ανθεκτική tote bag για ψώνια, παραλία και καθημερινή χρήση.'],
-  ['Καπέλο jockey', 1, 1790, null, false, null, 'Ρυθμιζόμενο καπέλο από βαμβάκι.'],
-  ['Δερμάτινο πορτοφόλι', 1, 3490, null, false, null, 'Λεπτό πορτοφόλι από γνήσιο δέρμα με θήκες για 6 κάρτες.'],
-  ['Κεραμική κούπα', 2, 1290, null, true, null, 'Χειροποίητη κούπα 350ml. Κατάλληλη για πλυντήριο πιάτων.'],
-  ['Αρωματικό κερί', 2, 1890, 2290, true, ['Λεβάντα', 'Βανίλια', 'Σανδαλόξυλο'], 'Κερί σόγιας με διάρκεια καύσης 40 ωρών.'],
-  ['Βαμβακερή κουβέρτα', 2, 4990, null, false, null, 'Ελαφριά κουβέρτα για τον καναπέ, 130x170cm.'],
-  ['Κάρτα δώρου', 3, 2500, null, false, null, 'Δώστε την επιλογή! Η κάρτα αποστέλλεται με email.'],
-  ['Σετ δώρου Relax', 3, 3990, 4590, true, null, 'Κερί, κούπα και τσάι βοτάνων σε όμορφο κουτί δώρου.'],
+  ['Cotton T-shirt', 0, 1990, 2490, true, sizes, 'Soft t-shirt made of 100% organic cotton. A classic fit that goes with everything.'],
+  ['Hooded sweatshirt', 0, 4490, null, true, sizes, 'Warm sweatshirt with fleece lining and a large kangaroo pocket.'],
+  ['Linen shirt', 0, 3990, null, false, sizes, 'Cool linen shirt, perfect for summer.'],
+  ['Jeans', 0, 5490, 6990, false, ['28', '30', '32', '34', '36'], 'Straight fit jeans made of durable denim.'],
+  ['Canvas tote bag', 1, 1490, null, true, null, 'Sturdy tote bag for shopping, the beach and everyday use.'],
+  ['Baseball cap', 1, 1790, null, false, null, 'Adjustable cotton cap.'],
+  ['Leather wallet', 1, 3490, null, false, null, 'Slim genuine leather wallet with 6 card slots.'],
+  ['Ceramic mug', 2, 1290, null, true, null, 'Handmade 350ml mug. Dishwasher safe.'],
+  ['Scented candle', 2, 1890, 2290, true, ['Lavender', 'Vanilla', 'Sandalwood'], 'Soy wax candle with a 40-hour burn time.'],
+  ['Cotton throw', 2, 4990, null, false, null, 'Lightweight sofa throw, 130x170cm.'],
+  ['Gift card', 3, 2500, null, false, null, 'Let them choose! The card is sent by email.'],
+  ['Relax gift set', 3, 3990, 4590, true, null, 'Candle, mug and herbal tea in a beautiful gift box.'],
 ];
 
-updateSettings({
+await updateSettings({
   storeName: 'Demo Store',
-  tagline: 'Όμορφα πράγματα για κάθε μέρα',
-  announcement: 'Δωρεάν αποστολή για παραγγελίες άνω των 50€ · Κωδικός WELCOME10 για -10%',
+  tagline: t('Beautiful things for every day'),
+  announcement: t('Free shipping on orders over 50€ · Code WELCOME10 for -10%'),
   hero: {
-    title: 'Η νέα συλλογή έφτασε',
-    subtitle: 'Ποιοτικά προϊόντα, προσεκτικά επιλεγμένα. Γρήγορη αποστολή σε όλη την Ελλάδα.',
-    ctaText: 'Δείτε τα προϊόντα',
+    title: t('The new collection is here'),
+    subtitle: t('Quality products, carefully selected. Fast delivery nationwide.'),
+    ctaText: t('Shop the products'),
     ctaLink: '/products',
   },
-  contact: { email: 'info@example.com', phone: '210 000 0000', address: 'Οδός Παραδείγματος 1, Αθήνα', hours: 'Δευ-Παρ 9:00-17:00' },
+  contact: { email: 'info@example.com', phone: '210 000 0000', address: t('1 Example Street, Athens'), hours: t('Mon-Fri 9:00-17:00') },
   // The demo has no Stripe keys, so offer the offline methods too.
   payments: {
     cod: { enabled: true },
-    bank: { enabled: true, details: 'Τράπεζα: Demo Bank\nIBAN: GR00 0000 0000 0000 0000 0000 000\nΔικαιούχος: Demo Store' },
+    bank: { enabled: true, details: t('Bank: Demo Bank\nIBAN: GR00 0000 0000 0000 0000 0000 000\nAccount holder: Demo Store') },
   },
 });
 if (!(await db().one("SELECT id FROM users WHERE role = 'admin' LIMIT 1"))) {
@@ -86,15 +91,15 @@ await ensureInitialData();
 
 const catIds = [];
 for (const [i, [name, description]] of categories.entries()) {
-  catIds.push((await saveCategory(null, { name, description, image: null, sortOrder: i, active: true })).id);
+  catIds.push((await saveCategory(null, { name: t(name), description: t(description), image: null, sortOrder: i, active: true })).id);
 }
 
 for (const [i, [name, cat, price, compare, featured, variants, description]] of products.entries()) {
   const images = [];
   for (let k = 0; k < 3; k++) images.push(await placeholder(i, k));
   const p = await saveProduct(null, {
-    name,
-    description,
+    name: t(name),
+    description: t(description),
     price,
     compareAtPrice: compare,
     sku: `SKU-${100 + i}`,
@@ -104,7 +109,7 @@ for (const [i, [name, cat, price, compare, featured, variants, description]] of 
     featured,
     active: true,
     images,
-    variants: (variants || []).map((v, k) => ({ name: v, sku: `SKU-${100 + i}-${v}`, price: null, stock: k === 0 ? 0 : 3 + k * 2 })),
+    variants: (variants || []).map((v, k) => ({ name: t(v), sku: `SKU-${100 + i}-${v}`, price: null, stock: k === 0 ? 0 : 3 + k * 2 })),
   });
   // Spread creation times so "newest" ordering looks natural.
   await db().query("UPDATE products SET created_at = now() - make_interval(hours => $1) WHERE id = $2", [i, p.id]);

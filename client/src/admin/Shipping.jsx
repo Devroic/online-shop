@@ -55,7 +55,7 @@ function ShippingModal({ method, onClose, onSaved }) {
         </>
       }
     >
-      <Field label={t('Name')} value={form.name} onChange={(e) => set('name', e.target.value)} error={errors.name} placeholder="Courier, ACS, ΕΛΤΑ…" autoFocus />
+      <Field label={t('Name')} value={form.name} onChange={(e) => set('name', e.target.value)} error={errors.name} placeholder={t('Courier, ACS, ELTA…')} autoFocus />
       <Field label={t('Description (optional)')} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder={t('e.g. Delivery in 1-3 business days')} />
       <div className="grid-2">
         <div className="field">

@@ -4,19 +4,23 @@
 // One row per product. Products with options (size, colour…) use one row per
 // option with the same product name; each option row has its own price/stock.
 
+// `label` is the English header; the template uses its translation, and both
+// (plus the English aliases) are recognised when reading a file.
 export const COLUMNS = [
-  { key: 'name', label: 'Όνομα', aliases: ['name', 'όνομα', 'ονομα', 'προϊόν', 'προιον', 'product', 'title', 'τίτλος'], required: true, width: 30 },
-  { key: 'option', label: 'Επιλογή', aliases: ['option', 'variant', 'επιλογή', 'επιλογη', 'μέγεθος', 'μεγεθος', 'size'], width: 14 },
-  { key: 'price', label: 'Τιμή', aliases: ['price', 'τιμή', 'τιμη'], required: true, width: 10 },
-  { key: 'compareAtPrice', label: 'Αρχική τιμή', aliases: ['compare at price', 'compare_at_price', 'αρχική τιμή', 'αρχικη τιμη', 'τιμή πριν', 'old price'], width: 12 },
-  { key: 'stock', label: 'Απόθεμα', aliases: ['stock', 'απόθεμα', 'αποθεμα', 'quantity', 'ποσότητα', 'ποσοτητα', 'qty'], width: 10 },
-  { key: 'sku', label: 'Κωδικός', aliases: ['sku', 'κωδικός', 'κωδικος', 'code'], width: 14 },
-  { key: 'category', label: 'Κατηγορία', aliases: ['category', 'κατηγορία', 'κατηγορια'], width: 16 },
-  { key: 'description', label: 'Περιγραφή', aliases: ['description', 'περιγραφή', 'περιγραφη'], width: 40 },
-  { key: 'images', label: 'Φωτογραφίες (links)', aliases: ['images', 'image', 'photos', 'φωτογραφίες', 'φωτογραφιες', 'φωτογραφία', 'εικόνες', 'εικονες'], width: 30 },
-  { key: 'featured', label: 'Προτεινόμενο', aliases: ['featured', 'προτεινόμενο', 'προτεινομενο'], width: 13 },
-  { key: 'active', label: 'Ορατό', aliases: ['active', 'visible', 'ορατό', 'ορατο'], width: 8 },
+  { key: 'name', label: 'Name', aliases: ['product', 'title'], required: true, width: 30 },
+  { key: 'option', label: 'Option', aliases: ['variant', 'size'], width: 14 },
+  { key: 'price', label: 'Price', aliases: [], required: true, width: 10 },
+  { key: 'compareAtPrice', label: 'Original price', aliases: ['compare at price', 'compare_at_price', 'old price'], width: 12 },
+  { key: 'stock', label: 'Stock', aliases: ['quantity', 'qty'], width: 10 },
+  { key: 'sku', label: 'Code', aliases: ['sku'], width: 14 },
+  { key: 'category', label: 'Category', aliases: [], width: 16 },
+  { key: 'description', label: 'Description', aliases: [], width: 40 },
+  { key: 'images', label: 'Photos (links)', aliases: ['images', 'image', 'photos'], width: 30 },
+  { key: 'featured', label: 'Featured', aliases: [], width: 13 },
+  { key: 'active', label: 'Visible', aliases: ['active'], width: 8 },
 ];
+
+const identity = (s, v) => (v ? Object.entries(v).reduce((o, [k, x]) => o.replace(`{${k}}`, x), s) : s);
 
 const norm = (s) =>
   String(s ?? '')
@@ -45,12 +49,12 @@ function parseStock(v) {
   return Number.isInteger(n) && n >= 0 ? n : NaN;
 }
 
-function parseBool(v, fallback) {
+function parseBool(v, fallback, t = identity) {
   if (isEmpty(v)) return fallback;
   if (typeof v === 'boolean') return v;
   const s = norm(v);
-  if (['ναι', 'nai', 'yes', 'y', 'x', '1', 'true', '✓', 'ν'].includes(s)) return true;
-  if (['οχι', 'oxi', 'no', 'n', '0', 'false', '-'].includes(s)) return false;
+  if (['yes', 'y', 'x', '1', 'true', '✓', norm(t('yes'))].includes(s)) return true;
+  if (['no', 'n', '0', 'false', '-', norm(t('no'))].includes(s)) return false;
   return fallback;
 }
 
@@ -58,14 +62,14 @@ const parseImages = (v) =>
   isEmpty(v) ? [] : String(v).split(/[\s,;]+/).filter((u) => /^https?:\/\/\S+$/i.test(u)).slice(0, 20);
 
 /** Maps the header row to column keys; returns { map, missing }. */
-function readHeader(header) {
+function readHeader(header, t) {
   const map = {};
   header.forEach((h, i) => {
     const n = norm(h);
-    const col = COLUMNS.find((c) => c.aliases.some((a) => norm(a) === n) || norm(c.label) === n);
+    const col = COLUMNS.find((c) => [c.label, t(c.label), ...c.aliases].some((a) => norm(a) === n));
     if (col && map[col.key] == null) map[col.key] = i;
   });
-  const missing = COLUMNS.filter((c) => c.required && map[c.key] == null).map((c) => c.label);
+  const missing = COLUMNS.filter((c) => c.required && map[c.key] == null).map((c) => t(c.label));
   return { map, missing };
 }
 
@@ -73,11 +77,11 @@ function readHeader(header) {
  * sheet: array of rows (first row = headers), as returned by read-excel-file.
  * Returns { products, errors: [{ row, message }] } — `row` is the Excel row number.
  */
-export function parseSheet(sheet, t = (s, v) => (v ? Object.entries(v).reduce((o, [k, x]) => o.replace(`{${k}}`, x), s) : s)) {
+export function parseSheet(sheet, t = identity) {
   const errors = [];
   const headerIndex = sheet.findIndex((r) => r.some((c) => !isEmpty(c)));
   if (headerIndex < 0) return { products: [], errors: [{ row: 1, message: t('The file is empty') }] };
-  const { map, missing } = readHeader(sheet[headerIndex]);
+  const { map, missing } = readHeader(sheet[headerIndex], t);
   if (missing.length) {
     return { products: [], errors: [{ row: headerIndex + 1, message: t('Missing columns: {cols}', { cols: missing.join(', ') }) }] };
   }
@@ -108,8 +112,8 @@ export function parseSheet(sheet, t = (s, v) => (v ? Object.entries(v).reduce((o
       category: String(get('category') ?? '').trim(),
       description: String(get('description') ?? '').trim(),
       images: parseImages(get('images')),
-      featured: parseBool(get('featured'), null),
-      active: parseBool(get('active'), null),
+      featured: parseBool(get('featured'), null, t),
+      active: parseBool(get('active'), null, t),
     });
   });
 
@@ -149,7 +153,7 @@ export function parseSheet(sheet, t = (s, v) => (v ? Object.entries(v).reduce((o
   return { products, errors };
 }
 
-/** Minimal CSV reader (Excel saves Greek CSVs with ";" and sometimes Windows-1253 — we accept UTF-8). */
+/** Minimal CSV reader (UTF-8). Detects ";" separators, which Excel uses in many European locales. */
 export function parseCsv(text) {
   const firstLine = text.split(/\r?\n/, 1)[0];
   const sep = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ';' : ',';
@@ -184,14 +188,15 @@ export function parseCsv(text) {
   return rows;
 }
 
-/** Rows for the downloadable template (header + examples). */
-export function templateRows() {
+/** Rows for the downloadable template (translated header + examples). */
+export function templateRows(t = identity) {
+  const yes = t('yes');
   return [
-    COLUMNS.map((c) => c.label),
-    ['Κεραμική κούπα', '', 12.9, '', 20, 'MUG-01', 'Σπίτι', 'Χειροποίητη κούπα 350ml.', '', 'ναι', 'ναι'],
-    ['Βαμβακερό T-shirt', 'S', 19.9, 24.9, 5, 'TS-S', 'Ρούχα', 'Μαλακό t-shirt από οργανικό βαμβάκι.', '', '', ''],
-    ['Βαμβακερό T-shirt', 'M', 19.9, 24.9, 8, 'TS-M', 'Ρούχα', '', '', '', ''],
-    ['Βαμβακερό T-shirt', 'XL', 21.9, 24.9, 3, 'TS-XL', 'Ρούχα', '', '', '', ''],
-    ['Κάρτα δώρου', '', 25, '', '', '', 'Δώρα', 'Χωρίς απόθεμα = πάντα διαθέσιμο.', '', '', ''],
+    COLUMNS.map((c) => t(c.label)),
+    [t('Ceramic mug'), '', 12.9, '', 20, 'MUG-01', t('Kitchen'), t('Handmade 350ml mug.'), '', yes, yes],
+    [t('Cotton T-shirt'), 'S', 19.9, 24.9, 5, 'TS-S', t('Clothing'), t('Soft t-shirt made of organic cotton.'), '', '', ''],
+    [t('Cotton T-shirt'), 'M', 19.9, 24.9, 8, 'TS-M', t('Clothing'), '', '', '', ''],
+    [t('Cotton T-shirt'), 'XL', 21.9, 24.9, 3, 'TS-XL', t('Clothing'), '', '', '', ''],
+    [t('Gift card'), '', 25, '', '', '', t('Gifts'), t('No stock = always available.'), '', '', ''],
   ];
 }

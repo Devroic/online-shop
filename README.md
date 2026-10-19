@@ -50,7 +50,7 @@ Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain em
 
 **Storefront**
 - Home page with hero banner, categories, featured and new products
-- Catalog with accent-insensitive search («κουπα» finds «Κούπα»), categories, filters, sorting
+- Catalog with case- and accent-insensitive search (also for Greek), categories, filters, sorting
 - Product page: swipeable gallery, options (size/colour…) with their own stock and price, low-stock notice, related products
 - Cart re-checks prices and stock on the server; "€X more for free shipping" bar
 - One-page checkout, guest checkout, discount codes, shipping methods, payment methods

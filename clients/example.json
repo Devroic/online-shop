@@ -1,10 +1,7 @@
 {
   "settings": {
-    "storeName": "Ανθοπωλείο Μαργαρίτα",
-    "tagline": "Φρέσκα λουλούδια με αγάπη, κάθε μέρα",
-    "language": "el",
-    "currency": "EUR",
-    "locale": "el-GR",
+    "storeName": "Daisy Flower Shop",
+    "tagline": "Fresh flowers, made with love every day",
     "theme": {
       "primary": "#9f1239",
       "accent": "#e11d48",
@@ -15,21 +12,21 @@
       "font": "Manrope",
       "mode": "auto"
     },
-    "announcement": "Αυθημερόν παράδοση στη Θεσσαλονίκη για παραγγελίες έως τις 14:00",
+    "announcement": "Same-day delivery in the city for orders placed by 14:00",
     "hero": {
-      "title": "Λουλούδια για κάθε στιγμή",
-      "subtitle": "Μπουκέτα, συνθέσεις και φυτά εσωτερικού χώρου.",
-      "ctaText": "Δείτε τις συνθέσεις",
+      "title": "Flowers for every moment",
+      "subtitle": "Bouquets, arrangements and indoor plants.",
+      "ctaText": "See the arrangements",
       "ctaLink": "/products"
     },
     "contact": {
-      "email": "info@margarita-flowers.gr",
+      "email": "info@daisy-flowers.example",
       "phone": "2310 000 000",
-      "address": "Τσιμισκή 1, Θεσσαλονίκη",
-      "hours": "Δευ-Σαβ 09:00-21:00"
+      "address": "1 Example Street, Thessaloniki",
+      "hours": "Mon-Sat 09:00-21:00"
     },
     "social": {
-      "instagram": "https://instagram.com/margarita.flowers"
+      "instagram": "https://instagram.com/daisy.flowers"
     },
     "payments": {
       "card": {
@@ -41,9 +38,9 @@
       }
     },
     "notifications": {
-      "orderEmail": "orders@margarita-flowers.gr"
+      "orderEmail": ""
     },
-    "orderPrefix": "MF-",
+    "orderPrefix": "DF-",
     "login": {
       "google": true,
       "apple": false
@@ -51,28 +48,28 @@
   },
   "shipping": [
     {
-      "name": "Παράδοση στη Θεσσαλονίκη",
-      "description": "Αυθημερόν για παραγγελίες έως τις 14:00",
+      "name": "City delivery",
+      "description": "Same day for orders placed by 14:00",
       "price": 400,
       "freeOver": 4000
     },
     {
-      "name": "Courier σε όλη την Ελλάδα",
-      "description": "1-2 εργάσιμες (μόνο φυτά)",
+      "name": "Courier",
+      "description": "1-2 business days (plants only)",
       "price": 600
     },
     {
-      "name": "Παραλαβή από το κατάστημα",
-      "description": "Τσιμισκή 1",
+      "name": "Store pickup",
+      "description": "1 Example Street",
       "price": 0,
       "requiresAddress": false
     }
   ],
   "categories": [
-    "Μπουκέτα",
-    "Συνθέσεις",
-    "Φυτά",
-    "Γάμος & Βάπτιση"
+    "Bouquets",
+    "Arrangements",
+    "Plants",
+    "Weddings"
   ],
   "coupons": [
     {
@@ -83,12 +80,12 @@
   ],
   "pages": {
     "about": {
-      "title": "Σχετικά με εμάς",
-      "content": "## Η ιστορία μας\n\nΑπό το 1998 φτιάχνουμε..."
+      "title": "About us",
+      "content": "## Our story\n\nSince 1998 we have been..."
     }
   },
   "admin": {
-    "email": "owner@margarita-flowers.gr",
+    "email": "owner@daisy-flowers.example",
     "password": "change-me-please"
   }
 }

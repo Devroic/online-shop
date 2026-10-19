@@ -1,9 +1,9 @@
-# Επαναφορά backup
+# Restoring a backup
 
-1. GitHub → Actions → **Nightly backups** → επιλέξτε ημερομηνία → κατεβάστε το artifact και αποσυμπιέστε.
-2. Βρείτε το αρχείο του πελάτη, π.χ. `margarita-2026-10-19.dump`.
-3. Επαναφορά (σβήνει και ξαναγράφει τους πίνακες του καταστήματος):
+1. GitHub → Actions → **Nightly backups** → pick a date → download the artifact and unzip it.
+2. Find the client's file, e.g. `margarita-2026-10-19.dump`.
+3. Restore (drops and recreates the shop's tables):
    ```bash
    pg_restore --clean --if-exists --no-owner --dbname "<Session pooler connection string>" margarita-2026-10-19.dump
    ```
-   Χρειάζεται PostgreSQL client 17 (`brew install libpq` ή `apt install postgresql-client-17`).
+   Requires the PostgreSQL 17 client (`brew install libpq` or `apt install postgresql-client-17`).

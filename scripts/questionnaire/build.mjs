@@ -1,17 +1,26 @@
 // Builds docs/client-questionnaire.pdf: a fillable form (works in Adobe
 // Reader, macOS Preview, Chrome/Edge) that clients fill in and email back.
-//   node scripts/questionnaire/build.mjs
-// Edit the CONTENT below and run again. Fonts: Liberation Sans (SIL OFL, fonts/OFL.txt),
+//   node scripts/questionnaire/build.mjs          (Greek, the default)
+//   node scripts/questionnaire/build.mjs --lang en
+// Texts are written in English and translated with locales/<lang>.js.
+// Edit the CONTENT below (and the translations) and run again. Fonts: Liberation Sans (SIL OFL, fonts/OFL.txt),
 // embedded in full so Greek typed into the fields displays correctly.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import el from './locales/el.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.resolve(here, '../../docs/client-questionnaire.pdf');
+
 const SUPPORT = 'support@devroic.com';
+
+const LANG = process.argv.includes('--lang') ? process.argv[process.argv.indexOf('--lang') + 1] : 'el';
+const DICTS = { el, en: {} };
+const OUT = path.resolve(here, `../../docs/client-questionnaire${LANG === 'el' ? '' : `-${LANG}`}.pdf`);
+if (!DICTS[LANG]) throw new Error(`Unknown language "${LANG}" (available: ${Object.keys(DICTS).join(', ')})`);
+const t = (text) => (DICTS[LANG][text] ?? text).replaceAll('{email}', SUPPORT);
 
 const C = {
   ink: rgb(0.07, 0.09, 0.15),
@@ -27,64 +36,64 @@ const C = {
 // ---------------------------------------------------------------- content
 // Blocks: h (section), p (paragraph), field, row (two fields), check, note, warn.
 const CONTENT = [
-  { type: 'h', text: '1. Το κατάστημα' },
-  { type: 'field', name: 'store_name', label: 'Όνομα καταστήματος' },
-  { type: 'field', name: 'brand_color', label: 'Χρώμα επωνυμίας (προαιρετικό)', hint: 'π.χ. «σκούρο πράσινο» ή #14532d. Αν το αφήσετε κενό, διαλέγουμε εμείς.' },
-  { type: 'field', name: 'domain', label: 'Domain (διεύθυνση του site)', hint: 'π.χ. myshop.gr' },
-  { type: 'checks', items: [['domain_have', 'Το έχω ήδη'], ['domain_buy', 'Θέλω να το αγοράσετε εσείς']] },
-  { type: 'note', text: `Λογότυπο: στείλτε το με email στο ${SUPPORT} (ιδανικά PNG ή SVG με διάφανο φόντο).` },
+  { type: 'h', text: '1. Your shop' },
+  { type: 'field', name: 'store_name', label: 'Shop name' },
+  { type: 'field', name: 'brand_color', label: 'Brand colour (optional)', hint: 'e.g. "dark green" or #14532d. Leave empty and we will choose.' },
+  { type: 'field', name: 'domain', label: 'Domain (website address)', hint: 'e.g. myshop.gr' },
+  { type: 'checks', items: [['domain_have', 'I already have it'], ['domain_buy', 'Please buy it for me']] },
+  { type: 'note', text: 'Logo: email it to {email} (ideally PNG or SVG with a transparent background).' },
 
-  { type: 'h', text: '2. Επικοινωνία' },
+  { type: 'h', text: '2. Contact' },
   { type: 'row', fields: [
-    { name: 'contact_email', label: 'Email', hint: 'Φαίνεται στο κατάστημα, εκεί έρχονται οι παραγγελίες και με αυτό συνδέεστε στη διαχείριση.' },
-    { name: 'contact_phone', label: 'Τηλέφωνο', hint: 'Φαίνεται στο κατάστημα' },
+    { name: 'contact_email', label: 'Email', hint: 'Shown in the shop; orders are sent here and you use it to sign in to the admin.' },
+    { name: 'contact_phone', label: 'Phone', hint: 'Shown in the shop' },
   ] },
-  { type: 'p', text: 'Μόνο αν θέλετε διαφορετικό email για κάτι από τα παρακάτω (αλλιώς αφήστε τα κενά):' },
+  { type: 'p', text: 'Only if you want a different email for any of these (otherwise leave them empty):' },
   { type: 'row', fields: [
-    { name: 'orders_email', label: 'Email για τις νέες παραγγελίες' },
-    { name: 'admin_email', label: 'Email για τη διαχείριση' },
+    { name: 'orders_email', label: 'Email for new orders' },
+    { name: 'admin_email', label: 'Email for the admin' },
   ] },
-  { type: 'h', text: '3. Αποστολές' },
-  { type: 'p', text: 'Επιλέξτε όσους τρόπους προσφέρετε και γράψτε το κόστος για τον πελάτη.' },
+  { type: 'h', text: '3. Shipping' },
+  { type: 'p', text: 'Tick the methods you offer and write what they cost the customer.' },
   { type: 'options', items: [
-    { check: 'ship_courier', label: 'Courier', fields: [{ name: 'ship_courier_price', label: 'Κόστος (€)', width: 70 }] },
-    { check: 'ship_pickup', label: 'Παραλαβή από το κατάστημα', fields: [{ name: 'ship_pickup_price', label: 'Κόστος (€)', width: 70, value: '0' }, { name: 'ship_pickup_address', label: 'Διεύθυνση παραλαβής', width: 190 }] },
-    { check: 'ship_other', label: 'Άλλος τρόπος', fields: [{ name: 'ship_other_price', label: 'Κόστος (€)', width: 70 }, { name: 'ship_other_name', label: 'Ποιος; (π.χ. ΕΛΤΑ, δική μου διανομή)', width: 190 }] },
+    { check: 'ship_courier', label: 'Courier', fields: [{ name: 'ship_courier_price', label: 'Cost (€)', width: 70 }] },
+    { check: 'ship_pickup', label: 'Store pickup', fields: [{ name: 'ship_pickup_price', label: 'Cost (€)', width: 70, value: '0' }, { name: 'ship_pickup_address', label: 'Pickup address', width: 190 }] },
+    { check: 'ship_other', label: 'Other method', fields: [{ name: 'ship_other_price', label: 'Cost (€)', width: 70 }, { name: 'ship_other_name', label: 'Which? (e.g. post office, own delivery)', width: 190 }] },
   ] },
-  { type: 'field', name: 'free_shipping', label: 'Δωρεάν αποστολή για παραγγελίες άνω των (€) — προαιρετικό', width: 0.5 },
+  { type: 'field', name: 'free_shipping', label: 'Free shipping for orders over (€) — optional', width: 0.5 },
 
-  { type: 'h', text: '4. Πληρωμές' },
-  { type: 'p', text: 'Οι πελάτες σας θα πληρώνουν ηλεκτρονικά με κάρτα, Apple Pay ή Google Pay, μέσω της Stripe. Τα χρήματα κατατίθενται στον λογαριασμό σας.' },
-  { type: 'checks', items: [['cod', 'Δέχομαι και αντικαταβολή']] },
-  { type: 'field', name: 'cod_fee', label: 'Επιπλέον χρέωση αντικαταβολής (€) — αν υπάρχει', width: 0.5 },
+  { type: 'h', text: '4. Payments' },
+  { type: 'p', text: 'Your customers pay online by card, Apple Pay or Google Pay through Stripe. The money is paid into your bank account.' },
+  { type: 'checks', items: [['cod', 'I also accept cash on delivery']] },
+  { type: 'field', name: 'cod_fee', label: 'Cash on delivery fee (€) — if any', width: 0.5 },
 
-  { type: 'h', text: '5. Στοιχεία για την Stripe (πληρωμές με κάρτα)' },
-  { type: 'p', text: 'Η Stripe χρειάζεται τα παρακάτω για να ανοίξει τον λογαριασμό πληρωμών της επιχείρησής σας. Επωνυμία, ΑΦΜ και διεύθυνση εμφανίζονται και στους όρους χρήσης του καταστήματος, όπως απαιτεί ο νόμος.' },
-  { type: 'checks', label: 'Μορφή επιχείρησης', items: [['type_sole', 'Ατομική επιχείρηση / ελεύθερος επαγγελματίας'], ['type_company', 'Εταιρεία (ΙΚΕ, ΟΕ, ΕΕ, ΑΕ κ.λπ.)']] },
-  { type: 'field', name: 'legal_name', label: 'Επωνυμία (όπως στην εφορία)' },
+  { type: 'h', text: '5. Details for Stripe (card payments)' },
+  { type: 'p', text: 'Stripe needs the following to open your business payment account. Legal name, VAT number and address also appear in the shop\'s terms, as the law requires.' },
+  { type: 'checks', label: 'Business type', items: [['type_sole', 'Sole trader / self-employed'], ['type_company', 'Company']] },
+  { type: 'field', name: 'legal_name', label: 'Legal name (as registered with the tax office)' },
   { type: 'row', fields: [
-    { name: 'vat', label: 'ΑΦΜ' },
-    { name: 'activity', label: 'Τι πουλάτε (σύντομα)', hint: 'π.χ. ρούχα, καλλυντικά' },
+    { name: 'vat', label: 'VAT number' },
+    { name: 'activity', label: 'What you sell (briefly)', hint: 'e.g. clothes, cosmetics' },
   ] },
-  { type: 'field', name: 'address', label: 'Διεύθυνση επιχείρησης', hint: 'Οδός, αριθμός, Τ.Κ., πόλη' },
+  { type: 'field', name: 'address', label: 'Business address', hint: 'Street, number, postcode, city' },
   { type: 'row', fields: [
-    { name: 'owner_name', label: 'Ονοματεπώνυμο υπευθύνου', hint: 'Ιδιοκτήτης ή νόμιμος εκπρόσωπος' },
-    { name: 'owner_dob', label: 'Ημερομηνία γέννησης υπευθύνου', hint: 'ΗΗ/ΜΜ/ΕΕΕΕ' },
+    { name: 'owner_name', label: 'Representative full name', hint: 'Owner or legal representative' },
+    { name: 'owner_dob', label: 'Representative date of birth', hint: 'DD/MM/YYYY' },
   ] },
   { type: 'row', fields: [
-    { name: 'owner_phone', label: 'Κινητό υπευθύνου', hint: 'Για τον κωδικό επιβεβαίωσης της Stripe' },
-    { name: 'owner_email', label: 'Email υπευθύνου', hint: 'Μόνο αν είναι διαφορετικό από το email της ενότητας 2' },
+    { name: 'owner_phone', label: 'Representative mobile', hint: 'For Stripe\'s verification code' },
+    { name: 'owner_email', label: 'Representative email', hint: 'Only if different from the email in section 2' },
   ] },
-  { type: 'field', name: 'partners', label: 'Μόνο για εταιρείες: εταίροι με ποσοστό άνω του 25%', lines: 2, hint: 'Ονοματεπώνυμο και ποσοστό του καθενός' },
+  { type: 'field', name: 'partners', label: 'Companies only: partners owning more than 25%', lines: 2, hint: 'Full name and percentage of each' },
   { type: 'row', fields: [
-    { name: 'iban', label: 'IBAN', hint: 'Εκεί θα κατατίθενται οι πληρωμές' },
-    { name: 'iban_holder', label: 'Δικαιούχος λογαριασμού' },
+    { name: 'iban', label: 'IBAN', hint: 'Where payments will be paid out' },
+    { name: 'iban_holder', label: 'Account holder' },
   ] },
-  { type: 'field', name: 'statement', label: 'Όνομα στην κίνηση της κάρτας του πελάτη (έως 22 χαρακτήρες)', hint: 'π.χ. MYSHOP.GR · Αν το αφήσετε κενό, βάζουμε το όνομα του καταστήματος.', width: 0.6 },
-  { type: 'warn', text: 'Η Stripe θα σας ζητήσει και επιβεβαίωση ταυτότητας (φωτογραφία ταυτότητας ή διαβατηρίου) μέσω ασφαλούς συνδέσμου που θα σας στείλουμε. Μη στέλνετε φωτογραφία ταυτότητας με email.' },
+  { type: 'field', name: 'statement', label: 'Name on the customer\'s card statement (up to 22 characters)', hint: 'e.g. MYSHOP.GR · Leave empty and we will use the shop name.', width: 0.6 },
+  { type: 'warn', text: 'Stripe will also ask you to verify your identity (photo of your ID card or passport) through a secure link we will send you. Do not send a photo of your ID by email.' },
 
-  { type: 'h', text: '6. Κάτι άλλο;' },
-  { type: 'field', name: 'notes', label: 'Ό,τι άλλο θέλετε να μας πείτε', lines: 4, hint: 'π.χ. ιδέες για την εμφάνιση, sites που σας αρέσουν, ημερομηνία που θέλετε να ανοίξει το κατάστημα' },
+  { type: 'h', text: '6. Anything else?' },
+  { type: 'field', name: 'notes', label: 'Anything else you want to tell us', lines: 4, hint: 'e.g. ideas for the look, websites you like, when you want the shop to open' },
 ];
 
 // ----------------------------------------------------------------- layout
@@ -95,9 +104,9 @@ const FIELD_H = 22;
 
 const pdf = await PDFDocument.create();
 pdf.registerFontkit(fontkit);
-pdf.setTitle('Ερωτηματολόγιο για το ηλεκτρονικό σας κατάστημα');
+pdf.setTitle(t('Questionnaire for your online shop'));
 pdf.setAuthor('Devroic');
-pdf.setLanguage('el-GR');
+pdf.setLanguage(LANG === 'el' ? 'el-GR' : LANG);
 const regular = await pdf.embedFont(fs.readFileSync(path.join(here, 'fonts/LiberationSans-Regular.ttf')), { subset: false });
 const bold = await pdf.embedFont(fs.readFileSync(path.join(here, 'fonts/LiberationSans-Bold.ttf')), { subset: true });
 const form = pdf.getForm();
@@ -128,15 +137,15 @@ function newPage(first = false) {
   y = PAGE[1] - M;
   if (first) {
     page.drawRectangle({ x: 0, y: PAGE[1] - 150, width: PAGE[0], height: 150, color: C.ink });
-    page.drawText('Ερωτηματολόγιο', { x: M, y: PAGE[1] - 70, size: 26, font: bold, color: C.white });
-    page.drawText('για το ηλεκτρονικό σας κατάστημα', { x: M, y: PAGE[1] - 96, size: 16, font: regular, color: rgb(0.8, 0.83, 0.9) });
+    page.drawText(t('Questionnaire'), { x: M, y: PAGE[1] - 70, size: 26, font: bold, color: C.white });
+    page.drawText(t('for your online shop'), { x: M, y: PAGE[1] - 96, size: 16, font: regular, color: rgb(0.8, 0.83, 0.9) });
     page.drawText('Devroic', { x: PAGE[0] - M - bold.widthOfTextAtSize('Devroic', 12), y: PAGE[1] - 40, size: 12, font: bold, color: rgb(0.65, 0.7, 0.8) });
     y = PAGE[1] - 150 - 26;
     const intro = [
-      `Συμπληρώστε τα πεδία απευθείας σε αυτό το PDF (Adobe Reader, Preview σε Mac ή Chrome/Edge), αποθηκεύστε το και στείλτε το στο ${SUPPORT}.`,
-      'Χρειάζονται περίπου 10 λεπτά. Ό,τι δεν ξέρετε ακόμα, αφήστε το κενό· τα υπόλοιπα (προϊόντα, φωτογραφίες, κείμενα) θα τα ανεβάζετε μόνοι σας από τη διαχείριση του καταστήματος.',
+      'Fill in the fields directly in this PDF (Adobe Reader, Preview on Mac or Chrome/Edge), save it and send it to {email}.',
+      'It takes about 10 minutes. Leave empty anything you don\'t know yet; everything else (products, photos, texts) you will add yourself from the shop\'s admin.',
     ];
-    for (const t of intro) text(t, { size: 10.5, color: C.ink, gap: 6 });
+    for (const line of intro) text(t(line), { size: 10.5, color: C.ink, gap: 6 });
     y -= 6;
   }
 }
@@ -145,8 +154,8 @@ const ensure = (h) => {
   if (y - h < M + 30) newPage();
 };
 
-function text(t, { size = 10, font = regular, color = C.ink, gap = 4, x = M, width = W } = {}) {
-  const lines = wrap(t, font, size, width);
+function text(content, { size = 10, font = regular, color = C.ink, gap = 4, x = M, width = W } = {}) {
+  const lines = wrap(content, font, size, width);
   ensure(lines.length * size * 1.35);
   for (const l of lines) {
     y -= size * 1.35;
@@ -155,11 +164,11 @@ function text(t, { size = 10, font = regular, color = C.ink, gap = 4, x = M, wid
   y -= gap;
 }
 
-function heading(t, breakBefore) {
+function heading(title, breakBefore) {
   if (breakBefore) newPage();
   else ensure(120); // keep the heading with its first field
   y -= 14;
-  page.drawText(t, { x: M, y: y - 14, size: 14, font: bold, color: C.ink });
+  page.drawText(title, { x: M, y: y - 14, size: 14, font: bold, color: C.ink });
   y -= 22;
   page.drawLine({ start: { x: M, y }, end: { x: M + W, y }, thickness: 1, color: C.line });
   y -= 8;
@@ -168,7 +177,7 @@ function heading(t, breakBefore) {
 /** Draws one labelled field at x/width; returns the height used. Does not move y. */
 function drawField(f, x, width, top) {
   let yy = top;
-  const label = wrap(f.label, bold, 9.5, width);
+  const label = wrap(t(f.label), bold, 9.5, width);
   for (const l of label) {
     yy -= 12;
     page.drawText(l, { x, y: yy, size: 9.5, font: bold, color: C.ink });
@@ -181,7 +190,7 @@ function drawField(f, x, width, top) {
   tf.setFontSize(10);
   yy -= h;
   if (f.hint) {
-    for (const l of wrap(f.hint, regular, 8.5, width)) {
+    for (const l of wrap(t(f.hint), regular, 8.5, width)) {
       yy -= 11;
       page.drawText(l, { x, y: yy, size: 8.5, font: regular, color: C.muted });
     }
@@ -190,11 +199,11 @@ function drawField(f, x, width, top) {
 }
 
 function estimate(f, width) {
-  return wrap(f.label, bold, 9.5, width).length * 12 + 4 + (f.lines ? f.lines * 14 + 8 : FIELD_H) + (f.hint ? wrap(f.hint, regular, 8.5, width).length * 11 : 0) + 10;
+  return wrap(t(f.label), bold, 9.5, width).length * 12 + 4 + (f.lines ? f.lines * 14 + 8 : FIELD_H) + (f.hint ? wrap(t(f.hint), regular, 8.5, width).length * 11 : 0) + 10;
 }
 
-function box(t, bg, bar) {
-  const lines = wrap(t, regular, 9.5, W - 28);
+function box(content, bg, bar) {
+  const lines = wrap(t(content), regular, 9.5, W - 28);
   const h = lines.length * 13 + 16;
   ensure(h + 8);
   y -= 4;
@@ -210,8 +219,8 @@ function box(t, bg, bar) {
 
 newPage(true);
 for (const b of CONTENT) {
-  if (b.type === 'h') heading(b.text, b.breakBefore);
-  else if (b.type === 'p') text(b.text, { color: C.muted, size: 9.5, gap: 8 });
+  if (b.type === 'h') heading(t(b.text), b.breakBefore);
+  else if (b.type === 'p') text(t(b.text), { color: C.muted, size: 9.5, gap: 8 });
   else if (b.type === 'note') box(b.text, C.noteBg, C.accent);
   else if (b.type === 'warn') box(b.text, C.warnBg, rgb(0.85, 0.47, 0.02));
   else if (b.type === 'field') {
@@ -232,10 +241,10 @@ for (const b of CONTENT) {
       const top = y;
       const cb = form.createCheckBox(it.check);
       cb.addToPage(page, { x: M, y: top - 30, width: 13, height: 13, borderColor: rgb(0.55, 0.58, 0.63), backgroundColor: C.white, borderWidth: 1 });
-      page.drawText(it.label, { x: M + 21, y: top - 27, size: 10.5, font: bold, color: C.ink });
+      page.drawText(t(it.label), { x: M + 21, y: top - 27, size: 10.5, font: bold, color: C.ink });
       let x = COL;
       for (const f of it.fields) {
-        page.drawText(f.label, { x, y: top - 12, size: 8.5, font: regular, color: C.muted });
+        page.drawText(t(f.label), { x, y: top - 12, size: 8.5, font: regular, color: C.muted });
         const tf = form.createTextField(f.name);
         tf.addToPage(page, { x, y: top - 36, width: f.width, height: FIELD_H, font: regular, borderColor: C.line, backgroundColor: C.field, borderWidth: 1 });
         tf.setFontSize(10);
@@ -249,21 +258,21 @@ for (const b of CONTENT) {
     ensure(b.items.length * 20 + (b.label ? 16 : 0));
     if (b.label) {
       y -= 12;
-      page.drawText(b.label, { x: M, y, size: 9.5, font: bold, color: C.ink });
+      page.drawText(t(b.label), { x: M, y, size: 9.5, font: bold, color: C.ink });
       y -= 4;
     }
     for (const [name, label] of b.items) {
       y -= 18;
       const cb = form.createCheckBox(name);
       cb.addToPage(page, { x: M, y: y - 2, width: 13, height: 13, borderColor: rgb(0.55, 0.58, 0.63), backgroundColor: C.white, borderWidth: 1 });
-      page.drawText(label, { x: M + 21, y: y + 1, size: 10, font: regular, color: C.ink });
+      page.drawText(t(label), { x: M + 21, y: y + 1, size: 10, font: regular, color: C.ink });
     }
     y -= 10;
   }
 }
 
 pages.forEach((p, i) => {
-  const left = `Ερωτηματολόγιο καταστήματος · ${SUPPORT}`;
+  const left = t('Shop questionnaire · {email}');
   p.drawLine({ start: { x: M, y: 40 }, end: { x: PAGE[0] - M, y: 40 }, thickness: 0.5, color: C.line });
   p.drawText(left, { x: M, y: 26, size: 8.5, font: regular, color: C.muted });
   const right = `${i + 1} / ${pages.length}`;
