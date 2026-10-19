@@ -1,138 +1,219 @@
-# Νέος πελάτης: στήσιμο βήμα-βήμα
+# Νέος πελάτης: τι κάνω βήμα-βήμα
 
-Κάθε πελάτης έχει **δικά του** Supabase (βάση + φωτογραφίες), Resend (email), Stripe (κάρτες),
-domain και **ένα δικό του project στο Vercel** από το ίδιο repository. Ο κώδικας είναι ένας για όλους·
-αλλάζουν μόνο οι μεταβλητές (Environment Variables) κάθε project.
+Ξεκινάς όταν σου έρθει συμπληρωμένο το ερωτηματολόγιο (PDF) και το λογότυπο.
+Στα παραδείγματα ο πελάτης λέγεται `margarita` και το domain του `margarita.gr`: βάλε τα δικά του.
 
-Χρόνος: ~45 λεπτά την πρώτη φορά, ~20 λεπτά μετά. Πριν ξεκινήσετε, πάρτε απαντήσεις στο
-[ερωτηματολόγιο](CLIENT_QUESTIONNAIRE.md).
-
-> Συμβουλή: φτιάξτε ένα email για το κατάστημα (π.χ. `shop@margarita-flowers.gr`) και ανοίξτε **όλους**
-> τους λογαριασμούς με αυτό. Κρατήστε τους κωδικούς σε password manager και παραδώστε τους στον πελάτη.
+Χρόνος: ~45 λεπτά την πρώτη φορά, ~20 λεπτά μετά.
 
 ---
 
-## 1. Supabase (βάση δεδομένων + φωτογραφίες)
+## Βήμα 0. Προετοιμασία (στον υπολογιστή σου)
 
-1. https://supabase.com → **New project**. Region: **Frankfurt (eu-central-1)** (κοντά στην Ελλάδα, GDPR).
-   Κρατήστε τον κωδικό της βάσης.
-2. **Project Settings → API**: αντιγράψτε
-   - `Project URL` → `SUPABASE_URL`
-   - `anon` / publishable key → `SUPABASE_ANON_KEY`
-   - `service_role` / secret key → `SUPABASE_SERVICE_ROLE_KEY` (**μυστικό**, μόνο στο Vercel)
-3. Πατήστε **Connect** (πάνω) → **Connection string**:
-   - **Transaction pooler** (port 6543) → `DATABASE_URL` (αυτό χρησιμοποιεί το κατάστημα)
-   - **Session pooler** (port 5432) → κρατήστε το για τα backup (βήμα 8)
+- Άνοιξε έναν φάκελο για τον πελάτη στον password manager σου. Εκεί κρατάς ό,τι κωδικό/κλειδί φτιάχνεις παρακάτω.
+- Στο repository φτιάξε δύο αρχεία (**δεν** ανεβαίνουν στο git):
+  - `.env.margarita`: αντέγραψε το [template του .env](#template-env) στο τέλος του οδηγού
+  - `clients/margarita.json`: αντέγραψε το [template του JSON](#template-json) στο τέλος του οδηγού
+- Συμπλήρωσε στο JSON ό,τι γράφει το ερωτηματολόγιο (όνομα, email, τηλέφωνο, αποστολές, αντικαταβολή).
+- Βγάλε ένα τυχαίο κλειδί για το `JWT_SECRET` και έναν κωδικό για τον admin:
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+  node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))"
+  ```
+  Βάλε το πρώτο στο `JWT_SECRET` του `.env.margarita` και το δεύτερο στο `admin.password` του JSON.
 
-   Αντικαταστήστε το `[YOUR-PASSWORD]` με τον κωδικό της βάσης.
+## Βήμα 1. Domain
 
-Τους πίνακες και τον φάκελο φωτογραφιών (bucket) τους φτιάχνει το script στο βήμα 6 — δεν χρειάζεται τίποτα άλλο εδώ.
+- Αν ο πελάτης **έχει** domain: ζήτα του πρόσβαση στις ρυθμίσεις DNS (π.χ. λογαριασμός Papaki).
+- Αν **όχι**: αγόρασέ το (π.χ. Papaki) στο όνομα του πελάτη.
+- Στο `.env.margarita`: `PUBLIC_URL=https://margarita.gr`
 
-## 2. Email (Resend)
+## Βήμα 2. Supabase (βάση δεδομένων + φωτογραφίες)
 
-1. https://resend.com → λογαριασμός → **Domains → Add domain** → το domain του πελάτη.
-2. Προσθέστε τις εγγραφές DNS που σας δείχνει (στον πάροχο του domain) και περιμένετε να γίνει **Verified**.
-3. **API Keys → Create** → `RESEND_API_KEY`.
-4. `MAIL_FROM="Ανθοπωλείο Μαργαρίτα <orders@margarita-flowers.gr>"`
+- Πήγαινε στο https://supabase.com και κάνε εγγραφή με το email του πελάτη. Θα χρειαστείς τον κωδικό επιβεβαίωσης που θα του έρθει.
+- Πάτα **New project**:
+  - Name: `margarita`
+  - Database password: πάτα **Generate** και κράτα τον στον password manager
+  - Region: **Central EU (Frankfurt)**
+- Περίμενε 1-2 λεπτά να ετοιμαστεί.
+- Πάτα **Connect** (πάνω στη μέση). Αντέγραψε το **Transaction pooler** connection string (port **6543**):
+  - Στο `.env.margarita` → `DATABASE_URL=` (βάλε τον κωδικό της βάσης στη θέση του `[YOUR-PASSWORD]`)
+- Στο ίδιο παράθυρο αντέγραψε και το **Session pooler** string (port **5432**) στον password manager. Θα το χρειαστείς στο Βήμα 9 (backup).
+- Πήγαινε **Project Settings → API**:
+  - Project URL → `SUPABASE_URL=`
+  - `anon` / publishable key → `SUPABASE_ANON_KEY=`
+  - `service_role` / secret key → `SUPABASE_SERVICE_ROLE_KEY=` (**μυστικό**, μην το δώσεις πουθενά αλλού)
 
-## 3. Πληρωμές με κάρτα (Stripe)
+Τους πίνακες και τον φάκελο φωτογραφιών τα φτιάχνει μόνο του το Βήμα 5.
 
-1. Ο πελάτης ανοίγει λογαριασμό στο https://stripe.com **στο όνομα της επιχείρησής του** (τα χρήματα πάνε εκεί)
-   και συμπληρώνει τα στοιχεία επιχείρησης/τράπεζας.
-2. **Developers → API keys** → Secret key → `STRIPE_SECRET_KEY`
-   (για δοκιμές πρώτα το `sk_test_…`, στο τέλος το `sk_live_…`).
-3. **Developers → Webhooks → Add endpoint**
-   - URL: `https://<domain πελάτη>/api/stripe/webhook`
-   - Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`
-   - Signing secret → `STRIPE_WEBHOOK_SECRET`
-4. Η πληρωμή με κάρτα είναι ενεργή από προεπιλογή και εμφανίζεται μόλις μπει το `STRIPE_SECRET_KEY`.
-   Αντικαταβολή / τραπεζική κατάθεση: Ρυθμίσεις → Πληρωμές στο admin (ή `payments` στο `clients/<πελάτης>.json`).
+## Βήμα 3. Resend (email)
 
-> Χωρίς κλειδί Stripe και χωρίς αντικαταβολή το κατάστημα **δεν μπορεί να δεχτεί παραγγελίες**· το admin το δείχνει με προειδοποίηση.
+- Πήγαινε στο https://resend.com και κάνε εγγραφή με το email του πελάτη.
+- **Domains → Add domain** → `margarita.gr`, Region: **Ireland (eu-west-1)**.
+- Το Resend σου δείχνει 3-4 εγγραφές DNS. Πρόσθεσέ τες στο DNS του domain (Βήμα 1), ακριβώς όπως τις δείχνει.
+- Περίμενε να γίνει **Verified** (συνήθως λίγα λεπτά, μερικές φορές μέχρι λίγες ώρες).
+- **API Keys → Create API key** (Permission: Sending access) → `RESEND_API_KEY=`
+- Στο `.env.margarita`: `MAIL_FROM="Ανθοπωλείο Μαργαρίτα <orders@margarita.gr>"`
+  (το όνομα του καταστήματος + οποιαδήποτε διεύθυνση στο domain του)
 
-## 4. Vercel (φιλοξενία)
+## Βήμα 4. Stripe (πληρωμές με κάρτα)
 
-1. https://vercel.com → **Add New → Project** → επιλέξτε το repository `online-shop-template`.
-   Όνομα project: π.χ. `shop-margarita`. Framework: **Other** (οι ρυθμίσεις βρίσκονται στο `vercel.json`).
-2. **Environment Variables** (πριν το πρώτο Deploy):
+- Πήγαινε στο https://stripe.com και κάνε εγγραφή με το email του πελάτη. Χώρα: **Ελλάδα**.
+- Πάτα **Activate payments** και συμπλήρωσε από την ενότητα 5 του ερωτηματολογίου:
+  - μορφή επιχείρησης, επωνυμία, ΑΦΜ, διεύθυνση, τι πουλάει
+  - website: `https://margarita.gr`
+  - υπεύθυνος: ονοματεπώνυμο, ημερομηνία γέννησης, κινητό, email
+  - εταίροι άνω του 25% (αν είναι εταιρεία)
+  - IBAN και δικαιούχος
+  - statement descriptor: το «όνομα στην κίνηση της κάρτας»
+- **Ταυτοποίηση** (φωτογραφία ταυτότητας ή selfie): την κάνει **ο ίδιος ο πελάτης**. Στείλε του να συνδεθεί στο Stripe και να την ολοκληρώσει, ή κάντε τη μαζί.
+- Κλειδιά. Ξεκίνα σε **test mode** (διακόπτης «Test mode» πάνω δεξιά):
+  - **Developers → API keys** → Secret key (`sk_test_…`) → `STRIPE_SECRET_KEY=`
+  - **Developers → Webhooks → Add endpoint**:
+    - Endpoint URL: `https://margarita.gr/api/stripe/webhook`
+    - Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`
+    - Signing secret (`whsec_…`) → `STRIPE_WEBHOOK_SECRET=`
 
-   | Μεταβλητή | Τιμή |
-   |---|---|
-   | `PUBLIC_URL` | `https://margarita-flowers.gr` |
-   | `JWT_SECRET` | τυχαίο κείμενο 48+ χαρακτήρων* |
-   | `DATABASE_URL` | Supabase transaction pooler (βήμα 1) |
-   | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | βήμα 1 |
-   | `RESEND_API_KEY`, `MAIL_FROM` | βήμα 2 |
-   | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | βήμα 3 (αν υπάρχει) |
+## Βήμα 5. Αρχική ρύθμιση καταστήματος (μία εντολή)
 
-   \* `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`
-3. **Deploy**.
-4. **Settings → Domains** → προσθέστε `margarita-flowers.gr` και `www.margarita-flowers.gr` και βάλτε στο DNS
-   του domain τις εγγραφές που δείχνει το Vercel. Το HTTPS ενεργοποιείται αυτόματα.
+- Στον φάκελο του repository τρέξε:
+  ```bash
+  DOTENV_CONFIG_PATH=.env.margarita npm run configure -- clients/margarita.json
+  ```
+- Θα δεις ✔ για: πίνακες, φάκελο φωτογραφιών, ρυθμίσεις, admin, αποστολές, σελίδες.
+- Αν κάτι βγάλει σφάλμα, διόρθωσέ το στο `.env.margarita` ή στο JSON και ξανατρέξ' το. Είναι ασφαλές να τρέξει πολλές φορές.
 
-## 5. Σύνδεση με Google / Apple (προαιρετικά)
+## Βήμα 6. Vercel (το site)
 
-Οι πελάτες του καταστήματος μπορούν να συνδέονται με Google ή Apple. Γίνεται μέσω του Supabase του πελάτη.
+- Πήγαινε στο https://vercel.com (ο **δικός σου** λογαριασμός) → **Add New → Project**.
+- Διάλεξε το repository `online-shop-template` και δώσε όνομα project `shop-margarita`.
+- Άνοιξε **Environment Variables**. Αντέγραψε **όλο** το περιεχόμενο του `.env.margarita` και κάνε paste στο πρώτο πεδίο «Key». Το Vercel τα χωρίζει μόνο του.
+- Πάτα **Deploy** και περίμενε ~1 λεπτό.
+- Πήγαινε **Settings → Domains → Add** και πρόσθεσε `margarita.gr` και `www.margarita.gr`.
+  - Το Vercel σου δείχνει τι εγγραφές DNS να βάλεις. Βάλε τες στο DNS του domain.
+  - Όταν γίνουν ✓, το site ανοίγει στο `https://margarita.gr` (το HTTPS γίνεται αυτόματα).
 
-1. Supabase → **Authentication → URL Configuration**:
-   - Site URL: `https://margarita-flowers.gr`
-   - Redirect URLs: `https://margarita-flowers.gr/auth/callback`
-2. **Google** (δωρεάν):
-   - https://console.cloud.google.com → νέο project → **APIs & Services → OAuth consent screen**
-     (όνομα καταστήματος, λογότυπο, email υποστήριξης) → **Publish app**.
-   - **Credentials → Create credentials → OAuth client ID** → Web application.
-     Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
-     (το βλέπετε στο Supabase → Authentication → Providers → Google).
-   - Client ID + Client Secret → Supabase → **Authentication → Providers → Google → Enable**.
-3. **Apple** (απαιτεί **Apple Developer Program, 99 $/έτος**, στο όνομα του πελάτη):
-   - Ακολουθήστε τον οδηγό του Supabase: *Authentication → Providers → Apple* (Services ID, Key, Team ID).
-4. Στο admin του καταστήματος: Ρυθμίσεις → Πληρωμές → **Σύνδεση πελατών** → ενεργοποιήστε Google/Apple.
+## Βήμα 7. Τελευταίες ρυθμίσεις στο admin
 
-## 6. Αρχική ρύθμιση καταστήματος (από τον υπολογιστή σας)
+- Άνοιξε `https://margarita.gr/admin` και συνδέσου με το email/κωδικό admin του JSON.
+- **Ρυθμίσεις → Γενικά**: ανέβασε το λογότυπο που σου έστειλε.
+- **Ρυθμίσεις → Εμφάνιση**: αν έδωσε χρώμα, διάλεξέ το (ή έναν έτοιμο συνδυασμό).
+- **Σελίδες → Όροι χρήσης**: συμπλήρωσε επωνυμία, ΑΦΜ, διεύθυνση από το ερωτηματολόγιο.
+- **Σελίδες → Σχετικά με εμάς**: ένα-δυο προτάσεις για το κατάστημα, ή άφησέ το στον πελάτη.
 
-1. `cp clients/example.json clients/margarita.json` και συμπληρώστε το με τις απαντήσεις του πελάτη
-   (ποσά σε **λεπτά**: `350` = 3,50 €). Ο φάκελος `clients/` δεν ανεβαίνει στο git.
-2. Φτιάξτε `.env.margarita` με τα ίδια `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` του πελάτη.
-3. Τρέξτε:
-   ```bash
-   DOTENV_CONFIG_PATH=.env.margarita npm run configure -- clients/margarita.json
-   ```
-   Δημιουργεί πίνακες, bucket φωτογραφιών, ρυθμίσεις, αποστολές, κατηγορίες, σελίδες, κουπόνια και τον admin.
-   Μπορεί να ξανατρέξει χωρίς πρόβλημα.
+## Βήμα 8. Δοκιμή
 
-## 7. Έλεγχος πριν την παράδοση
+- Βάλε ένα δοκιμαστικό προϊόν: **Προϊόντα → Νέο προϊόν**.
+- Κάνε μια παραγγελία από κινητό με κάρτα δοκιμής `4242 4242 4242 4242` (οποιαδήποτε μελλοντική ημερομηνία, οποιοδήποτε CVC).
+- Έλεγξε:
+  - η παραγγελία φαίνεται «Πληρώθηκε» στο admin
+  - ήρθε email στον πελάτη (δικό σου email) και στο email παραγγελιών (κοίτα και τα spam)
+  - αν έχει αντικαταβολή, κάνε και μία παραγγελία με αντικαταβολή
+- Σβήσε το δοκιμαστικό προϊόν και τις δοκιμαστικές παραγγελίες (ακύρωση).
 
-- [ ] `https://<domain>/admin` → σύνδεση admin, ανέβασμα λογοτύπου. Τα προϊόντα τα ανεβάζει ο πελάτης
-      (ένα-ένα ή όλα μαζί: Προϊόντα → «Εισαγωγή από Excel»)
-- [ ] Δοκιμαστική παραγγελία με **κάθε** τρόπο πληρωμής (κάρτα με `4242 4242 4242 4242` σε test mode)
-- [ ] Έφτασαν τα email σε πελάτη και admin; (έλεγχος και στα spam)
-- [ ] Σύνδεση με Google/Apple (αν ενεργοποιήθηκε)
-- [ ] Εμφάνιση σε κινητό, φωτεινό και σκοτεινό θέμα
-- [ ] Αλλαγή Stripe σε live κλειδιά, διαγραφή δοκιμαστικών παραγγελιών
-- [ ] Ο πελάτης αλλάζει τον κωδικό admin
+## Βήμα 9. Ενεργοποίηση πραγματικών πληρωμών + backup
 
-## 8. Backup
+- Stripe: κλείσε το **Test mode** και ξανακάνε για **live**:
+  - Developers → API keys → `sk_live_…`
+  - Developers → Webhooks → Add endpoint (ίδιο URL, ίδια 3 events) → νέο `whsec_…`
+- Vercel → project → **Settings → Environment Variables**: άλλαξε τα `STRIPE_SECRET_KEY` και `STRIPE_WEBHOOK_SECRET` με τα live.
+- Vercel → **Deployments** → στο τελευταίο: **⋯ → Redeploy**, για να φορτώσουν τα νέα κλειδιά.
+- Backup: GitHub → repository → **Settings → Secrets and variables → Actions → `BACKUP_DATABASE_URLS`** → Update:
+  - πρόσθεσε μια γραμμή: `margarita <Session pooler string του Βήματος 2>`
 
-Το δωρεάν Supabase δεν κρατάει backup. Το repository έχει έτοιμο GitHub Action που κάθε βράδυ
-αποθηκεύει τη βάση κάθε πελάτη (κρατάει 30 ημέρες):
+## Βήμα 10. Παράδοση στον πελάτη
 
-1. GitHub → repository → **Settings → Secrets and variables → Actions** → secret `BACKUP_DATABASE_URLS`.
-2. Μία γραμμή ανά πελάτη: `margarita postgresql://...` (το **Session pooler** string του βήματος 1).
-3. **Το repository πρέπει να είναι private** (τα backup περιέχουν στοιχεία πελατών).
-4. Δοκιμή: Actions → Nightly backups → Run workflow. Επαναφορά: [`scripts/restore-backup.md`](../scripts/restore-backup.md).
+Στείλε του:
+- το link του καταστήματος: `https://margarita.gr`
+- το link της διαχείρισης: `https://margarita.gr/admin`
+- το email και τον προσωρινό κωδικό admin. Πες του να τον αλλάξει από **Ο λογαριασμός μου → Προφίλ**.
+- ότι τα προϊόντα τα ανεβάζει από **Προϊόντα**: ένα-ένα ή όλα μαζί με **Εισαγωγή από Excel**.
 
-Οι φωτογραφίες μένουν στο Supabase Storage· αν τις σβήσει κάποιος από το admin, δεν επανέρχονται.
+---
 
-## Ενημερώσεις του template
+## Προαιρετικό: σύνδεση πελατών με Google
 
-`git push` στο repository → το Vercel κάνει αυτόματα deploy σε **όλα** τα projects (όλους τους πελάτες).
-Αλλαγές στη βάση εφαρμόζονται αυτόματα στο πρώτο αίτημα κάθε καταστήματος (migrations).
-Δοκιμάστε πρώτα τοπικά (`npm test`, `npm run dev`).
+Κάν' το μόνο αν το θέλει ο πελάτης.
 
-## Όρια δωρεάν πλάνων (ενδεικτικά — ελέγξτε τα τρέχοντα)
+- Supabase → **Authentication → URL Configuration**:
+  - Site URL: `https://margarita.gr`
+  - Redirect URLs: πρόσθεσε `https://margarita.gr/auth/callback`
+- Supabase → **Authentication → Providers → Google**: άνοιξέ το και αντέγραψε το **Callback URL** που δείχνει.
+- https://console.cloud.google.com (ο δικός σου λογαριασμός Google):
+  - φτιάξε νέο project `margarita`
+  - **APIs & Services → OAuth consent screen**: όνομα καταστήματος, email, λογότυπο → **Publish**
+  - **Credentials → Create credentials → OAuth client ID** → Web application → Authorized redirect URI: το Callback URL της Supabase
+  - αντέγραψε **Client ID** και **Client secret** στη Supabase (Google provider) → Save
+- Admin καταστήματος → **Ρυθμίσεις → Πληρωμές → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Google» → Αποθήκευση.
 
-| | Δωρεάν | Όταν δεν φτάνει |
-|---|---|---|
-| Supabase | ~500 MB βάση, 1 GB αρχεία, 2 ενεργά projects ανά λογαριασμό, «παγώνει» μετά από ~1 εβδομάδα χωρίς κίνηση | Pro |
-| Resend | ~3.000 email/μήνα, 100/ημέρα | Pro |
-| Vercel | Το Hobby είναι μόνο για μη εμπορική χρήση | Pro (~20 $/μήνα για όλα τα projects σας) |
+---
+
+<a id="template-env"></a>
+## Template: `.env` πελάτη
+
+Αντέγραψε το σε `.env.margarita` και συμπλήρωσε μόνο τις τιμές μετά το `=`.
+
+```env
+# --- Κατάστημα ---------------------------------------------------------------
+PUBLIC_URL=https://
+JWT_SECRET=
+
+# --- Supabase (Βήμα 2) ---------------------------------------------------------
+# Connect → Transaction pooler (port 6543), με τον κωδικό της βάσης
+DATABASE_URL=
+# Project Settings → API
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# --- Resend (Βήμα 3) -------------------------------------------------------------
+RESEND_API_KEY=
+MAIL_FROM="Όνομα Καταστήματος <orders@domain.gr>"
+
+# --- Stripe (Βήμα 4: πρώτα test, στο Βήμα 9 live) ---------------------------------
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+```
+
+<a id="template-json"></a>
+## Template: `clients/<πελάτης>.json`
+
+Ποσά σε **λεπτά**: `350` = 3,50 €. Ό,τι δεν ισχύει για τον πελάτη, σβήσ' το
+(π.χ. όλη τη γραμμή της παραλαβής αν δεν την προσφέρει).
+
+```json
+{
+  "settings": {
+    "storeName": "Όνομα καταστήματος",
+    "contact": {
+      "email": "email@του-πελάτη.gr",
+      "phone": "210 000 0000"
+    },
+    "notifications": { "orderEmail": "" },
+    "payments": {
+      "card": { "enabled": true },
+      "cod": { "enabled": false, "fee": 0 }
+    }
+  },
+  "shipping": [
+    { "name": "Courier", "description": "Παράδοση σε 1-3 εργάσιμες", "price": 350, "freeOver": 5000 },
+    { "name": "Παραλαβή από το κατάστημα", "description": "Διεύθυνση παραλαβής", "price": 0, "requiresAddress": false }
+  ],
+  "admin": { "email": "email@του-πελάτη.gr", "password": "" }
+}
+```
+
+Πού μπαίνει κάθε απάντηση του ερωτηματολογίου:
+
+| Ερωτηματολόγιο | JSON |
+|---|---|
+| Όνομα καταστήματος | `settings.storeName` |
+| Email, τηλέφωνο | `settings.contact.email`, `settings.contact.phone` |
+| Άλλο email για παραγγελίες | `settings.notifications.orderEmail` (κενό = το email επικοινωνίας) |
+| Άλλο email για διαχείριση | `admin.email` (αλλιώς το email επικοινωνίας) |
+| Courier + κόστος | γραμμή `Courier`, `price` |
+| Δωρεάν αποστολή άνω των | `freeOver` στη γραμμή Courier (σβήσ' το αν δεν υπάρχει) |
+| Παραλαβή + διεύθυνση | γραμμή `Παραλαβή…`, διεύθυνση στο `description` |
+| Άλλος τρόπος | νέα γραμμή `{ "name": "ΕΛΤΑ", "price": 400 }` |
+| Αντικαταβολή + χρέωση | `payments.cod.enabled: true`, `fee` |
+
+Χρώμα, λογότυπο, κείμενα και σελίδες: από το admin (Βήμα 7).
