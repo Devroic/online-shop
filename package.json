@@ -15,10 +15,13 @@
     "seed": "npm run seed -w server --",
     "configure": "npm run configure -w server --",
     "create-admin": "npm run create-admin -w server --",
-    "test": "npm test -w server"
+    "test": "npm test -w server",
+    "questionnaire": "node scripts/questionnaire/build.mjs"
   },
   "devDependencies": {
-    "concurrently": "^10.0.6"
+    "@pdf-lib/fontkit": "^1.1.1",
+    "concurrently": "^10.0.6",
+    "pdf-lib": "^1.17.1"
   },
   "engines": {
     "node": ">=20"
