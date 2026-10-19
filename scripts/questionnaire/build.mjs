@@ -36,14 +36,21 @@ const CONTENT = [
 
   { type: 'h', text: '2. Επικοινωνία' },
   { type: 'row', fields: [
-    { name: 'contact_email', label: 'Email επικοινωνίας', hint: 'Φαίνεται στο κατάστημα' },
+    { name: 'contact_email', label: 'Email', hint: 'Φαίνεται στο κατάστημα, εκεί έρχονται οι παραγγελίες και με αυτό συνδέεστε στη διαχείριση.' },
     { name: 'contact_phone', label: 'Τηλέφωνο', hint: 'Φαίνεται στο κατάστημα' },
   ] },
-  { type: 'field', name: 'orders_email', label: 'Email που θα λαμβάνει τις νέες παραγγελίες' },
-  { type: 'field', name: 'admin_email', label: 'Email για τον λογαριασμό διαχείρισης', hint: 'Με αυτό θα συνδέεστε για να ανεβάζετε προϊόντα και να βλέπετε παραγγελίες.' },
-
+  { type: 'p', text: 'Μόνο αν θέλετε διαφορετικό email για κάτι από τα παρακάτω (αλλιώς αφήστε τα κενά):' },
+  { type: 'row', fields: [
+    { name: 'orders_email', label: 'Email για τις νέες παραγγελίες' },
+    { name: 'admin_email', label: 'Email για τη διαχείριση' },
+  ] },
   { type: 'h', text: '3. Αποστολές' },
-  { type: 'field', name: 'shipping', label: 'Τρόποι αποστολής και κόστος', lines: 4, hint: 'π.χ. Courier 3,50 € · Παραλαβή από το κατάστημα δωρεάν' },
+  { type: 'p', text: 'Επιλέξτε όσους τρόπους προσφέρετε και γράψτε το κόστος για τον πελάτη.' },
+  { type: 'options', items: [
+    { check: 'ship_courier', label: 'Courier', fields: [{ name: 'ship_courier_price', label: 'Κόστος (€)', width: 70 }] },
+    { check: 'ship_pickup', label: 'Παραλαβή από το κατάστημα', fields: [{ name: 'ship_pickup_price', label: 'Κόστος (€)', width: 70, value: '0' }, { name: 'ship_pickup_address', label: 'Διεύθυνση παραλαβής', width: 190 }] },
+    { check: 'ship_other', label: 'Άλλος τρόπος', fields: [{ name: 'ship_other_price', label: 'Κόστος (€)', width: 70 }, { name: 'ship_other_name', label: 'Ποιος; (π.χ. ΕΛΤΑ, δική μου διανομή)', width: 190 }] },
+  ] },
   { type: 'field', name: 'free_shipping', label: 'Δωρεάν αποστολή για παραγγελίες άνω των (€) — προαιρετικό', width: 0.5 },
 
   { type: 'h', text: '4. Πληρωμές' },
@@ -66,7 +73,7 @@ const CONTENT = [
   ] },
   { type: 'row', fields: [
     { name: 'owner_phone', label: 'Κινητό υπευθύνου', hint: 'Για τον κωδικό επιβεβαίωσης της Stripe' },
-    { name: 'owner_email', label: 'Email υπευθύνου' },
+    { name: 'owner_email', label: 'Email υπευθύνου', hint: 'Μόνο αν είναι διαφορετικό από το email της ενότητας 2' },
   ] },
   { type: 'field', name: 'partners', label: 'Μόνο για εταιρείες: εταίροι με ποσοστό άνω του 25%', lines: 2, hint: 'Ονοματεπώνυμο και ποσοστό του καθενός' },
   { type: 'row', fields: [
@@ -217,6 +224,27 @@ for (const b of CONTENT) {
     ensure(Math.max(...b.fields.map((f) => estimate(f, width))));
     const used = b.fields.map((f, i) => drawField(f, M + i * (width + gap), width, y));
     y -= Math.max(...used);
+  } else if (b.type === 'options') {
+    // Checkbox + label on the left, small fields (with captions) on the right.
+    const COL = M + 190;
+    for (const it of b.items) {
+      ensure(44);
+      const top = y;
+      const cb = form.createCheckBox(it.check);
+      cb.addToPage(page, { x: M, y: top - 30, width: 13, height: 13, borderColor: rgb(0.55, 0.58, 0.63), backgroundColor: C.white, borderWidth: 1 });
+      page.drawText(it.label, { x: M + 21, y: top - 27, size: 10.5, font: bold, color: C.ink });
+      let x = COL;
+      for (const f of it.fields) {
+        page.drawText(f.label, { x, y: top - 12, size: 8.5, font: regular, color: C.muted });
+        const tf = form.createTextField(f.name);
+        tf.addToPage(page, { x, y: top - 36, width: f.width, height: FIELD_H, font: regular, borderColor: C.line, backgroundColor: C.field, borderWidth: 1 });
+        tf.setFontSize(10);
+        if (f.value) tf.setText(f.value);
+        x += f.width + 14;
+      }
+      y -= 46;
+    }
+    y -= 6;
   } else if (b.type === 'checks') {
     ensure(b.items.length * 20 + (b.label ? 16 : 0));
     if (b.label) {
