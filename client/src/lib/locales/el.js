@@ -539,4 +539,51 @@ export default {
     'Συνδέεστε με {provider}. Μπορείτε επίσης να ορίσετε κωδικό για σύνδεση με το email σας.',
   'This account was created with {provider}. Use that button above, or reset your password.':
     'Ο λογαριασμός δημιουργήθηκε με {provider}. Χρησιμοποιήστε το αντίστοιχο κουμπί παραπάνω ή κάντε επαναφορά κωδικού.',
+
+  // Excel import & payments
+  'Customers cannot place orders: no payment method is available. Add the Stripe keys or enable cash on delivery.':
+    'Οι πελάτες δεν μπορούν να παραγγείλουν: δεν υπάρχει διαθέσιμος τρόπος πληρωμής. Προσθέστε τα κλειδιά Stripe ή ενεργοποιήστε την αντικαταβολή.',
+  'Orders are temporarily unavailable': 'Οι παραγγελίες δεν είναι διαθέσιμες προσωρινά',
+  'Please try again later or contact us.': 'Δοκιμάστε ξανά αργότερα ή επικοινωνήστε μαζί μας.',
+  'Import from Excel': 'Εισαγωγή από Excel',
+  'Import products from Excel': 'Εισαγωγή προϊόντων από Excel',
+  'Add your first product to start selling, or import them all at once from Excel.':
+    'Προσθέστε το πρώτο σας προϊόν ή εισάγετέ τα όλα μαζί από Excel.',
+  'The file is empty': 'Το αρχείο είναι κενό',
+  'Could not read the file: {msg}': 'Δεν ήταν δυνατή η ανάγνωση του αρχείου: {msg}',
+  'Could not read the file. Save it as .xlsx and try again.': 'Δεν ήταν δυνατή η ανάγνωση του αρχείου. Αποθηκεύστε το ως .xlsx και δοκιμάστε ξανά.',
+  'Choose another file': 'Άλλο αρχείο',
+  'Import {n} products': 'Εισαγωγή {n} προϊόντων',
+  Done: 'Τέλος',
+  'Download the template and fill it in Excel (one row per product).': 'Κατεβάστε το πρότυπο και συμπληρώστε το στο Excel (μία γραμμή ανά προϊόν).',
+  'Download template': 'Λήψη προτύπου',
+  'Products with sizes/colours: one row per option, with the same name and the option in the “Option” column.':
+    'Προϊόντα με μεγέθη/χρώματα: μία γραμμή ανά επιλογή, με το ίδιο όνομα και την επιλογή στη στήλη «Επιλογή».',
+  'Empty “Stock” = always available. Products with the same name as an existing one are updated (their photos are kept).':
+    'Κενό «Απόθεμα» = πάντα διαθέσιμο. Προϊόντα με όνομα που υπάρχει ήδη ενημερώνονται (οι φωτογραφίες τους διατηρούνται).',
+  'Photos: add them afterwards from each product, or put image links in the “Photos” column.':
+    'Φωτογραφίες: προσθέστε τις μετά από κάθε προϊόν ή βάλτε links εικόνων στη στήλη «Φωτογραφίες».',
+  'Reading file…': 'Ανάγνωση αρχείου…',
+  'Choose Excel file (.xlsx or .csv)': 'Επιλογή αρχείου Excel (.xlsx ή .csv)',
+  '{n} new': '{n} νέα',
+  '{n} to update': '{n} για ενημέρωση',
+  '{n} rows with problems': '{n} γραμμές με προβλήματα',
+  'These rows will be skipped. Fix them in Excel and import again, or continue without them.':
+    'Αυτές οι γραμμές θα παραλειφθούν. Διορθώστε τες στο Excel και ξανακάντε εισαγωγή, ή συνεχίστε χωρίς αυτές.',
+  'Row {n}': 'Γραμμή {n}',
+  New: 'Νέο',
+  Update: 'Ενημέρωση',
+  '…and {n} more': '…και άλλα {n}',
+  'Importing {done} of {total}…': 'Εισαγωγή {done} από {total}…',
+  'Keep this window open until it finishes.': 'Μην κλείσετε το παράθυρο μέχρι να ολοκληρωθεί.',
+  '{created} products created, {updated} updated': 'Δημιουργήθηκαν {created} προϊόντα, ενημερώθηκαν {updated}',
+  '{n} could not be imported:': '{n} δεν εισήχθησαν:',
+  'Missing columns: {cols}': 'Λείπουν στήλες: {cols}',
+  'Name is missing': 'Λείπει το όνομα',
+  'Invalid price': 'Μη έγκυρη τιμή',
+  'Invalid original price': 'Μη έγκυρη αρχική τιμή',
+  'Stock must be a whole number': 'Το απόθεμα πρέπει να είναι ακέραιος αριθμός',
+  '“{name}” appears more than once. For sizes/colours fill in the “Option” column.':
+    'Το «{name}» υπάρχει πάνω από μία φορά. Για μεγέθη/χρώματα συμπληρώστε τη στήλη «Επιλογή».',
+  '“{name}” has options: fill in “Option” on every row.': 'Το «{name}» έχει επιλογές: συμπληρώστε την «Επιλογή» σε κάθε γραμμή.',
 };

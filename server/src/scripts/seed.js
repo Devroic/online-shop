@@ -72,7 +72,11 @@ updateSettings({
     ctaLink: '/products',
   },
   contact: { email: 'info@example.com', phone: '210 000 0000', address: 'Οδός Παραδείγματος 1, Αθήνα', hours: 'Δευ-Παρ 9:00-17:00' },
-  payments: { bank: { details: 'Τράπεζα: Demo Bank\nIBAN: GR00 0000 0000 0000 0000 0000 000\nΔικαιούχος: Demo Store' } },
+  // The demo has no Stripe keys, so offer the offline methods too.
+  payments: {
+    cod: { enabled: true },
+    bank: { enabled: true, details: 'Τράπεζα: Demo Bank\nIBAN: GR00 0000 0000 0000 0000 0000 000\nΔικαιούχος: Demo Store' },
+  },
 });
 if (!(await db().one("SELECT id FROM users WHERE role = 'admin' LIMIT 1"))) {
   await createAdmin('admin@example.com', 'admin1234');

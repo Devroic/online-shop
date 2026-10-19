@@ -94,6 +94,12 @@ export default function AdminApp() {
           <strong>{settings.storeName}</strong>
         </header>
         <div className="a-content">
+          {settings.paymentMethods.length === 0 && (
+            <Link to="/admin/settings/checkout" className="a-alert a-alert-danger">
+              <ShoppingCart size={18} />{' '}
+              {t('Customers cannot place orders: no payment method is available. Add the Stripe keys or enable cash on delivery.')} →
+            </Link>
+          )}
           <Routes>
             <Route index element={<Dashboard />} />
             <Route path="orders" element={<OrderList />} />

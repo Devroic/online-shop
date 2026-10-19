@@ -34,6 +34,8 @@ before(async () => {
   app = createApp();
   admin = request.agent(app);
   await admin.post('/api/auth/login').send({ email: 'admin@test.dev', password: 'password123' }).expect(200);
+  // Tests pay offline (no Stripe keys here).
+  await admin.put('/api/admin/settings').send({ payments: { cod: { enabled: true }, bank: { enabled: true } } }).expect(200);
   courierId = (await db().one('SELECT id FROM shipping_methods WHERE requires_address LIMIT 1')).id;
 });
 
@@ -149,6 +151,14 @@ test('customer registers, sees linked guest orders', async () => {
   await user.get('/api/admin/stats').expect(403);
 });
 
+test('default payment settings: card on, offline methods off', async () => {
+  const { DEFAULT_SETTINGS } = await import('../src/settings.js');
+  assert.deepEqual(
+    [DEFAULT_SETTINGS.payments.card.enabled, DEFAULT_SETTINGS.payments.cod.enabled, DEFAULT_SETTINGS.payments.bank.enabled],
+    [true, false, false],
+  );
+});
+
 test('settings are public except notification email', async () => {
   await admin.put('/api/admin/settings').send({ storeName: 'Acme', notifications: { orderEmail: 'secret@acme.dev' } }).expect(200);
   const res = await request(app).get('/api/settings').expect(200);
@@ -188,4 +198,36 @@ test('image upload stores file and returns a URL', async () => {
   const r = await admin.post('/api/admin/uploads').attach('files', svg, { filename: 'a.svg', contentType: 'image/svg+xml' }).expect(201);
   assert.match(r.body.urls[0], /^\/uploads\/.+\.svg$/);
   await admin.post('/api/admin/uploads').attach('files', Buffer.from('hi'), { filename: 'a.txt', contentType: 'text/plain' }).expect(400);
+});
+
+test('bulk import creates and updates products, categories and options', async () => {
+  const batch = [
+    { name: 'Import Mug', price: 1290, stock: 20, trackStock: true, categoryName: 'Κουζίνα', variants: [] },
+    {
+      name: 'Import Tee', price: 1990, stock: 0, trackStock: true, categoryName: 'κουζινα',
+      variants: [{ name: 'S', price: null, stock: 5 }, { name: 'M', price: 2190, stock: 2 }],
+    },
+  ];
+  const dry = await admin.post('/api/admin/products/import').send({ products: batch, dryRun: true }).expect(200);
+  assert.deepEqual(dry.body.existing, []);
+  const r1 = await admin.post('/api/admin/products/import').send({ products: batch }).expect(200);
+  assert.deepEqual([r1.body.created, r1.body.updated, r1.body.errors.length], [2, 0, 0]);
+  // One category despite different case/accents.
+  assert.equal((await db().one("SELECT COUNT(*)::int AS n FROM categories WHERE search_name = 'κουζινα'")).n, 1);
+
+  const tee = (await request(app).get('/api/products?q=import tee').expect(200)).body.items[0];
+  await admin.put(`/api/admin/products/${tee.id}`).send({ ...tee, images: ['/uploads/x.svg'], variants: tee.variants.map((v) => ({ id: v.id, name: v.name, price: v.priceOverride, stock: v.stock })) }).expect(200);
+
+  const r2 = await admin
+    .post('/api/admin/products/import')
+    .send({ products: [{ ...batch[1], name: 'import tee', variants: [{ name: 's', price: null, stock: 9 }] }] })
+    .expect(200);
+  assert.equal(r2.body.updated, 1);
+  const after = (await request(app).get(`/api/products/${tee.slug}`).expect(200)).body.product;
+  assert.deepEqual(after.images, ['/uploads/x.svg']); // photos kept
+  assert.equal(after.variants.length, 1);
+  assert.equal(after.variants[0].id, tee.variants.find((v) => v.name === 'S').id); // option kept its id
+  assert.equal(after.variants[0].stock, 9);
+
+  await admin.post('/api/admin/products/import').send({ products: [{ name: '', price: 1 }] }).expect(400);
 });

@@ -32,16 +32,12 @@
       "instagram": "https://instagram.com/margarita.flowers"
     },
     "payments": {
+      "card": {
+        "enabled": true
+      },
       "cod": {
         "enabled": true,
         "fee": 200
-      },
-      "bank": {
-        "enabled": true,
-        "details": "Τράπεζα Πειραιώς\nIBAN: GR00 0000 0000 0000 0000 0000 000\nΔικαιούχος: Μαργαρίτα Π."
-      },
-      "card": {
-        "enabled": true
       }
     },
     "notifications": {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Plus, Trash2, Copy, ExternalLink, Package, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Copy, ExternalLink, Package, ArrowLeft, FileSpreadsheet } from 'lucide-react';
 import { api, qs } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { money } from '../lib/format.js';
@@ -9,6 +9,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { EmptyState, Field, PageLoader, Pagination, Spinner, fieldErrors } from '../components/ui.jsx';
 import { ImageUploader, MoneyInput, PageHeader, SearchInput, Toggle } from './components.jsx';
+import ProductImport from './ProductImport.jsx';
 
 function StockCell({ product, onSaved }) {
   const [value, setValue] = useState(product.stock);
@@ -51,8 +52,10 @@ export function ProductList() {
   const q = params.get('q') || '';
   const category = params.get('category') || '';
   const page = Number(params.get('page') || 1);
-  const { data, setData, loading } = useFetch(`/admin/products${qs({ q, category, page })}`);
+  const { data, setData, loading, reload } = useFetch(`/admin/products${qs({ q, category, page })}`);
   const toast = useToast();
+  const { reload: reloadShop } = useShop();
+  const [importing, setImporting] = useState(false);
 
   const update = (patch) => {
     const next = new URLSearchParams(params);
@@ -75,11 +78,25 @@ export function ProductList() {
         title={t('Products')}
         subtitle={data && t('{n} products', { n: data.total })}
         actions={
-          <Link to="/admin/products/new" className="btn btn-primary">
-            <Plus size={18} /> {t('Add product')}
-          </Link>
+          <>
+            <button className="btn btn-outline" onClick={() => setImporting(true)}>
+              <FileSpreadsheet size={18} /> {t('Import from Excel')}
+            </button>
+            <Link to="/admin/products/new" className="btn btn-primary">
+              <Plus size={18} /> {t('Add product')}
+            </Link>
+          </>
         }
       />
+      {importing && (
+        <ProductImport
+          onClose={() => setImporting(false)}
+          onDone={() => {
+            reload();
+            reloadShop();
+          }}
+        />
+      )}
       <div className="a-filters">
         <SearchInput value={q} onChange={(v) => update({ q: v })} placeholder={t('Search by name or code…')} />
         <select className="input" value={category} onChange={(e) => update({ category: e.target.value })}>
@@ -97,12 +114,17 @@ export function ProductList() {
         <EmptyState
           icon={Package}
           title={q ? t('No products found') : t('No products yet')}
-          text={!q && t('Add your first product to start selling.')}
+          text={!q && t('Add your first product to start selling, or import them all at once from Excel.')}
           action={
             !q && (
-              <Link to="/admin/products/new" className="btn btn-primary">
-                <Plus size={18} /> {t('Add product')}
-              </Link>
+              <div className="row-gap center">
+                <Link to="/admin/products/new" className="btn btn-primary">
+                  <Plus size={18} /> {t('Add product')}
+                </Link>
+                <button className="btn btn-outline" onClick={() => setImporting(true)}>
+                  <FileSpreadsheet size={18} /> {t('Import from Excel')}
+                </button>
+              </div>
             )
           }
         />

@@ -185,6 +185,68 @@ export async function saveProduct(id, data) {
   return getProduct({ id: savedId }, { admin: true });
 }
 
+const importSchema = z.object({
+  dryRun: z.boolean().optional(),
+  products: z
+    .array(
+      productSchema.extend({
+        images: z.array(z.url().max(1000)).max(20).default([]),
+        categoryName: z.string().trim().max(100).optional().default(''),
+        featured: z.boolean().optional(),
+        active: z.boolean().optional(),
+      }),
+    )
+    .min(1)
+    .max(50),
+});
+
+/**
+ * Bulk import from the admin's Excel upload (sent in batches of up to 50).
+ * Products are matched by name: existing ones are updated, others created.
+ * Missing categories are created. `dryRun` only reports which names exist.
+ */
+router.post('/products/import', async (req, res) => {
+  const { products, dryRun } = validate(importSchema, req.body);
+  const names = products.map((p) => p.name.trim().toLowerCase());
+  const existing = await db().all('SELECT id, name FROM products WHERE lower(trim(name)) = ANY($1)', [names]);
+  const byName = new Map(existing.map((p) => [p.name.trim().toLowerCase(), p.id]));
+  if (dryRun) return res.json({ existing: existing.map((p) => p.name) });
+
+  const result = { created: 0, updated: 0, errors: [] };
+  const categoryIds = new Map();
+  for (const item of products) {
+    try {
+      const { categoryName, ...data } = item;
+      let categoryId = null;
+      if (categoryName) {
+        const key = normalizeSearch(categoryName);
+        if (!categoryIds.has(key)) {
+          const found = await db().one('SELECT id FROM categories WHERE search_name = $1', [key]);
+          const id = found?.id ?? (await saveCategory(null, { name: categoryName, description: '', image: null, sortOrder: 0, active: true })).id;
+          categoryIds.set(key, id);
+        }
+        categoryId = categoryIds.get(key);
+      }
+      const id = byName.get(item.name.trim().toLowerCase()) ?? null;
+      const current = id ? await getProduct({ id }, { admin: true }) : null;
+      await saveProduct(id, {
+        ...data,
+        slug: current?.slug,
+        categoryId: categoryId ?? current?.categoryId ?? null,
+        // Keep what the sheet doesn't say: photos, visibility, featured, option ids.
+        images: data.images.length ? data.images : current?.images ?? [],
+        featured: data.featured ?? current?.featured ?? false,
+        active: data.active ?? current?.active ?? true,
+        variants: data.variants.map((v) => ({ ...v, id: current?.variants.find((cv) => cv.name.toLowerCase() === v.name.toLowerCase())?.id })),
+      });
+      result[id ? 'updated' : 'created']++;
+    } catch (err) {
+      result.errors.push({ name: item.name, error: err.message });
+    }
+  }
+  res.json(result);
+});
+
 router.post('/products', async (req, res) => {
   res.status(201).json(await saveProduct(null, validate(productSchema, req.body)));
 });

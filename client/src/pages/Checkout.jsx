@@ -179,6 +179,22 @@ export default function Checkout() {
       </div>
     );
   }
+  if (!settings.paymentMethods.length) {
+    return (
+      <div className="container narrow">
+        <EmptyState
+          icon={Info}
+          title={t('Orders are temporarily unavailable')}
+          text={t('Please try again later or contact us.')}
+          action={
+            <Link to="/contact" className="btn btn-primary">
+              {t('Contact')}
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
   if (!user && !settings.checkout.allowGuest) {
     return (
       <div className="container narrow">
