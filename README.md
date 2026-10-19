@@ -90,6 +90,3 @@ client/src/
 .github/workflows/         νυχτερινά backup
 docs/                      ερωτηματολόγιο, οδηγός νέου πελάτη
 ```
-
-Εναλλακτικά (χωρίς Vercel) το κατάστημα τρέχει και με Docker σε δικό σας server: `docker compose up -d --build`
-με `DATABASE_URL` στο `.env`.
