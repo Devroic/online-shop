@@ -1,0 +1,14 @@
+services:
+  shop:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    ports:
+      - "4000:4000"
+    volumes:
+      - shop-data:/data
+
+volumes:
+  shop-data:

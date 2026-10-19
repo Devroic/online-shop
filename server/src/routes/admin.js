@@ -8,6 +8,8 @@ import { getProduct, listProducts, serializeCategory } from '../services/catalog
 import { ORDER_STATUSES, PAYMENT_STATUSES, getOrder, serializeOrder, updateOrder } from '../services/orders.js';
 import { deleteUpload, saveImage, upload } from '../uploads.js';
 import { sendStatusUpdate } from '../email.js';
+import { stripeReady } from '../services/payments.js';
+import { config } from '../config.js';
 
 const router = Router();
 router.use(requireAdmin);
@@ -504,7 +506,9 @@ router.delete('/messages/:id', (req, res) => {
 
 /* -------------------------------------------------------------- settings */
 
-router.get('/settings', (_req, res) => res.json(getSettings()));
+router.get('/settings', (_req, res) =>
+  res.json({ ...getSettings(), _meta: { stripeConfigured: stripeReady(), smtpConfigured: !!config.smtp.host } }),
+);
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #RRGGBB colour');
 const settingsSchema = z

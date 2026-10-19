@@ -75,6 +75,14 @@ router.get('/mine', requireUser, (req, res) => {
   res.json(rows.map((o) => serializeOrder(o)));
 });
 
+/** "Track my order": exchanges order number + email for the order link. */
+router.post('/lookup', checkoutLimiter, (req, res) => {
+  const { number, email } = validate(z.object({ number: z.string().trim().max(40), email: z.string().trim().max(200) }), req.body);
+  const order = getOrder({ number: number.replace(/^#/, '') });
+  if (!order || order.email.toLowerCase() !== email.toLowerCase()) throw notFound('Order not found');
+  res.json({ number: order.number, token: order.accessToken });
+});
+
 /** Order page: visible to its owner, an admin, or anyone holding the secret link token. */
 router.get('/:number', async (req, res) => {
   let order = getOrder({ number: req.params.number });

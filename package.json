@@ -11,7 +11,7 @@
     "dev": "concurrently -n api,web -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client",
     "start": "npm run start -w server",
-    "seed": "npm run seed -w server",
+    "seed": "npm run seed -w server --",
     "configure": "npm run configure -w server --",
     "create-admin": "npm run create-admin -w server --",
     "test": "npm test -w server",

@@ -1,0 +1,50 @@
+{
+  "settings": {
+    "storeName": "Ανθοπωλείο Μαργαρίτα",
+    "tagline": "Φρέσκα λουλούδια με αγάπη, κάθε μέρα",
+    "language": "el",
+    "currency": "EUR",
+    "locale": "el-GR",
+    "theme": {
+      "primary": "#9f1239",
+      "accent": "#e11d48",
+      "background": "#fffbfb",
+      "surface": "#fdf2f4",
+      "text": "#2a0a12",
+      "radius": 14,
+      "font": "Manrope"
+    },
+    "announcement": "Αυθημερόν παράδοση στη Θεσσαλονίκη για παραγγελίες έως τις 14:00",
+    "hero": {
+      "title": "Λουλούδια για κάθε στιγμή",
+      "subtitle": "Μπουκέτα, συνθέσεις και φυτά εσωτερικού χώρου.",
+      "ctaText": "Δείτε τις συνθέσεις",
+      "ctaLink": "/products"
+    },
+    "contact": {
+      "email": "info@margarita-flowers.gr",
+      "phone": "2310 000 000",
+      "address": "Τσιμισκή 1, Θεσσαλονίκη",
+      "hours": "Δευ-Σαβ 09:00-21:00"
+    },
+    "social": { "instagram": "https://instagram.com/margarita.flowers" },
+    "payments": {
+      "cod": { "enabled": true, "fee": 200 },
+      "bank": { "enabled": true, "details": "Τράπεζα Πειραιώς\nIBAN: GR00 0000 0000 0000 0000 0000 000\nΔικαιούχος: Μαργαρίτα Π." },
+      "card": { "enabled": true }
+    },
+    "notifications": { "orderEmail": "orders@margarita-flowers.gr" },
+    "orderPrefix": "MF-"
+  },
+  "shipping": [
+    { "name": "Παράδοση στη Θεσσαλονίκη", "description": "Αυθημερόν για παραγγελίες έως τις 14:00", "price": 400, "freeOver": 4000 },
+    { "name": "Courier σε όλη την Ελλάδα", "description": "1-2 εργάσιμες (μόνο φυτά)", "price": 600 },
+    { "name": "Παραλαβή από το κατάστημα", "description": "Τσιμισκή 1", "price": 0, "requiresAddress": false }
+  ],
+  "categories": ["Μπουκέτα", "Συνθέσεις", "Φυτά", "Γάμος & Βάπτιση"],
+  "coupons": [{ "code": "WELCOME10", "type": "percent", "value": 10 }],
+  "pages": {
+    "about": { "title": "Σχετικά με εμάς", "content": "## Η ιστορία μας\n\nΑπό το 1998 φτιάχνουμε..." }
+  },
+  "admin": { "email": "owner@margarita-flowers.gr", "password": "change-me-please" }
+}
