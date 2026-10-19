@@ -14,8 +14,7 @@
     "seed": "npm run seed -w server --",
     "configure": "npm run configure -w server --",
     "create-admin": "npm run create-admin -w server --",
-    "test": "npm test -w server",
-    "lint": "npm run lint -w client"
+    "test": "npm test -w server"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"
