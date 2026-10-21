@@ -11,7 +11,6 @@ export function availablePaymentMethods(settings, stripeReady) {
   const out = [];
   if (p.card.enabled && stripeReady) out.push('card');
   if (p.cod.enabled) out.push('cod');
-  if (p.bank.enabled) out.push('bank');
   return out;
 }
 

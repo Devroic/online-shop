@@ -16,7 +16,6 @@ const strings = {
   'Payment fee': 'Χρέωση πληρωμής',
   Total: 'Σύνολο',
   Payment: 'Πληρωμή',
-  'Bank transfer details': 'Στοιχεία τραπεζικής κατάθεσης',
   Reference: 'Αιτιολογία',
   'Thank you for your order!': 'Ευχαριστούμε για την παραγγελία σας!',
   'Hi {name},': 'Γεια σας {name},',
@@ -68,8 +67,6 @@ const strings = {
   'Shop the products': 'Δείτε τα προϊόντα',
   '1 Example Street, Athens': 'Οδός Παραδείγματος 1, Αθήνα',
   'Mon-Fri 9:00-17:00': 'Δευ-Παρ 9:00-17:00',
-  'Bank: Demo Bank\nIBAN: GR00 0000 0000 0000 0000 0000 000\nAccount holder: Demo Store':
-    'Τράπεζα: Demo Bank\nIBAN: GR00 0000 0000 0000 0000 0000 000\nΔικαιούχος: Demo Store',
   Clothing: 'Ρούχα',
   'Comfortable, quality clothes for every day.': 'Άνετα και ποιοτικά ρούχα για κάθε μέρα.',
   Accessories: 'Αξεσουάρ',

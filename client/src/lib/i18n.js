@@ -50,5 +50,4 @@ export const PAYMENT_STATUS = {
 export const PAYMENT_METHOD = {
   card: 'Credit / debit card',
   cod: 'Cash on delivery',
-  bank: 'Bank transfer',
 };

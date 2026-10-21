@@ -47,12 +47,10 @@ export const DEFAULT_SETTINGS = {
     instagram: '',
     tiktok: '',
   },
-  // Card (Stripe) is the default; cash on delivery only if the shop wants it;
-  // bank transfer is available but off unless turned on in the admin.
+  // Card (Stripe) is on by default; cash on delivery is available but off.
   payments: {
     card: { enabled: true },
     cod: { enabled: false, fee: 0 },
-    bank: { enabled: false, details: '' },
   },
   login: {
     // Needs the provider enabled in the shop's Supabase project (see docs/NEW_CLIENT.md).

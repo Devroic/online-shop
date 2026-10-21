@@ -263,20 +263,6 @@ function Checkout({ s, set, meta, pages }) {
             </div>
           )}
         </div>
-        <div className="pay-block">
-          <Toggle checked={s.payments.bank.enabled} onChange={(v) => set('payments.bank.enabled', v)} label={t('Bank transfer')} />
-          {s.payments.bank.enabled && (
-            <Field
-              className="indent"
-              as="textarea"
-              rows={4}
-              label={t('Bank details shown to the customer')}
-              value={s.payments.bank.details}
-              onChange={(e) => set('payments.bank.details', e.target.value)}
-              placeholder={t('Bank: …\nIBAN: …\nAccount holder: …')}
-            />
-          )}
-        </div>
       </section>
       <section className="card">
         <h3>{t('Customer sign-in')}</h3>

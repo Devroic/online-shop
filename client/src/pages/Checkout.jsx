@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CreditCard, Banknote, Landmark, Lock, Tag, X, ChevronDown, ShoppingBag, Info } from 'lucide-react';
+import { CreditCard, Banknote, Lock, Tag, X, ChevronDown, ShoppingBag, Info } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
@@ -11,7 +11,7 @@ import { t, PAYMENT_METHOD } from '../lib/i18n.js';
 import { Checkbox, EmptyState, Field, Spinner, fieldErrors, useTitle } from '../components/ui.jsx';
 import { problemText, useQuote } from '../components/useQuote.js';
 
-const PAYMENT_ICONS = { card: CreditCard, cod: Banknote, bank: Landmark };
+const PAYMENT_ICONS = { card: CreditCard, cod: Banknote };
 const COUPON_ERRORS = {
   coupon_invalid: 'This code is not valid',
   coupon_expired: 'This code has expired',
@@ -345,7 +345,6 @@ export default function Checkout() {
                       <div className="muted small">
                         {m === 'card' && t('Pay securely on the next page')}
                         {m === 'cod' && (settings.payments.cod.fee ? t('Extra fee {amount}', { amount: money(settings.payments.cod.fee) }) : t('Pay when you receive your order'))}
-                        {m === 'bank' && t('Bank details are shown after you place the order')}
                       </div>
                     </div>
                   </label>

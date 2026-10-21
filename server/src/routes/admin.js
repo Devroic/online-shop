@@ -622,7 +622,6 @@ const settingsSchema = z
     payments: z
       .object({
         cod: z.object({ enabled: z.boolean(), fee: money }).partial(),
-        bank: z.object({ enabled: z.boolean(), details: z.string().max(2000) }).partial(),
         card: z.object({ enabled: z.boolean() }).partial(),
       })
       .partial(),

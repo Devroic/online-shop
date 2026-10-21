@@ -44,7 +44,7 @@ before(async () => {
   admin = request.agent(app);
   await admin.post('/api/auth/login').send({ email: 'admin@test.dev', password: 'password123' }).expect(200);
   // Tests pay offline (no Stripe keys here).
-  await admin.put('/api/admin/settings').send({ payments: { cod: { enabled: true }, bank: { enabled: true } } }).expect(200);
+  await admin.put('/api/admin/settings').send({ payments: { cod: { enabled: true } } }).expect(200);
   courierId = (await db().one('SELECT id FROM shipping_methods WHERE requires_address LIMIT 1')).id;
 });
 
@@ -160,12 +160,10 @@ test('customer registers, sees linked guest orders', async () => {
   await user.get('/api/admin/stats').expect(403);
 });
 
-test('default payment settings: card on, offline methods off', async () => {
+test('default payment settings: card on, cash on delivery off, no bank transfer', async () => {
   const { DEFAULT_SETTINGS } = await import('../src/settings.js');
-  assert.deepEqual(
-    [DEFAULT_SETTINGS.payments.card.enabled, DEFAULT_SETTINGS.payments.cod.enabled, DEFAULT_SETTINGS.payments.bank.enabled],
-    [true, false, false],
-  );
+  assert.deepEqual(Object.keys(DEFAULT_SETTINGS.payments).sort(), ['card', 'cod']);
+  assert.deepEqual([DEFAULT_SETTINGS.payments.card.enabled, DEFAULT_SETTINGS.payments.cod.enabled], [true, false]);
 });
 
 test('settings are public except notification email', async () => {
@@ -173,7 +171,7 @@ test('settings are public except notification email', async () => {
   const res = await request(app).get('/api/settings').expect(200);
   assert.equal(res.body.settings.storeName, 'Acme');
   assert.equal(res.body.settings.notifications, undefined);
-  assert.deepEqual(res.body.settings.paymentMethods, ['cod', 'bank']);
+  assert.deepEqual(res.body.settings.paymentMethods, ['cod']);
   await admin.put('/api/admin/settings').send({ theme: { primary: 'red' } }).expect(400);
 });
 

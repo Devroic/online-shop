@@ -1,8 +1,7 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { CircleCheck, Landmark, Copy, Package, Truck, Clock, XCircle } from 'lucide-react';
+import { CircleCheck, Package, Truck, Clock, XCircle } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useToast } from '../context/ToastContext.jsx';
 import { money, dateTime } from '../lib/format.js';
 import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
 import { EmptyState, PageLoader, useTitle } from '../components/ui.jsx';
@@ -106,7 +105,6 @@ export default function OrderPage() {
   const token = params.get('token');
   const isNew = params.get('new') === '1' || params.get('paid') === '1';
   const { user } = useAuth();
-  const toast = useToast();
   const { data, loading, error } = useFetch(`/orders/${encodeURIComponent(number)}${token ? `?token=${encodeURIComponent(token)}` : ''}`);
   useTitle(t('Order #{n}', { n: number }));
 
@@ -127,7 +125,7 @@ export default function OrderPage() {
       </div>
     );
   }
-  const { order, bankDetails } = data;
+  const { order } = data;
   const a = order.address;
 
   return (
@@ -164,28 +162,6 @@ export default function OrderPage() {
               </p>
             )}
           </section>
-
-          {order.paymentMethod === 'bank' && order.paymentStatus === 'pending' && order.status !== 'cancelled' && bankDetails && (
-            <section className="card bank-box">
-              <h3>
-                <Landmark size={20} /> {t('Complete your payment by bank transfer')}
-              </h3>
-              <pre>{bankDetails}</pre>
-              <p>
-                {t('Amount')}: <strong>{money(order.total)}</strong>
-                <br />
-                {t('Reference')}: <strong>{order.number}</strong>{' '}
-                <button
-                  className="link-btn"
-                  onClick={() => navigator.clipboard?.writeText(order.number).then(() => toast.success(t('Copied')))}
-                  aria-label={t('Copy')}
-                >
-                  <Copy size={14} />
-                </button>
-              </p>
-              <p className="muted small">{t('Your order will be shipped as soon as we receive the payment.')}</p>
-            </section>
-          )}
 
           <section className="card">
             <h3>{t('Delivery')}</h3>

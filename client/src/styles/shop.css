@@ -1225,23 +1225,6 @@
   font-weight: 600;
   align-items: center;
 }
-.bank-box {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg));
-}
-.bank-box h3 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.bank-box pre {
-  font-family: inherit;
-  white-space: pre-wrap;
-  background: var(--bg);
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-}
 .center-actions {
   display: flex;
   flex-wrap: wrap;

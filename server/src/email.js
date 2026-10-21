@@ -102,15 +102,9 @@ const orderLink = (order) => `${config.publicUrl}/order/${order.number}?token=${
 export async function sendOrderConfirmation(order) {
   const s = await getSettings();
   const t = translator(order.language || s.language);
-  const bank =
-    order.paymentMethod === 'bank' && s.payments.bank.details
-      ? `<div style="background:#f4f4f5;padding:12px;border-radius:8px;margin-top:16px;white-space:pre-line">
-         <strong>${t('Bank transfer details')}</strong><br>${esc(s.payments.bank.details)}<br>
-         ${t('Reference')}: <strong>${esc(order.number)}</strong></div>`
-      : '';
   const body = `<h2 style="margin-top:0">${t('Thank you for your order!')}</h2>
     <p>${t('Hi {name},', { name: esc(order.customerName) })}<br>${t('we have received your order {number}.', { number: `<strong>#${esc(order.number)}</strong>` })}</p>
-    ${orderTable(order, s, t)}${bank}
+    ${orderTable(order, s, t)}
     <p style="margin-top:24px">${button(orderLink(order), t('View order'), s.theme.primary)}</p>`;
   return sendMail({ to: order.email, subject: `${t('Order confirmation')} #${order.number}`, html: layout(s, body) });
 }

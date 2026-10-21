@@ -32,7 +32,7 @@ const checkoutSchema = z.object({
   phone: z.string().trim().max(40).optional().default(''),
   address: addressSchema.nullish(),
   shippingMethodId: z.number().int().positive(),
-  paymentMethod: z.enum(['cod', 'bank', 'card']),
+  paymentMethod: z.enum(['card', 'cod']),
   couponCode: z.string().trim().max(50).optional(),
   notes: z.string().trim().max(1000).optional().default(''),
   saveAddress: z.boolean().optional(),
@@ -96,11 +96,7 @@ router.get('/:number', async (req, res) => {
     if (result.justPaid) notifyNewOrder(order);
   }
   const { adminNotes, ...visible } = order;
-  const settings = await getSettings();
-  res.json({
-    order: visible,
-    bankDetails: order.paymentMethod === 'bank' ? settings.payments.bank.details : undefined,
-  });
+  res.json({ order: visible });
 });
 
 export default router;

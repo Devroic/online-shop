@@ -11,7 +11,7 @@ every client: each client is a separate Vercel project with its own Supabase dat
 | Backend | Node.js + Express 5, running as a Vercel Function |
 | Database & images | PostgreSQL + Storage in each client's **Supabase** project |
 | Email | **Resend** (SMTP also supported) |
-| Payments | Card via **Stripe** (default), optional cash on delivery / bank transfer |
+| Payments | Card via **Stripe** (on by default), optional cash on delivery (off by default) |
 | Customer sign-in | Email & password, **Google**, **Apple** (via Supabase Auth) |
 | Languages | Greek / English |
 
