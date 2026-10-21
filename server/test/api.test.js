@@ -250,3 +250,8 @@ test('orders remember the visitor language; store pickup starts disabled', async
   const pickup = await db().one('SELECT active FROM shipping_methods WHERE NOT requires_address');
   assert.equal(pickup.active, false);
 });
+
+test('language switch is off by default', async () => {
+  const { DEFAULT_SETTINGS } = await import('../src/settings.js');
+  assert.equal(DEFAULT_SETTINGS.languageSwitch, false);
+});

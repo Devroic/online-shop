@@ -9,8 +9,9 @@ export const DEFAULT_SETTINGS = {
   logoUrl: '',
   faviconUrl: '',
   language: 'el',
-  // Show a Greek/English switch to visitors (UI texts only; products stay as written).
-  languageSwitch: true,
+  // Greek/English switch for visitors (UI texts only; products stay as written).
+  // Off by default: turn it on in Settings → General for shops that want it.
+  languageSwitch: false,
   currency: 'EUR',
   locale: 'el-GR',
   theme: {
