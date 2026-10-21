@@ -45,7 +45,7 @@ To try real services locally, fill in the optional keys in `.env` (copy `.env.ex
    Supabase → Resend → Stripe → `npm run configure` → Vercel → domain → checks → backup.
    It includes copy-paste templates for the client's `.env` and `clients/<client>.json`.
 
-Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain emails, IBANs and passwords.
+Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain emails, keys and passwords.
 
 ## Features
 

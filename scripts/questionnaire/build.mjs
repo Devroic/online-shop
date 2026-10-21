@@ -35,65 +35,30 @@ const C = {
 
 // ---------------------------------------------------------------- content
 // Blocks: h (section), p (paragraph), field, row (two fields), check, note, warn.
+// Only what is needed before the shop is set up. Everything else (logo,
+// colours, shipping, cash on delivery, contact details, products) the client
+// fills in from the admin after handover.
 const CONTENT = [
   { type: 'h', text: '1. Your shop' },
-  { type: 'field', name: 'store_name', label: 'Shop name' },
-  { type: 'field', name: 'brand_color', label: 'Brand colour (optional)', hint: 'e.g. "dark green" or #14532d. Leave empty and we will choose.' },
-  { type: 'field', name: 'domain', label: 'Domain (website address)', hint: 'e.g. myshop.gr' },
-  { type: 'checks', items: [['domain_have', 'I already have it'], ['domain_buy', 'Please buy it for me']] },
-  { type: 'note', text: 'Logo: email it to {email} (ideally PNG or SVG with a transparent background).' },
-
-  { type: 'h', text: '2. Contact' },
   { type: 'row', fields: [
-    { name: 'contact_email', label: 'Email', hint: 'Shown in the shop; orders are sent here and you use it to sign in to the admin.' },
-    { name: 'contact_phone', label: 'Phone', hint: 'Shown in the shop' },
+    { name: 'store_name', label: 'Shop name' },
+    { name: 'domain', label: 'Domain (website address)', hint: 'e.g. myshop.gr' },
   ] },
-  { type: 'p', text: 'Only if you want a different email for any of these (otherwise leave them empty):' },
-  { type: 'row', fields: [
-    { name: 'orders_email', label: 'Email for new orders' },
-    { name: 'admin_email', label: 'Email for the admin' },
-  ] },
-  { type: 'h', text: '3. Shipping' },
-  { type: 'p', text: 'Tick the methods you offer and write what they cost the customer.' },
-  { type: 'options', items: [
-    { check: 'ship_courier', label: 'Courier', fields: [{ name: 'ship_courier_price', label: 'Cost (€)', width: 70 }] },
-    { check: 'ship_pickup', label: 'Store pickup', fields: [{ name: 'ship_pickup_price', label: 'Cost (€)', width: 70, value: '0' }, { name: 'ship_pickup_address', label: 'Pickup address', width: 190 }] },
-    { check: 'ship_other', label: 'Other method', fields: [{ name: 'ship_other_price', label: 'Cost (€)', width: 70 }, { name: 'ship_other_name', label: 'Which? (e.g. post office, own delivery)', width: 190 }] },
-  ] },
-  { type: 'field', name: 'free_shipping', label: 'Free shipping for orders over (€) — optional', width: 0.5 },
+  { type: 'checks', items: [['domain_have', 'I already have it: I will give you access to its DNS settings'], ['domain_buy', 'Please buy it for me']] },
 
-  { type: 'h', text: '4. Payments' },
-  { type: 'p', text: 'Your customers pay online by card, Apple Pay or Google Pay through Stripe. The money is paid into your bank account.' },
-  { type: 'checks', items: [['cod', 'I also accept cash on delivery']] },
-  { type: 'field', name: 'cod_fee', label: 'Cash on delivery fee (€) — if any', width: 0.5 },
+  { type: 'h', text: '2. Email' },
+  { type: 'field', name: 'email', label: 'Shop email', hint: 'New orders arrive here and you use it to sign in to the shop\'s admin. We also create the shop\'s accounts (database, email sending, Stripe) with it, so you will receive a few confirmation emails from us.' },
 
-  { type: 'h', text: '5. Details for Stripe (card payments)' },
-  { type: 'p', text: 'Stripe needs the following to open your business payment account. Legal name, VAT number and address also appear in the shop\'s terms, as the law requires.' },
-  { type: 'checks', label: 'Business type', items: [['type_sole', 'Sole trader / self-employed'], ['type_company', 'Company']] },
-  { type: 'field', name: 'legal_name', label: 'Legal name (as registered with the tax office)' },
+  { type: 'h', text: '3. Business details' },
+  { type: 'p', text: 'The law requires them in the shop\'s terms.' },
   { type: 'row', fields: [
+    { name: 'legal_name', label: 'Legal name (as registered with the tax office)' },
     { name: 'vat', label: 'VAT number' },
-    { name: 'activity', label: 'What you sell (briefly)', hint: 'e.g. clothes, cosmetics' },
   ] },
   { type: 'field', name: 'address', label: 'Business address', hint: 'Street, number, postcode, city' },
-  { type: 'row', fields: [
-    { name: 'owner_name', label: 'Representative full name', hint: 'Owner or legal representative' },
-    { name: 'owner_dob', label: 'Representative date of birth', hint: 'DD/MM/YYYY' },
-  ] },
-  { type: 'row', fields: [
-    { name: 'owner_phone', label: 'Representative mobile', hint: 'For Stripe\'s verification code' },
-    { name: 'owner_email', label: 'Representative email', hint: 'Only if different from the email in section 2' },
-  ] },
-  { type: 'field', name: 'partners', label: 'Companies only: partners owning more than 25%', lines: 2, hint: 'Full name and percentage of each' },
-  { type: 'row', fields: [
-    { name: 'iban', label: 'IBAN', hint: 'Where payments will be paid out' },
-    { name: 'iban_holder', label: 'Account holder' },
-  ] },
-  { type: 'field', name: 'statement', label: 'Name on the customer\'s card statement (up to 22 characters)', hint: 'e.g. MYSHOP.GR · Leave empty and we will use the shop name.', width: 0.6 },
-  { type: 'warn', text: 'Stripe will also ask you to verify your identity (photo of your ID card or passport) through a secure link we will send you. Do not send a photo of your ID by email.' },
 
-  { type: 'h', text: '6. Anything else?' },
-  { type: 'field', name: 'notes', label: 'Anything else you want to tell us', lines: 4, hint: 'e.g. ideas for the look, websites you like, when you want the shop to open' },
+  { type: 'note', text: 'Card payments: your customers pay by card, Apple Pay or Google Pay through Stripe and the money is paid into your bank account. We will send you a link to complete your Stripe account yourself (business details, IBAN, identity check). Do not send us an IBAN or a photo of your ID by email.' },
+
 ];
 
 // ----------------------------------------------------------------- layout
@@ -136,14 +101,14 @@ function newPage(first = false) {
   pages.push(page);
   y = PAGE[1] - M;
   if (first) {
-    page.drawRectangle({ x: 0, y: PAGE[1] - 150, width: PAGE[0], height: 150, color: C.ink });
-    page.drawText(t('Questionnaire'), { x: M, y: PAGE[1] - 70, size: 26, font: bold, color: C.white });
-    page.drawText(t('for your online shop'), { x: M, y: PAGE[1] - 96, size: 16, font: regular, color: rgb(0.8, 0.83, 0.9) });
+    page.drawRectangle({ x: 0, y: PAGE[1] - 120, width: PAGE[0], height: 120, color: C.ink });
+    page.drawText(t('Questionnaire'), { x: M, y: PAGE[1] - 60, size: 26, font: bold, color: C.white });
+    page.drawText(t('for your online shop'), { x: M, y: PAGE[1] - 86, size: 16, font: regular, color: rgb(0.8, 0.83, 0.9) });
     page.drawText('Devroic', { x: PAGE[0] - M - bold.widthOfTextAtSize('Devroic', 12), y: PAGE[1] - 40, size: 12, font: bold, color: rgb(0.65, 0.7, 0.8) });
-    y = PAGE[1] - 150 - 26;
+    y = PAGE[1] - 120 - 22;
     const intro = [
       'Fill in the fields directly in this PDF (Adobe Reader, Preview on Mac or Chrome/Edge), save it and send it to {email}.',
-      'It takes about 10 minutes. Leave empty anything you don\'t know yet; everything else (products, photos, texts) you will add yourself from the shop\'s admin.',
+      'It takes 2 minutes. Everything else (logo, colours, shipping costs, products, photos, texts) you add yourself from the shop\'s admin, and you can change it at any time.',
     ];
     for (const line of intro) text(t(line), { size: 10.5, color: C.ink, gap: 6 });
     y -= 6;
@@ -166,7 +131,7 @@ function text(content, { size = 10, font = regular, color = C.ink, gap = 4, x = 
 
 function heading(title, breakBefore) {
   if (breakBefore) newPage();
-  else ensure(120); // keep the heading with its first field
+  else ensure(90); // keep the heading with its first field
   y -= 14;
   page.drawText(title, { x: M, y: y - 14, size: 14, font: bold, color: C.ink });
   y -= 22;
