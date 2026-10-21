@@ -30,7 +30,8 @@ export const config = {
   uploadsDir: path.join(dataDir, 'uploads'),
   timezone: env.SHOP_TIMEZONE || 'Europe/Athens',
   supabase: {
-    url: env.SUPABASE_URL?.replace(/\/$/, ''),
+    // Only the origin: a URL copied with /rest/v1/ breaks storage and sign-in.
+    url: env.SUPABASE_URL ? new URL(env.SUPABASE_URL).origin : undefined,
     anonKey: env.SUPABASE_ANON_KEY,
     serviceKey: env.SUPABASE_SERVICE_ROLE_KEY,
     bucket: env.SUPABASE_BUCKET || 'shop',
