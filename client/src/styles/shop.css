@@ -1485,3 +1485,26 @@
 :root[data-theme='dark'] .gallery-main {
   background: #1d2026;
 }
+
+/* --------------------------------------------------------- language switch */
+
+.lang-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  margin: 0 4px;
+}
+.lang-switch button {
+  border: 0;
+  background: none;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.lang-switch button.active {
+  background: var(--text);
+  color: var(--bg);
+}

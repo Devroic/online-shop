@@ -240,3 +240,13 @@ test('bulk import creates and updates products, categories and options', async (
 
   await admin.post('/api/admin/products/import').send({ products: [{ name: '', price: 1 }] }).expect(400);
 });
+
+test('orders remember the visitor language; store pickup starts disabled', async () => {
+  const p = await admin.post('/api/admin/products').send({ name: 'Lang test', price: 100, stock: 5 }).expect(201);
+  const en = await request(app).post('/api/orders').set('X-Shop-Lang', 'en').send(checkout({ items: [{ productId: p.body.id, quantity: 1 }] })).expect(201);
+  assert.equal(en.body.order.language, 'en');
+  const def = await request(app).post('/api/orders').set('X-Shop-Lang', 'xx').send(checkout({ items: [{ productId: p.body.id, quantity: 1 }] })).expect(201);
+  assert.equal(def.body.order.language, 'el'); // unknown → shop default
+  const pickup = await db().one('SELECT active FROM shipping_methods WHERE NOT requires_address');
+  assert.equal(pickup.active, false);
+});

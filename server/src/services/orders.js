@@ -184,8 +184,8 @@ export async function createOrder(input, { user, stripeReady }) {
     const { id } = await t.one(
       `INSERT INTO orders (number, access_token, user_id, email, phone, customer_name, shipping_address,
          shipping_method_id, shipping_name, shipping_cost, payment_method, payment_fee, subtotal, discount,
-         coupon_code, total, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+         coupon_code, total, notes, language)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id`,
       [
         `tmp-${token}`,
         token,
@@ -204,6 +204,7 @@ export async function createOrder(input, { user, stripeReady }) {
         quote.coupon?.code ?? null,
         quote.total,
         input.notes || '',
+        input.language || null,
       ],
     );
     await t.query('UPDATE orders SET number = $1 WHERE id = $2', [`${settings.orderPrefix || ''}${1000 + id}`, id]);
@@ -260,6 +261,7 @@ export function serializeOrder(o, items, events) {
     notes: o.notes,
     adminNotes: o.admin_notes,
     trackingNumber: o.tracking_number,
+    language: o.language,
     createdAt: o.created_at,
     updatedAt: o.updated_at,
     itemCount: items ? items.reduce((n, i) => n + i.quantity, 0) : o.item_count,

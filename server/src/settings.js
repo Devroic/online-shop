@@ -9,6 +9,8 @@ export const DEFAULT_SETTINGS = {
   logoUrl: '',
   faviconUrl: '',
   language: 'el',
+  // Show a Greek/English switch to visitors (UI texts only; products stay as written).
+  languageSwitch: true,
   currency: 'EUR',
   locale: 'el-GR',
   theme: {

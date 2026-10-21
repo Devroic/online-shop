@@ -12,10 +12,11 @@ const PAGES = [
   ['privacy', 'Privacy Policy', '## Privacy Policy\n\nDescribe what personal data you collect, why, and how customers can exercise their rights (GDPR).'],
 ];
 
-// [name, description, price, freeOver, requiresAddress]
+// [name, description, price, freeOver, requiresAddress, active]
+// Store pickup is ready to switch on from the admin, but off by default.
 const SHIPPING = [
-  ['Courier', 'Delivery in 1-3 business days', 350, 5000, true],
-  ['Store pickup', 'Free', 0, null, false],
+  ['Courier', 'Delivery in 1-3 business days', 350, 5000, true, true],
+  ['Store pickup', 'Free', 0, null, false, false],
 ];
 
 /** Creates pages, shipping methods and the first admin on a brand-new database. */
@@ -29,10 +30,10 @@ export async function ensureInitialData() {
     }
   }
   if (!(await count('shipping_methods'))) {
-    for (const [i, [name, description, price, freeOver, requiresAddress]] of SHIPPING.entries()) {
+    for (const [i, [name, description, price, freeOver, requiresAddress, active]] of SHIPPING.entries()) {
       await db().query(
-        'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
-        [t(name), t(description), price, freeOver, requiresAddress, i],
+        'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, active, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [t(name), t(description), price, freeOver, requiresAddress, active, i],
       );
     }
   }

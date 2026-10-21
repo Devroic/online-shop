@@ -101,7 +101,7 @@ const orderLink = (order) => `${config.publicUrl}/order/${order.number}?token=${
 
 export async function sendOrderConfirmation(order) {
   const s = await getSettings();
-  const t = translator(s.language);
+  const t = translator(order.language || s.language);
   const bank =
     order.paymentMethod === 'bank' && s.payments.bank.details
       ? `<div style="background:#f4f4f5;padding:12px;border-radius:8px;margin-top:16px;white-space:pre-line">
@@ -129,7 +129,7 @@ export async function sendAdminNewOrder(order) {
 
 export async function sendStatusUpdate(order) {
   const s = await getSettings();
-  const t = translator(s.language);
+  const t = translator(order.language || s.language);
   const statusText = t(STATUS_TEXT[order.status]);
   const tracking = order.trackingNumber ? `<p>${t('Tracking number')}: <strong>${esc(order.trackingNumber)}</strong></p>` : '';
   const body = `<h2 style="margin-top:0">${t('Order update')} #${esc(order.number)}</h2>
@@ -138,9 +138,9 @@ export async function sendStatusUpdate(order) {
   return sendMail({ to: order.email, subject: `#${order.number}: ${statusText}`, html: layout(s, body) });
 }
 
-export async function sendPasswordReset(user, token) {
+export async function sendPasswordReset(user, token, lang) {
   const s = await getSettings();
-  const t = translator(s.language);
+  const t = translator(lang || s.language);
   const link = `${config.publicUrl}/account/reset?token=${token}`;
   const body = `<p>${t('We received a request to reset your password.')}</p>
     <p>${button(link, t('Choose a new password'), s.theme.primary)}</p>
@@ -155,9 +155,9 @@ export async function sendContactMessage(msg) {
   return sendMail({ to: s.contact.email, subject: `${t('Contact form')}: ${msg.name}`, html: layout(s, body), replyTo: msg.email });
 }
 
-export async function sendWelcome(user) {
+export async function sendWelcome(user, lang) {
   const s = await getSettings();
-  const t = translator(s.language);
+  const t = translator(lang || s.language);
   const body = `<h2 style="margin-top:0">${t('Welcome, {name}!', { name: esc(user.name) })}</h2>
     <p>${t('Your account at {store} is ready.', { store: `<strong>${esc(s.storeName)}</strong>` })}</p>
     <p>${t('From your account you can follow your orders and save your address for faster checkout.')}</p>

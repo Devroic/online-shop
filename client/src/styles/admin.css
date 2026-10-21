@@ -1051,3 +1051,21 @@ input[type='range'] {
   background: var(--danger-soft);
   color: var(--danger);
 }
+.a-side-prefs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 0 8px;
+}
+.a-side-foot .lang-switch button {
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--muted);
+}
+.a-side-foot .lang-switch button.active {
+  color: var(--bg);
+}
+.a-side-foot .lang-switch button.active,
+.a-side-foot .lang-switch button.active:hover {
+  background: var(--text);
+}

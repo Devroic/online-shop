@@ -602,6 +602,7 @@ const settingsSchema = z
     logoUrl: z.string().max(1000),
     faviconUrl: z.string().max(1000),
     language: z.enum(['el', 'en']),
+    languageSwitch: z.boolean(),
     currency: z.string().length(3),
     locale: z.string().max(20),
     theme: z

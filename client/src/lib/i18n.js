@@ -5,11 +5,17 @@ import el from './locales/el.js';
 // text to a translation. Missing entries fall back to English.
 const dictionaries = { el, en: {} };
 let dict = dictionaries.el;
+let current = 'el';
+
+export const LANGUAGES = ['el', 'en'];
 
 export function setLanguage(lang) {
+  current = lang;
   dict = dictionaries[lang] || {};
   document.documentElement.lang = lang;
 }
+
+export const getLanguage = () => current;
 
 export function t(text, vars) {
   let out = dict[text] ?? text;

@@ -1,3 +1,5 @@
+import { getLanguage } from './i18n.js';
+
 export class ApiError extends Error {
   constructor(status, message, details) {
     super(message);
@@ -8,10 +10,13 @@ export class ApiError extends Error {
 
 async function request(method, url, body) {
   const isForm = body instanceof FormData;
+  // The server uses the visitor's language for emails (order confirmation, welcome…).
+  const headers = { 'X-Shop-Lang': getLanguage() };
+  if (body && !isForm) headers['Content-Type'] = 'application/json';
   const res = await fetch(`/api${url}`, {
     method,
     credentials: 'same-origin',
-    headers: body && !isForm ? { 'Content-Type': 'application/json' } : undefined,
+    headers,
     body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
   });
   const data = res.headers.get('content-type')?.includes('application/json') ? await res.json() : null;

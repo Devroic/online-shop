@@ -78,7 +78,12 @@ function PageModal({ page, onClose, onSaved }) {
           hint={t('## Heading · **bold** · *italic* · - list item · [link text](https://…)')}
         />
       )}
-      <Toggle checked={form.showInFooter} onChange={(v) => set('showInFooter', v)} label={t('Show link in footer')} />
+      <Toggle
+        checked={form.showInFooter}
+        onChange={(v) => set('showInFooter', v)}
+        label={t('Show in the footer, under “Help”')}
+        hint={t('Turn off for pages you only link to yourself.')}
+      />
     </Modal>
   );
 }
@@ -91,7 +96,7 @@ export default function Pages() {
     <>
       <PageHeader
         title={t('Pages')}
-        subtitle={t('About us, terms, privacy policy, shipping & returns…')}
+        subtitle={t('Text pages such as about us, terms and privacy policy. They are listed in the shop’s footer, under “Help”.')}
         actions={
           <button className="btn btn-primary" onClick={() => setEditing({})}>
             <Plus size={18} /> {t('Add page')}
@@ -113,6 +118,7 @@ export default function Pages() {
                   /p/{p.slug} · {t('Updated {date}', { date: date(p.updatedAt) })}
                 </div>
               </div>
+              <span className={`status ${p.showInFooter ? 'status-delivered' : ''}`}>{p.showInFooter ? t('In footer (Help)') : t('Not in footer')}</span>
               <a className="icon-btn" href={`/p/${p.slug}`} target="_blank" rel="noreferrer" aria-label={t('View')}>
                 <ExternalLink size={16} />
               </a>

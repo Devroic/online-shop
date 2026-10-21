@@ -4,7 +4,7 @@ import { Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { t } from '../lib/i18n.js';
+import { LANGUAGES, t } from '../lib/i18n.js';
 
 export function Logo() {
   const { settings } = useShop();
@@ -50,6 +50,38 @@ export function AppearanceToggle({ className = '' }) {
     <button className={`icon-btn ${className}`} onClick={toggleAppearance} aria-label={dark ? t('Light mode') : t('Dark mode')} title={dark ? t('Light mode') : t('Dark mode')}>
       {dark ? <Sun size={21} /> : <Moon size={21} />}
     </button>
+  );
+}
+
+/** A language's own name ("English", and the Greek name for "el"), from the browser. */
+const languageName = (code) => {
+  try {
+    return new Intl.DisplayNames([code], { type: 'language' }).of(code);
+  } catch {
+    return code;
+  }
+};
+
+/** EL | EN switch; hidden when the shop turns it off. */
+export function LanguageSwitch({ className = '' }) {
+  const { settings, language, changeLanguage } = useShop();
+  if (!settings.languageSwitch) return null;
+  return (
+    <div className={`lang-switch ${className}`} role="group" aria-label={t('Language')}>
+      {LANGUAGES.map((code) => (
+        <button
+          key={code}
+          type="button"
+          className={language === code ? 'active' : ''}
+          aria-pressed={language === code}
+          lang={code}
+          title={languageName(code)}
+          onClick={() => changeLanguage(code)}
+        >
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -108,6 +140,7 @@ export default function Header() {
           <button className="icon-btn only-mobile" onClick={() => setSearchOpen((v) => !v)} aria-label={t('Search')}>
             {searchOpen ? <X size={22} /> : <Search size={22} />}
           </button>
+          <LanguageSwitch className="only-desktop" />
           <AppearanceToggle className="only-desktop" />
           <Link to={user ? '/account' : '/login'} className="icon-btn" aria-label={t('Account')}>
             <User size={22} />
@@ -129,6 +162,7 @@ export default function Header() {
         <div className="sheet-head">
           <Logo />
           <div className="row-gap">
+            <LanguageSwitch />
             <AppearanceToggle />
             <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label={t('Close')}>
               <X size={22} />

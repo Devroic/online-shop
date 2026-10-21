@@ -61,7 +61,7 @@ function General({ s, set }) {
       <section className="card">
         <h3>{t('Region')}</h3>
         <div className="grid-3">
-          <Field as="select" label={t('Language')} value={s.language} onChange={(e) => set('language', e.target.value)}>
+          <Field as="select" label={t('Default language')} value={s.language} onChange={(e) => set('language', e.target.value)}>
             <option value="el">{t('Greek')}</option>
             <option value="en">{t('English')}</option>
           </Field>
@@ -85,6 +85,12 @@ function General({ s, set }) {
             ))}
           </Field>
         </div>
+              <Toggle
+          checked={s.languageSwitch}
+          onChange={(v) => set('languageSwitch', v)}
+          label={t('Let visitors switch between Greek and English')}
+          hint={t('Menus, buttons and emails change language. Product names, descriptions and pages stay as you wrote them.')}
+        />
       </section>
       <section className="card">
         <h3>{t('Contact details')}</h3>

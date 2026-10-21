@@ -8,6 +8,7 @@ import { HttpError, badRequest, randomToken, sha256, validate } from '../utils.j
 import { background, sendPasswordReset, sendWelcome } from '../email.js';
 import { getSettings } from '../settings.js';
 import { config } from '../config.js';
+import { requestLanguage } from '../i18n.js';
 
 const router = Router();
 
@@ -53,7 +54,7 @@ router.post('/register', limiter, async (req, res) => {
     data.phone,
   ]);
   await claimGuestOrders(user);
-  background(sendWelcome(user));
+  background(sendWelcome(user, requestLanguage(req, await getSettings())));
   setSession(res, user);
   res.status(201).json({ user: publicUser(user) });
 });
@@ -101,7 +102,7 @@ router.post('/oauth', limiter, async (req, res) => {
     ]);
     await claimGuestOrders(user);
     created = true;
-    background(sendWelcome(user));
+    background(sendWelcome(user, requestLanguage(req, settings)));
   }
   setSession(res, user);
   res.status(created ? 201 : 200).json({ user: publicUser(user), created });
@@ -155,7 +156,7 @@ router.post('/forgot', limiter, async (req, res) => {
       sha256(token),
       user.id,
     ]);
-    background(sendPasswordReset(user, token));
+    background(sendPasswordReset(user, token, requestLanguage(req, await getSettings())));
   }
   // Same answer either way so emails can't be enumerated.
   res.json({ ok: true });

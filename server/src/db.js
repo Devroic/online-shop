@@ -189,6 +189,8 @@ const migrations = [
     LOOP EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t); END LOOP;
   END $$;
   `,
+  // 2: remember the language the customer ordered in, for later emails.
+  `ALTER TABLE orders ADD COLUMN language TEXT;`,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

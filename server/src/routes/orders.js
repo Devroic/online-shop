@@ -10,6 +10,7 @@ import { createCheckoutSession, refreshCardPayment, stripeReady } from '../servi
 import { background, sendAdminNewOrder, sendOrderConfirmation } from '../email.js';
 import { addressSchema } from './auth.js';
 import { config } from '../config.js';
+import { requestLanguage } from '../i18n.js';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.post('/', checkoutLimiter, async (req, res) => {
   if (settings.checkout.requirePhone && !data.phone) {
     throw new HttpError(400, 'Validation failed', { phone: 'required' });
   }
-  const order = await createOrder(data, { user: req.user, stripeReady: stripeReady() });
+  const order = await createOrder({ ...data, language: requestLanguage(req, settings) }, { user: req.user, stripeReady: stripeReady() });
 
   if (order.paymentMethod === 'card') {
     try {

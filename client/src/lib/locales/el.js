@@ -611,4 +611,16 @@ export default {
   'Gift card': 'Κάρτα δώρου',
   Gifts: 'Δώρα',
   'No stock = always available.': 'Χωρίς απόθεμα = πάντα διαθέσιμο.',
+
+  // Pages & languages
+  'Show in the footer, under “Help”': 'Εμφάνιση στο κάτω μέρος, στη στήλη «Βοήθεια»',
+  'Turn off for pages you only link to yourself.': 'Απενεργοποιήστε το για σελίδες που θα συνδέετε μόνοι σας.',
+  'Text pages such as about us, terms and privacy policy. They are listed in the shop’s footer, under “Help”.':
+    'Σελίδες κειμένου, όπως σχετικά με εμάς, όροι χρήσης και πολιτική απορρήτου. Εμφανίζονται στο κάτω μέρος του καταστήματος, στη στήλη «Βοήθεια».',
+  'In footer (Help)': 'Στο κάτω μέρος («Βοήθεια»)',
+  'Not in footer': 'Εκτός κάτω μέρους',
+  'Default language': 'Προεπιλεγμένη γλώσσα',
+  'Let visitors switch between Greek and English': 'Οι επισκέπτες μπορούν να αλλάζουν μεταξύ Ελληνικών και Αγγλικών',
+  'Menus, buttons and emails change language. Product names, descriptions and pages stay as you wrote them.':
+    'Αλλάζουν γλώσσα τα μενού, τα κουμπιά και τα email. Τα ονόματα και οι περιγραφές προϊόντων και οι σελίδες μένουν όπως τα γράψατε.',
 };
