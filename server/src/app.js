@@ -26,7 +26,7 @@ export function createApp() {
         directives: {
           defaultSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
-          // Supabase Auth (Google/Apple sign-in) is called from the browser.
+          // Supabase Auth (Google/Facebook sign-in) is called from the browser.
           connectSrc: ["'self'", 'https://*.supabase.co'],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],

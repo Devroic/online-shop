@@ -43,7 +43,7 @@
     "orderPrefix": "DF-",
     "login": {
       "google": true,
-      "apple": false
+      "facebook": false
     }
   },
   "shipping": [

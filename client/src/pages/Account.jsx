@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { date, money } from '../lib/format.js';
-import { t, ORDER_STATUS } from '../lib/i18n.js';
+import { t, ORDER_STATUS, providerName } from '../lib/i18n.js';
 import { EmptyState, Field, FormAlert, PageLoader, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 
@@ -146,7 +146,7 @@ function Profile() {
         }}
       >
         <h3>{user.hasPassword ? t('Change password') : t('Set a password')}</h3>
-        {!user.hasPassword && <p className="muted small">{t('You sign in with {provider}. You can also set a password to sign in with your email.', { provider: user.provider === 'apple' ? 'Apple' : 'Google' })}</p>}
+        {!user.hasPassword && <p className="muted small">{t('You sign in with {provider}. You can also set a password to sign in with your email.', { provider: providerName(user.provider) })}</p>}
         <div className="grid-2">
           {user.hasPassword && (
           <Field

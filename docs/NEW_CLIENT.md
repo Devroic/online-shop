@@ -142,41 +142,37 @@
   - αντέγραψε **Client ID** και **Client secret** στη Supabase (Google provider) → Save
 - Admin καταστήματος → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Google» → Αποθήκευση.
 
-## Προαιρετικό: σύνδεση πελατών με Apple
+## Προαιρετικό: σύνδεση πελατών με Facebook
 
-Χρειάζεται **Apple Developer account** (99 $/χρόνο). Ένας λογαριασμός (ο δικός σου) αρκεί για όλους
-τους πελάτες: φτιάχνεις ένα Services ID ανά κατάστημα.
+Δωρεάν. Αρκεί ο δικός σου λογαριασμός Facebook για όλους τους πελάτες: μία «εφαρμογή» ανά κατάστημα.
 
 - Κάνε πρώτα τα δύο πρώτα σημεία της Google (URL Configuration στη Supabase), αν δεν τα έχεις κάνει.
-- Supabase → **Authentication → Providers → Apple**: αντέγραψε το **Callback URL** που δείχνει.
-- https://developer.apple.com/account → **Certificates, Identifiers & Profiles**:
-  - **Identifiers → + → App IDs** (μία φορά για όλους τους πελάτες): Description `Devroic shops`,
-    Bundle ID `com.devroic.shops`, τσέκαρε **Sign in with Apple** → Register.
-  - **Identifiers → + → Services IDs**: Description `Margarita`, Identifier `gr.margarita.web` → Register.
-    Άνοιξέ το, τσέκαρε **Sign in with Apple → Configure**:
-    - Primary App ID: `com.devroic.shops`
-    - Domains: το domain της Supabase (π.χ. `abcd1234.supabase.co`, χωρίς `https://`)
-    - Return URLs: το Callback URL της Supabase
-    - Save → Continue → Save
-  - **Keys → +** (μία φορά για όλους): όνομα `Sign in with Apple`, τσέκαρε **Sign in with Apple → Configure**
-    → Primary App ID `com.devroic.shops` → Register → **Download** το αρχείο `.p8` (κατεβαίνει μόνο μία φορά,
-    κράτα το στον password manager). Σημείωσε το **Key ID** και το **Team ID** (πάνω δεξιά στη σελίδα).
-- Supabase → **Providers → Apple**:
-  - Client IDs: `gr.margarita.web`
-  - Secret Key: πάτα τον σύνδεσμο που δείχνει η Supabase για δημιουργία του secret από το `.p8`,
-    με Team ID, Key ID και Services ID → αντέγραψε το αποτέλεσμα → Save
-- Admin καταστήματος → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Apple» → Αποθήκευση.
-- **Βάλε υπενθύμιση σε 5 μήνες**: το Secret Key της Apple λήγει κάθε 6 μήνες. Φτιάχνεις νέο με το ίδιο
-  `.p8` και το αλλάζεις στη Supabase. Αν λήξει, η σύνδεση με Apple σταματά (email και Google δουλεύουν κανονικά).
-- Όποιος πελάτης διαλέξει «Απόκρυψη email», η Apple δίνει μια διεύθυνση `…@privaterelay.appleid.com`.
-  Για να φτάνουν εκεί τα email του καταστήματος: Apple Developer → **Services → Sign in with Apple for Email
-  Communication** → πρόσθεσε τη διεύθυνση του `MAIL_FROM` (π.χ. `orders@margarita.gr`).
+- Supabase → **Authentication → Providers → Facebook**: αντέγραψε το **Callback URL** που δείχνει.
+- Σελίδες → Βοήθεια → **Πολιτική απορρήτου**: πρόσθεσε μια παράγραφο «Διαγραφή δεδομένων»
+  (π.χ. «Για να διαγράψετε τον λογαριασμό και τα δεδομένα σας, στείλτε email στο …»). Το Facebook τη ζητά.
+- https://developers.facebook.com → **My Apps → Create App**:
+  - Use case: **Authenticate and request data from users with Facebook Login**
+  - App name: το όνομα του καταστήματος → Create
+- **Use cases → Facebook Login → Customize**:
+  - Permissions: βεβαιώσου ότι υπάρχει το **email** (πάτα Add αν λείπει)
+  - Settings → **Valid OAuth Redirect URIs**: το Callback URL της Supabase → Save
+- **App settings → Basic**:
+  - App domains: `margarita.gr`
+  - Privacy Policy URL και User data deletion (Data deletion instructions URL): `https://margarita.gr/p/privacy`
+  - Category, App icon (το λογότυπο) → Save
+  - αντέγραψε **App ID** και **App Secret**
+- Supabase → **Providers → Facebook**: Facebook client ID = App ID, Facebook secret = App Secret → Save
+- Facebook → πάνω στη σελίδα **App Mode: Development → Live** (ή **Publish**). Αν σου ζητήσει
+  **Business verification**, ακολούθησε τα βήματα με τα στοιχεία της επιχείρησης του πελάτη.
+- Admin καταστήματος → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Facebook» → Αποθήκευση.
+- Αν κάποιος λογαριασμός Facebook δεν δώσει email, το κατάστημα του ζητά να συνδεθεί με email
+  (χωρίς email δεν μπορούν να σταλούν οι επιβεβαιώσεις παραγγελιών).
 
-## Δοκιμή Google/Apple στον υπολογιστή σου
+## Δοκιμή Google/Facebook στον υπολογιστή σου
 
 - Στο `.env` βάλε `SUPABASE_URL` και `SUPABASE_ANON_KEY` ενός δοκιμαστικού Supabase project.
 - Supabase → **Authentication → URL Configuration → Redirect URLs**: πρόσθεσε `http://localhost:5173/auth/callback`.
-- Admin → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε Google/Apple → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
+- Admin → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε Google/Facebook → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
 
 ---
 

@@ -5,11 +5,11 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { getSupabase } from '../lib/supabase.js';
 import { api } from '../lib/api.js';
 import { t } from '../lib/i18n.js';
-import { PageLoader, useTitle } from '../components/ui.jsx';
+import { FormAlert, PageLoader, useTitle } from '../components/ui.jsx';
 
 const safeNext = (next) => (next && next.startsWith('/') && !next.startsWith('//') ? next : '/account');
 
-/** Google/Apple send the visitor back here; we turn that into a shop session. */
+/** Google/Facebook send the visitor back here; we turn that into a shop session. */
 export default function AuthCallback() {
   const [params] = useSearchParams();
   const { settings } = useShop();
@@ -32,8 +32,12 @@ export default function AuthCallback() {
         await sb.auth.signOut({ scope: 'local' }).catch(() => {});
         setUser(r.user);
         navigate(r.user.role === 'admin' ? '/admin' : safeNext(params.get('next')), { replace: true });
-      } catch {
-        setError(t('Sign-in failed. Please try again.'));
+      } catch (err) {
+        setError(
+          err?.details?.reason === 'no_email'
+            ? t('Your account did not share an email address, which we need for your orders. Please sign in with email instead.')
+            : t('Sign-in failed. Please try again.'),
+        );
       }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -42,7 +46,7 @@ export default function AuthCallback() {
   return (
     <div className="container narrow">
       <div className="card auth-card">
-        <p className="field-error">{error}</p>
+        <FormAlert message={error} />
         <Link to="/login" className="btn btn-primary btn-block">
           {t('Back to sign in')}
         </Link>

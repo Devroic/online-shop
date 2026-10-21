@@ -32,6 +32,9 @@ export function tx(text, nodes) {
   });
 }
 
+/** Display name of a sign-in provider ("google" → "Google"). */
+export const providerName = (p) => ({ google: 'Google', facebook: 'Facebook' })[p] || p;
+
 export const ORDER_STATUS = {
   pending: 'Pending',
   processing: 'Processing',

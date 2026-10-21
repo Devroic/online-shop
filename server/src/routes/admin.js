@@ -622,7 +622,7 @@ const settingsSchema = z
     hero: z.object({ title: z.string().max(200), subtitle: z.string().max(400), imageUrl: z.string().max(1000), ctaText: z.string().max(60), ctaLink: z.string().max(300) }).partial(),
     contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), hours: z.string().max(300) }).partial(),
     social: z.object({ facebook: optUrl, instagram: optUrl, tiktok: optUrl }).partial(),
-    login: z.object({ google: z.boolean(), apple: z.boolean() }).partial(),
+    login: z.object({ google: z.boolean(), facebook: z.boolean() }).partial(),
     payments: z
       .object({
         cod: z.object({ enabled: z.boolean(), fee: money }).partial(),

@@ -512,18 +512,17 @@ export default {
   'Light mode': 'Φωτεινό θέμα',
   'Dark mode': 'Σκούρο θέμα',
   'Customer sign-in': 'Σύνδεση πελατών',
-  'Email & password sign-in is always available. Google and Apple sign-in must first be enabled in the shop’s Supabase project (see the setup guide).':
-    'Η σύνδεση με email και κωδικό είναι πάντα διαθέσιμη. Η σύνδεση με Google και Apple πρέπει πρώτα να ενεργοποιηθεί στο Supabase project του καταστήματος (δείτε τον οδηγό εγκατάστασης).',
+  'Email & password sign-in is always available. Google and Facebook sign-in must first be enabled in the shop’s Supabase project (see the setup guide).':
+    'Η σύνδεση με email και κωδικό είναι πάντα διαθέσιμη. Η σύνδεση με Google και Facebook πρέπει πρώτα να ενεργοποιηθεί στο Supabase project του καταστήματος (δείτε τον οδηγό εγκατάστασης).',
   'Sign in with Google': 'Σύνδεση με Google',
-  'Sign in with Apple': 'Σύνδεση με Apple',
-  'Requires an Apple Developer account (paid yearly by the shop owner).': 'Απαιτεί λογαριασμό Apple Developer (ετήσια συνδρομή που πληρώνει ο ιδιοκτήτης).',
+  'Sign in with Facebook': 'Σύνδεση με Facebook',
   'SUPABASE_URL and SUPABASE_ANON_KEY are not set on the server, so these buttons are hidden from customers.':
     'Τα SUPABASE_URL και SUPABASE_ANON_KEY δεν έχουν οριστεί στον server, οπότε τα κουμπιά δεν εμφανίζονται στους πελάτες.',
   'Redirect URL to add in Supabase → Authentication → URL Configuration:': 'Redirect URL για το Supabase → Authentication → URL Configuration:',
   'Email sending (Resend or SMTP) is not configured on the server, so emails are not sent yet.':
     'Η αποστολή email (Resend ή SMTP) δεν έχει ρυθμιστεί στον server, οπότε δεν στέλνονται email ακόμα.',
   'Continue with Google': 'Συνέχεια με Google',
-  'Continue with Apple': 'Συνέχεια με Apple',
+  'Continue with Facebook': 'Συνέχεια με Facebook',
   'Sign-in failed. Please try again.': 'Η σύνδεση απέτυχε. Δοκιμάστε ξανά.',
   'or with email': 'ή με email',
   'Set a password': 'Ορισμός κωδικού',
@@ -652,12 +651,15 @@ export default {
   'Please sign in': 'Συνδεθείτε για να συνεχίσετε',
   'Product not found': 'Το προϊόν δεν βρέθηκε',
   'Sign-in failed': 'Η σύνδεση απέτυχε',
-  'Social sign-in is not configured': 'Η σύνδεση με Google/Apple δεν έχει ρυθμιστεί',
+  'Social sign-in is not configured': 'Η σύνδεση με Google/Facebook δεν έχει ρυθμιστεί',
   'Some items in your cart changed': 'Κάποια προϊόντα στο καλάθι σας άλλαξαν',
   'This sign-in method is not enabled': 'Αυτός ο τρόπος σύνδεσης δεν είναι ενεργός',
-  'Use social sign-in': 'Συνδεθείτε με Google ή Apple',
+  'Use social sign-in': 'Συνδεθείτε με Google ή Facebook',
   'Validation failed': 'Ελέγξτε τα επισημασμένα πεδία.',
   'You cannot remove your own admin access': 'Δεν μπορείτε να αφαιρέσετε τη δική σας πρόσβαση διαχειριστή',
   'File is too large': 'Το αρχείο είναι πολύ μεγάλο',
   'Something went wrong': 'Κάτι πήγε στραβά, δοκιμάστε ξανά',
+  'No email from provider': 'Ο λογαριασμός δεν έδωσε email',
+  'Your account did not share an email address, which we need for your orders. Please sign in with email instead.':
+    'Ο λογαριασμός σας δεν μας έδωσε διεύθυνση email, που τη χρειαζόμαστε για τις παραγγελίες σας. Συνδεθείτε με email.',
 };

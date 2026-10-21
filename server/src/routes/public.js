@@ -19,8 +19,8 @@ export async function publicSettings() {
   const oauthReady = !!(config.supabase.url && config.supabase.anonKey);
   return {
     ...rest,
-    login: { google: oauthReady && s.login.google, apple: oauthReady && s.login.apple },
-    // Public by design (Supabase "anon" key); used only for Google/Apple sign-in.
+    login: { google: oauthReady && s.login.google, facebook: oauthReady && s.login.facebook },
+    // Public by design (Supabase "anon" key); used only for Google/Facebook sign-in.
     supabase: oauthReady ? { url: config.supabase.url, anonKey: config.supabase.anonKey } : null,
     paymentMethods: availablePaymentMethods(s, stripeReady()),
   };

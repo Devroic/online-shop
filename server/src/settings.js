@@ -55,7 +55,7 @@ export const DEFAULT_SETTINGS = {
   login: {
     // Needs the provider enabled in the shop's Supabase project (see docs/NEW_CLIENT.md).
     google: false,
-    apple: false,
+    facebook: false,
   },
   checkout: {
     requirePhone: true,

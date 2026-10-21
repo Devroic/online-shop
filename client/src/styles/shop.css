@@ -1427,20 +1427,15 @@
   border-color: var(--text);
   color: var(--text);
 }
-.btn-apple {
-  background: #000;
-  border-color: #000;
+.btn-facebook {
+  background: #1877f2;
+  border-color: #1877f2;
   color: #fff;
 }
-.btn-apple:hover {
-  background: #1f1f1f;
+.btn-facebook:hover {
+  background: #166fe5;
+  border-color: #166fe5;
   color: #fff;
-  border-color: #1f1f1f;
-}
-:root[data-theme='dark'] .btn-apple {
-  background: #fff;
-  border-color: #fff;
-  color: #000;
 }
 .divider {
   display: flex;

@@ -308,15 +308,15 @@ function CustomerSignIn({ s, set, meta }) {
   return (
     <section className="card">
       <h3>{t('Customer sign-in')}</h3>
-      <p className="muted small">{t('Email & password sign-in is always available. Google and Apple sign-in must first be enabled in the shop’s Supabase project (see the setup guide).')}</p>
+      <p className="muted small">{t('Email & password sign-in is always available. Google and Facebook sign-in must first be enabled in the shop’s Supabase project (see the setup guide).')}</p>
       <Toggle checked={s.login.google} onChange={(v) => set('login.google', v)} label={t('Sign in with Google')} />
-      <Toggle checked={s.login.apple} onChange={(v) => set('login.apple', v)} label={t('Sign in with Apple')} hint={t('Requires an Apple Developer account (paid yearly by the shop owner).')} />
-      {(s.login.google || s.login.apple) && !meta.socialLoginConfigured && (
+      <Toggle checked={s.login.facebook} onChange={(v) => set('login.facebook', v)} label={t('Sign in with Facebook')} />
+      {(s.login.google || s.login.facebook) && !meta.socialLoginConfigured && (
         <p className="notice small">
           <Info size={16} /> {t('SUPABASE_URL and SUPABASE_ANON_KEY are not set on the server, so these buttons are hidden from customers.')}
         </p>
       )}
-      {(s.login.google || s.login.apple) && meta.supabaseUrl && (
+      {(s.login.google || s.login.facebook) && meta.supabaseUrl && (
         <p className="muted small">
           {t('Redirect URL to add in Supabase → Authentication → URL Configuration:')} <code className="code">{window.location.origin}/auth/callback</code>
         </p>

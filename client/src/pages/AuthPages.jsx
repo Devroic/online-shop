@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
-import { t } from '../lib/i18n.js';
+import { t, providerName } from '../lib/i18n.js';
 import { Field, FormAlert, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 import SocialLogin from '../components/SocialLogin.jsx';
@@ -45,7 +45,7 @@ export function Login() {
                   ? t('Too many attempts, please try again later')
                   : err.details?.provider
                     ? t('This account was created with {provider}. Use that button above, or reset your password.', {
-                        provider: err.details.provider === 'apple' ? 'Apple' : 'Google',
+                        provider: providerName(err.details.provider),
                       })
                     : t('Wrong email or password'),
               });

@@ -63,7 +63,7 @@ router.post('/login', limiter, async (req, res) => {
   const { email, password: pw } = validate(z.object({ email: z.string().max(200), password: z.string().max(200) }), req.body);
   const user = await db().one('SELECT * FROM users WHERE email = $1', [normEmail(email)]);
   if (user && !user.password_hash) {
-    // Account created with Google/Apple and no password set yet.
+    // Account created with Google/Facebook and no password set yet.
     throw new HttpError(401, 'Use social sign-in', { provider: user.auth_provider });
   }
   if (!user || !(await checkPassword(pw, user.password_hash))) throw new HttpError(401, 'Wrong email or password');
@@ -72,7 +72,7 @@ router.post('/login', limiter, async (req, res) => {
 });
 
 /**
- * Google / Apple sign-in. The browser signs in with Supabase Auth and sends
+ * Google / Facebook sign-in. The browser signs in with Supabase Auth and sends
  * us the Supabase access token; we verify it with Supabase, then find or
  * create our own user and start our normal session.
  */
@@ -83,11 +83,13 @@ router.post('/oauth', limiter, async (req, res) => {
   const sb = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await sb.auth.getUser(accessToken);
   const sbUser = data?.user;
-  if (error || !sbUser?.email) throw new HttpError(401, 'Sign-in failed');
+  if (error || !sbUser) throw new HttpError(401, 'Sign-in failed');
+  // Some Facebook accounts have no email (or the visitor declined to share it).
+  if (!sbUser.email) throw new HttpError(401, 'No email from provider', { reason: 'no_email' });
 
   const provider = sbUser.app_metadata?.provider || 'oauth';
   const settings = await getSettings();
-  if (!settings.login[provider]) throw new HttpError(403, 'This sign-in method is not enabled');
+  if (!settings.login?.[provider]) throw new HttpError(403, 'This sign-in method is not enabled');
   if (!sbUser.email_confirmed_at) throw new HttpError(401, 'Email not verified by provider');
 
   const email = normEmail(sbUser.email);

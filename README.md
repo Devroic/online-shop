@@ -12,7 +12,7 @@ every client: each client is a separate Vercel project with its own Supabase dat
 | Database & images | PostgreSQL + Storage in each client's **Supabase** project |
 | Email | **Resend** (SMTP also supported) |
 | Payments | Card via **Stripe** (on by default), optional cash on delivery (off by default) |
-| Customer sign-in | Email & password, **Google**, **Apple** (via Supabase Auth) |
+| Customer sign-in | Email & password, **Google**, **Facebook** (via Supabase Auth) |
 | Languages | Greek / English |
 
 ## Local development
@@ -55,7 +55,7 @@ Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain em
 - Product page: swipeable gallery, options (size/colour…) with their own stock and price, low-stock notice, related products
 - Cart re-checks prices and stock on the server; "€X more for free shipping" bar
 - One-page checkout, guest checkout, discount codes, shipping methods, payment methods
-- Accounts with email or Google/Apple, order history, saved address, password reset
+- Accounts with email or Google/Facebook, order history, saved address, password reset
 - Light/dark appearance that follows the device, with a switch in the header
 - Emails: order confirmation, welcome, shipping updates, password reset
 
@@ -68,7 +68,7 @@ Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain em
 - Pages: home page banner and announcement, text pages under “Help”
 - Shipping & payments: delivery methods, card/cash on delivery, checkout options
 - Appearance: logo, colours (light & dark) with live preview, font
-- Store details: name, contact, order emails, Google/Apple sign-in, stock, SEO
+- Store details: name, contact, order emails, Google/Facebook sign-in, stock, SEO
 
 ## Security
 - Prices, discounts and stock are calculated on the server inside a transaction; two simultaneous
@@ -89,7 +89,7 @@ server/src/
   storage.js               images (Supabase Storage or local)
   email.js                 email (Resend or SMTP)
   services/                catalog, orders (pricing/stock), payments (Stripe)
-  routes/                  public, auth (+Google/Apple), orders, admin, stripe
+  routes/                  public, auth (+Google/Facebook), orders, admin, stripe
   scripts/                 seed, configure, create-admin
 client/src/
   pages/, admin/           storefront, admin panel
