@@ -58,11 +58,14 @@ export async function saveFile(buffer, mimetype) {
   const name = `${new Date().toISOString().slice(0, 7)}/${Date.now().toString(36)}-${randomToken(6)}.${ext}`;
   const sb = supabaseAdmin();
   if (sb) {
-    const { error } = await sb.storage.from(config.supabase.bucket).upload(name, buffer, {
-      contentType: mimetype,
-      cacheControl: '31536000',
-      upsert: false,
-    });
+    const put = () =>
+      sb.storage.from(config.supabase.bucket).upload(name, buffer, { contentType: mimetype, cacheControl: '31536000', upsert: false });
+    let { error } = await put();
+    // A shop deployed straight to Vercel has no bucket until its first upload.
+    if (error && /bucket not found/i.test(error.message)) {
+      await ensureBucket();
+      ({ error } = await put());
+    }
     if (error) throw new Error(`Upload failed: ${error.message}`);
     return sb.storage.from(config.supabase.bucket).getPublicUrl(name).data.publicUrl;
   }
