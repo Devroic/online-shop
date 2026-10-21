@@ -62,3 +62,12 @@ if (!/^[A-Za-z0-9_/+-]+$/.test(config.timezone)) throw new Error('SHOP_TIMEZONE 
 if (isProd && (!config.jwtSecret || config.jwtSecret.length < 32)) {
   throw new Error('JWT_SECRET must be set to a random string of at least 32 characters in production.');
 }
+
+// Supabase's "Direct connection" (db.<ref>.supabase.co) is IPv6-only: most home
+// networks and Vercel can't reach it. The Transaction pooler works everywhere.
+if (/@db\.[a-z0-9]+\.supabase\.co\b/i.test(config.databaseUrl || '')) {
+  throw new Error(
+    'DATABASE_URL is Supabase\'s "Direct connection", which only works over IPv6. ' +
+      'Use the "Transaction pooler" string instead (Supabase → Connect; host ends in pooler.supabase.com, port 6543).',
+  );
+}
