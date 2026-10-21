@@ -33,7 +33,7 @@
         "enabled": true
       },
       "cod": {
-        "enabled": true,
+        "enabled": false,
         "fee": 200
       }
     },

@@ -77,9 +77,6 @@ await updateSettings({
     ctaLink: '/products',
   },
   contact: { email: 'info@example.com', phone: '210 000 0000', address: t('1 Example Street, Athens'), hours: t('Mon-Fri 9:00-17:00') },
-  // Demo only: without Stripe keys card payments are hidden, so turn on cash
-  // on delivery to be able to place test orders. Real shops keep the defaults.
-  payments: { cod: { enabled: true } },
 });
 if (!(await db().one("SELECT id FROM users WHERE role = 'admin' LIMIT 1"))) {
   await createAdmin('admin@example.com', 'admin1234');
