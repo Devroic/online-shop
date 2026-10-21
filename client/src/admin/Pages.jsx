@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { Plus, FileText, Pencil, ExternalLink } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
@@ -9,6 +10,7 @@ import { useShop } from '../context/ShopContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, PageLoader, Spinner } from '../components/ui.jsx';
 import { Modal, PageHeader, Toggle } from './components.jsx';
+import { HomePage, SettingsForm } from './Settings.jsx';
 
 function PageModal({ page, onClose, onSaved }) {
   const [form, setForm] = useState(page || { slug: '', title: '', content: '', showInFooter: true });
@@ -88,7 +90,7 @@ function PageModal({ page, onClose, onSaved }) {
   );
 }
 
-export default function Pages() {
+function HelpPages() {
   const { data, reload } = useFetch('/admin/pages');
   const { reload: reloadShop } = useShop();
   const [editing, setEditing] = useState(null);
@@ -103,6 +105,7 @@ export default function Pages() {
           </button>
         }
       />
+      <PageTabs />
       {!data ? (
         <PageLoader />
       ) : !data.length ? (
@@ -141,5 +144,30 @@ export default function Pages() {
         />
       )}
     </>
+  );
+}
+
+function PageTabs() {
+  return (
+    <nav className="tabs">
+      <NavLink to="/admin/pages" end>
+        {t('Home page')}
+      </NavLink>
+      <NavLink to="/admin/pages/help">{t('Help')}</NavLink>
+    </nav>
+  );
+}
+
+/** Admin → Pages: the home page (banner, announcement) and the text pages under “Help”. */
+export default function Pages() {
+  return (
+    <Routes>
+      <Route
+        index
+        element={<SettingsForm title={t('Pages')} subtitle={t('The banner and announcement bar on the home page.')} tabs={<PageTabs />} render={(props) => <HomePage {...props} />} />}
+      />
+      <Route path="help" element={<HelpPages />} />
+      <Route path="*" element={<Navigate to="/admin/pages" replace />} />
+    </Routes>
   );
 }

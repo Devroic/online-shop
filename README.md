@@ -64,8 +64,11 @@ Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain em
 - Orders: one-click status changes, tracking number, customer email, print, CSV export
 - Products: drag & drop photos (resized to WebP in the browser), options, sale prices, stock
 - Bulk import/update of products from Excel (.xlsx/.csv) with a template and preview
-- Categories, discount codes, shipping methods, pages, messages, customers/admins
-- Settings: logo, colours (light & dark) with live preview, font, banner, payments, Google/Apple sign-in, SEO
+- Categories, discount codes, messages, customers/admins
+- Pages: home page banner and announcement, text pages under “Help”
+- Shipping & payments: delivery methods, card/cash on delivery, checkout options
+- Appearance: logo, colours (light & dark) with live preview, font
+- Store details: name, contact, order emails, Google/Apple sign-in, stock, SEO
 
 ## Security
 - Prices, discounts and stock are calculated on the server inside a transaction; two simultaneous

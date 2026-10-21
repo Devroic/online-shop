@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ShoppingCart, Package, Folder, Users, Ticket, Truck, FileText, MessageSquare, Settings as SettingsIcon,
+  LayoutDashboard, ShoppingCart, Package, Folder, Users, Ticket, Truck, FileText, MessageSquare, Palette, Store,
   ExternalLink, LogOut, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -19,7 +19,7 @@ import Coupons from './Coupons.jsx';
 import Shipping from './Shipping.jsx';
 import Pages from './Pages.jsx';
 import Messages from './Messages.jsx';
-import Settings from './Settings.jsx';
+import { AppearancePage, StoreDetailsPage } from './Settings.jsx';
 
 export default function AdminApp() {
   const { user, loading, logout } = useAuth();
@@ -53,10 +53,11 @@ export default function AdminApp() {
     ['/admin/categories', Folder, 'Categories'],
     ['/admin/customers', Users, 'Customers'],
     ['/admin/coupons', Ticket, 'Coupons'],
-    ['/admin/shipping', Truck, 'Shipping'],
+    ['/admin/shipping', Truck, 'Shipping & payments'],
     ['/admin/pages', FileText, 'Pages'],
     ['/admin/messages', MessageSquare, 'Messages', unread],
-    ['/admin/settings', SettingsIcon, 'Settings'],
+    ['/admin/appearance', Palette, 'Appearance'],
+    ['/admin/store', Store, 'Store details'],
   ];
 
   return (
@@ -100,7 +101,7 @@ export default function AdminApp() {
         </header>
         <div className="a-content">
           {settings.paymentMethods.length === 0 && (
-            <Link to="/admin/settings/checkout" className="a-alert a-alert-danger">
+            <Link to="/admin/shipping/payments" className="a-alert a-alert-danger">
               <ShoppingCart size={18} />{' '}
               {t('Customers cannot place orders: no payment method is available. Add the Stripe keys or enable cash on delivery.')} →
             </Link>
@@ -115,10 +116,16 @@ export default function AdminApp() {
             <Route path="categories" element={<Categories />} />
             <Route path="customers" element={<Customers />} />
             <Route path="coupons" element={<Coupons />} />
-            <Route path="shipping" element={<Shipping />} />
-            <Route path="pages" element={<Pages />} />
+            <Route path="shipping/*" element={<Shipping />} />
+            <Route path="pages/*" element={<Pages />} />
             <Route path="messages" element={<Messages onChange={counts.reload} />} />
-            <Route path="settings/*" element={<Settings />} />
+            <Route path="appearance" element={<AppearancePage />} />
+            <Route path="store" element={<StoreDetailsPage />} />
+            {/* Old "Settings" links (bookmarks, older docs). */}
+            <Route path="settings/appearance" element={<Navigate to="/admin/appearance" replace />} />
+            <Route path="settings/home" element={<Navigate to="/admin/pages" replace />} />
+            <Route path="settings/checkout" element={<Navigate to="/admin/shipping/payments" replace />} />
+            <Route path="settings/*" element={<Navigate to="/admin/store" replace />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
         </div>

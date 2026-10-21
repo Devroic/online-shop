@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { Plus, Truck, Pencil } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
@@ -7,6 +8,7 @@ import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, PageLoader, Spinner, fieldErrors } from '../components/ui.jsx';
 import { Modal, MoneyInput, PageHeader, Toggle } from './components.jsx';
+import { Payments, SettingsForm } from './Settings.jsx';
 
 function ShippingModal({ method, onClose, onSaved }) {
   const [form, setForm] = useState(method || { name: '', description: '', price: 0, freeOver: null, requiresAddress: true, active: true, sortOrder: 0 });
@@ -74,13 +76,13 @@ function ShippingModal({ method, onClose, onSaved }) {
   );
 }
 
-export default function Shipping() {
+function ShippingMethods() {
   const { data, reload } = useFetch('/admin/shipping');
   const [editing, setEditing] = useState(null);
   return (
     <>
       <PageHeader
-        title={t('Shipping')}
+        title={t('Shipping & payments')}
         subtitle={t('Delivery options customers choose at checkout.')}
         actions={
           <button className="btn btn-primary" onClick={() => setEditing({})}>
@@ -88,6 +90,7 @@ export default function Shipping() {
           </button>
         }
       />
+      <ShippingTabs />
       {!data ? (
         <PageLoader />
       ) : !data.length ? (
@@ -125,5 +128,37 @@ export default function Shipping() {
         />
       )}
     </>
+  );
+}
+
+function ShippingTabs() {
+  return (
+    <nav className="tabs">
+      <NavLink to="/admin/shipping" end>
+        {t('Shipping')}
+      </NavLink>
+      <NavLink to="/admin/shipping/payments">{t('Payments')}</NavLink>
+    </nav>
+  );
+}
+
+/** Admin → Shipping & payments: delivery methods, payment methods and checkout options. */
+export default function Shipping() {
+  return (
+    <Routes>
+      <Route index element={<ShippingMethods />} />
+      <Route
+        path="payments"
+        element={
+          <SettingsForm
+            title={t('Shipping & payments')}
+            subtitle={t('How customers pay, and the options at checkout.')}
+            tabs={<ShippingTabs />}
+            render={(props) => <Payments {...props} />}
+          />
+        }
+      />
+      <Route path="*" element={<Navigate to="/admin/shipping" replace />} />
+    </Routes>
   );
 }

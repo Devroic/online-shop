@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { Info } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
@@ -36,7 +35,29 @@ function ColorField({ label, value, onChange, placeholder }) {
   );
 }
 
-function General({ s, set }) {
+function Brand({ s, set }) {
+  return (
+    <section className="card">
+      <h3>{t('Logo')}</h3>
+      <div className="grid-2">
+        <div className="field">
+          <label>{t('Logo')}</label>
+          <ImageUploader multiple={false} kind="logo" value={s.logoUrl ? [s.logoUrl] : []} onChange={(v) => set('logoUrl', v[0] || '')} />
+          <span className="field-hint">{t('PNG or SVG with transparent background works best. Without a logo the store name is shown.')}</span>
+        </div>
+        <div className="field">
+          <label>{t('Browser icon (favicon)')}</label>
+          <ImageUploader multiple={false} kind="logo" value={s.faviconUrl ? [s.faviconUrl] : []} onChange={(v) => set('faviconUrl', v[0] || '')} />
+          <span className="field-hint">{t('Square image. If empty, the logo is used.')}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Admin → Store details: name, contact, emails, region, sign-in, stock, SEO. */
+export function StoreDetails(props) {
+  const { s, set } = props;
   return (
     <>
       <section className="card">
@@ -44,18 +65,6 @@ function General({ s, set }) {
         <div className="grid-2">
           <Field label={t('Store name')} value={s.storeName} onChange={(e) => set('storeName', e.target.value)} />
           <Field label={t('Tagline')} value={s.tagline} onChange={(e) => set('tagline', e.target.value)} />
-        </div>
-        <div className="grid-2">
-          <div className="field">
-            <label>{t('Logo')}</label>
-            <ImageUploader multiple={false} kind="logo" value={s.logoUrl ? [s.logoUrl] : []} onChange={(v) => set('logoUrl', v[0] || '')} />
-            <span className="field-hint">{t('PNG or SVG with transparent background works best. Without a logo the store name is shown.')}</span>
-          </div>
-          <div className="field">
-            <label>{t('Browser icon (favicon)')}</label>
-            <ImageUploader multiple={false} kind="logo" value={s.faviconUrl ? [s.faviconUrl] : []} onChange={(v) => set('faviconUrl', v[0] || '')} />
-            <span className="field-hint">{t('Square image. If empty, the logo is used.')}</span>
-          </div>
         </div>
       </section>
       <section className="card">
@@ -85,7 +94,7 @@ function General({ s, set }) {
             ))}
           </Field>
         </div>
-              <Toggle
+        <Toggle
           checked={s.languageSwitch}
           onChange={(v) => set('languageSwitch', v)}
           label={t('Let visitors switch between Greek and English')}
@@ -110,108 +119,115 @@ function General({ s, set }) {
           <Field label="TikTok" value={s.social.tiktok} onChange={(e) => set('social.tiktok', e.target.value)} placeholder="https://tiktok.com/@…" />
         </div>
       </section>
+      <Notifications {...props} />
+      <CustomerSignIn {...props} />
+      <Inventory {...props} />
+      <Seo {...props} />
     </>
   );
 }
 
-function Appearance({ s, set, preview, setPreview }) {
+/** Admin → Appearance: logo, light/dark mode, colours, font. */
+export function Appearance({ s, set, preview, setPreview }) {
   const th = s.theme;
   const auto = darkPalette({ ...th, dark: {} });
   return (
     <>
-    <section className="card">
-      <h3>{t('Light & dark appearance')}</h3>
-      <div className="options">
-        {[
-          ['auto', t('Automatic (recommended)'), t('Follows each visitor’s device, with a light/dark switch in the header')],
-          ['light', t('Always light'), ''],
-          ['dark', t('Always dark'), ''],
-        ].map(([v, label, hint]) => (
-          <label key={v} className={`option ${th.mode === v ? 'active' : ''}`}>
-            <input type="radio" name="mode" checked={th.mode === v} onChange={() => set('theme.mode', v)} />
-            <div className="grow">
-              <strong>{label}</strong>
-              {hint && <div className="muted small">{hint}</div>}
-            </div>
-          </label>
-        ))}
-      </div>
-    </section>
-    <section className="card">
-      <h3>{t('Colour presets')}</h3>
-      <div className="presets">
-        {PRESETS.map(([name, p]) => (
-          <button key={name} type="button" className="preset" onClick={() => set('theme', { ...th, ...p })}>
-            <span style={{ background: p.primary }} />
-            <span style={{ background: p.accent }} />
-            <span style={{ background: p.surface }} />
-            {name}
-          </button>
-        ))}
-      </div>
-      <h3 className="mt">{t('Colours')}</h3>
-      <p className="muted small">{t('Changes preview live on this page. Save to publish them.')}</p>
-      <div className="color-grid">
-        <ColorField label={t('Primary (buttons, header bar)')} value={th.primary} onChange={(v) => set('theme.primary', v)} />
-        <ColorField label={t('Accent (links, highlights)')} value={th.accent} onChange={(v) => set('theme.accent', v)} />
-        <ColorField label={t('Background')} value={th.background} onChange={(v) => set('theme.background', v)} />
-        <ColorField label={t('Surface (cards, sections)')} value={th.surface} onChange={(v) => set('theme.surface', v)} />
-        <ColorField label={t('Text')} value={th.text} onChange={(v) => set('theme.text', v)} />
-      </div>
-      <div className="grid-2 mt">
-        <Field as="select" label={t('Font')} value={th.font} onChange={(e) => set('theme.font', e.target.value)}>
-          {FONT_OPTIONS.map((f) => (
-            <option key={f}>{f}</option>
-          ))}
-        </Field>
-        <div className="field">
-          <label>
-            {t('Corner roundness')}: {th.radius}px
-          </label>
-          <input type="range" min="0" max="24" value={th.radius} onChange={(e) => set('theme.radius', Number(e.target.value))} />
-        </div>
-      </div>
-      {th.mode === 'auto' && (
-      <div className="seg mt">
-        <button type="button" className={preview === 'light' ? 'active' : ''} onClick={() => setPreview('light')}>
-          {t('Preview light')}
-        </button>
-        <button type="button" className={preview === 'dark' ? 'active' : ''} onClick={() => setPreview('dark')}>
-          {t('Preview dark')}
-        </button>
-      </div>
-      )}
-      <div className="theme-preview">
-        <button type="button" className="btn btn-primary">
-          {t('Add to cart')}
-        </button>
-        <button type="button" className="btn btn-outline">
-          {t('View cart')}
-        </button>
-        <a href="#preview" onClick={(e) => e.preventDefault()} className="link-btn">
-          {t('A link')}
-        </a>
-        <span className="badge badge-sale">-20%</span>
-      </div>
-    </section>
-    {th.mode !== 'light' && (
+      <Brand s={s} set={set} />
       <section className="card">
-        <h3>{t('Dark mode colours')}</h3>
-        <p className="muted small">{t('Leave empty to have them calculated from the colours above.')}</p>
-        <div className="color-grid">
-          <ColorField label={t('Primary (buttons, header bar)')} value={th.dark.primary} placeholder={auto.primary} onChange={(v) => set('theme.dark.primary', v)} />
-          <ColorField label={t('Accent (links, highlights)')} value={th.dark.accent} placeholder={auto.accent} onChange={(v) => set('theme.dark.accent', v)} />
-          <ColorField label={t('Background')} value={th.dark.background} placeholder={auto.background} onChange={(v) => set('theme.dark.background', v)} />
-          <ColorField label={t('Surface (cards, sections)')} value={th.dark.surface} placeholder={auto.surface} onChange={(v) => set('theme.dark.surface', v)} />
-          <ColorField label={t('Text')} value={th.dark.text} placeholder={auto.text} onChange={(v) => set('theme.dark.text', v)} />
+        <h3>{t('Light & dark appearance')}</h3>
+        <div className="options">
+          {[
+            ['auto', t('Automatic (recommended)'), t('Follows each visitor’s device, with a light/dark switch in the header')],
+            ['light', t('Always light'), ''],
+            ['dark', t('Always dark'), ''],
+          ].map(([v, label, hint]) => (
+            <label key={v} className={`option ${th.mode === v ? 'active' : ''}`}>
+              <input type="radio" name="mode" checked={th.mode === v} onChange={() => set('theme.mode', v)} />
+              <div className="grow">
+                <strong>{label}</strong>
+                {hint && <div className="muted small">{hint}</div>}
+              </div>
+            </label>
+          ))}
         </div>
       </section>
-    )}
+      <section className="card">
+        <h3>{t('Colour presets')}</h3>
+        <div className="presets">
+          {PRESETS.map(([name, p]) => (
+            <button key={name} type="button" className="preset" onClick={() => set('theme', { ...th, ...p })}>
+              <span style={{ background: p.primary }} />
+              <span style={{ background: p.accent }} />
+              <span style={{ background: p.surface }} />
+              {name}
+            </button>
+          ))}
+        </div>
+        <h3 className="mt">{t('Colours')}</h3>
+        <p className="muted small">{t('Changes preview live on this page. Save to publish them.')}</p>
+        <div className="color-grid">
+          <ColorField label={t('Primary (buttons, header bar)')} value={th.primary} onChange={(v) => set('theme.primary', v)} />
+          <ColorField label={t('Accent (links, highlights)')} value={th.accent} onChange={(v) => set('theme.accent', v)} />
+          <ColorField label={t('Background')} value={th.background} onChange={(v) => set('theme.background', v)} />
+          <ColorField label={t('Surface (cards, sections)')} value={th.surface} onChange={(v) => set('theme.surface', v)} />
+          <ColorField label={t('Text')} value={th.text} onChange={(v) => set('theme.text', v)} />
+        </div>
+        <div className="grid-2 mt">
+          <Field as="select" label={t('Font')} value={th.font} onChange={(e) => set('theme.font', e.target.value)}>
+            {FONT_OPTIONS.map((f) => (
+              <option key={f}>{f}</option>
+            ))}
+          </Field>
+          <div className="field">
+            <label>
+              {t('Corner roundness')}: {th.radius}px
+            </label>
+            <input type="range" min="0" max="24" value={th.radius} onChange={(e) => set('theme.radius', Number(e.target.value))} />
+          </div>
+        </div>
+        {th.mode === 'auto' && (
+          <div className="seg mt">
+            <button type="button" className={preview === 'light' ? 'active' : ''} onClick={() => setPreview('light')}>
+              {t('Preview light')}
+            </button>
+            <button type="button" className={preview === 'dark' ? 'active' : ''} onClick={() => setPreview('dark')}>
+              {t('Preview dark')}
+            </button>
+          </div>
+        )}
+        <div className="theme-preview">
+          <button type="button" className="btn btn-primary">
+            {t('Add to cart')}
+          </button>
+          <button type="button" className="btn btn-outline">
+            {t('View cart')}
+          </button>
+          <a href="#preview" onClick={(e) => e.preventDefault()} className="link-btn">
+            {t('A link')}
+          </a>
+          <span className="badge badge-sale">-20%</span>
+        </div>
+      </section>
+      {th.mode !== 'light' && (
+        <section className="card">
+          <h3>{t('Dark mode colours')}</h3>
+          <p className="muted small">{t('Leave empty to have them calculated from the colours above.')}</p>
+          <div className="color-grid">
+            <ColorField label={t('Primary (buttons, header bar)')} value={th.dark.primary} placeholder={auto.primary} onChange={(v) => set('theme.dark.primary', v)} />
+            <ColorField label={t('Accent (links, highlights)')} value={th.dark.accent} placeholder={auto.accent} onChange={(v) => set('theme.dark.accent', v)} />
+            <ColorField label={t('Background')} value={th.dark.background} placeholder={auto.background} onChange={(v) => set('theme.dark.background', v)} />
+            <ColorField label={t('Surface (cards, sections)')} value={th.dark.surface} placeholder={auto.surface} onChange={(v) => set('theme.dark.surface', v)} />
+            <ColorField label={t('Text')} value={th.dark.text} placeholder={auto.text} onChange={(v) => set('theme.dark.text', v)} />
+          </div>
+        </section>
+      )}
     </>
   );
 }
 
-function HomeTab({ s, set }) {
+/** Admin → Pages → Home page: announcement bar and hero banner. */
+export function HomePage({ s, set }) {
   return (
     <>
       <section className="card">
@@ -241,7 +257,8 @@ function HomeTab({ s, set }) {
   );
 }
 
-function Checkout({ s, set, meta, pages }) {
+/** Admin → Shipping & payments → Payments: payment methods and checkout options. */
+export function Payments({ s, set, meta, pages }) {
   return (
     <>
       <section className="card">
@@ -265,22 +282,6 @@ function Checkout({ s, set, meta, pages }) {
         </div>
       </section>
       <section className="card">
-        <h3>{t('Customer sign-in')}</h3>
-        <p className="muted small">{t('Email & password sign-in is always available. Google and Apple sign-in must first be enabled in the shop’s Supabase project (see the setup guide).')}</p>
-        <Toggle checked={s.login.google} onChange={(v) => set('login.google', v)} label={t('Sign in with Google')} />
-        <Toggle checked={s.login.apple} onChange={(v) => set('login.apple', v)} label={t('Sign in with Apple')} hint={t('Requires an Apple Developer account (paid yearly by the shop owner).')} />
-        {(s.login.google || s.login.apple) && !meta.socialLoginConfigured && (
-          <p className="notice small">
-            <Info size={16} /> {t('SUPABASE_URL and SUPABASE_ANON_KEY are not set on the server, so these buttons are hidden from customers.')}
-          </p>
-        )}
-        {(s.login.google || s.login.apple) && meta.supabaseUrl && (
-          <p className="muted small">
-            {t('Redirect URL to add in Supabase → Authentication → URL Configuration:')} <code className="code">{window.location.origin}/auth/callback</code>
-          </p>
-        )}
-      </section>
-      <section className="card">
         <h3>{t('Checkout')}</h3>
         <Toggle checked={s.checkout.allowGuest} onChange={(v) => set('checkout.allowGuest', v)} label={t('Allow guest checkout')} hint={t('Recommended: customers can order without creating an account.')} />
         <Toggle checked={s.checkout.requirePhone} onChange={(v) => set('checkout.requirePhone', v)} label={t('Phone number is required')} />
@@ -297,48 +298,77 @@ function Checkout({ s, set, meta, pages }) {
           <Field label={t('Order number prefix')} value={s.orderPrefix} onChange={(e) => set('orderPrefix', e.target.value.toUpperCase())} placeholder="e.g. AB-" hint={t('Order numbers look like {n}', { n: `${s.orderPrefix}1001` })} />
         </div>
       </section>
-      <section className="card">
-        <h3>{t('Inventory')}</h3>
-        <div className="grid-2">
-          <Field
-            label={t('Low stock warning at')}
-            type="number"
-            min="0"
-            value={s.inventory.lowStockThreshold}
-            onChange={(e) => set('inventory.lowStockThreshold', Math.max(0, parseInt(e.target.value, 10) || 0))}
-          />
-        </div>
-        <Toggle checked={s.inventory.hideOutOfStock} onChange={(v) => set('inventory.hideOutOfStock', v)} label={t('Hide sold-out products from the shop')} />
-      </section>
     </>
   );
 }
 
-function Advanced({ s, set, meta }) {
+function CustomerSignIn({ s, set, meta }) {
   return (
-    <>
-      <section className="card">
-        <h3>{t('Notifications')}</h3>
+    <section className="card">
+      <h3>{t('Customer sign-in')}</h3>
+      <p className="muted small">{t('Email & password sign-in is always available. Google and Apple sign-in must first be enabled in the shop’s Supabase project (see the setup guide).')}</p>
+      <Toggle checked={s.login.google} onChange={(v) => set('login.google', v)} label={t('Sign in with Google')} />
+      <Toggle checked={s.login.apple} onChange={(v) => set('login.apple', v)} label={t('Sign in with Apple')} hint={t('Requires an Apple Developer account (paid yearly by the shop owner).')} />
+      {(s.login.google || s.login.apple) && !meta.socialLoginConfigured && (
+        <p className="notice small">
+          <Info size={16} /> {t('SUPABASE_URL and SUPABASE_ANON_KEY are not set on the server, so these buttons are hidden from customers.')}
+        </p>
+      )}
+      {(s.login.google || s.login.apple) && meta.supabaseUrl && (
+        <p className="muted small">
+          {t('Redirect URL to add in Supabase → Authentication → URL Configuration:')} <code className="code">{window.location.origin}/auth/callback</code>
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Inventory({ s, set }) {
+  return (
+    <section className="card">
+      <h3>{t('Inventory')}</h3>
+      <div className="grid-2">
         <Field
-          label={t('Send new order emails to')}
-          type="email"
-          value={s.notifications.orderEmail}
-          onChange={(e) => set('notifications.orderEmail', e.target.value)}
-          placeholder={s.contact.email}
-          hint={t('If empty, the contact email is used.')}
+          label={t('Low stock warning at')}
+          type="number"
+          min="0"
+          value={s.inventory.lowStockThreshold}
+          onChange={(e) => set('inventory.lowStockThreshold', Math.max(0, parseInt(e.target.value, 10) || 0))}
         />
-        {!meta.emailConfigured && (
-          <p className="notice small">
-            <Info size={16} /> {t('Email sending (Resend or SMTP) is not configured on the server, so emails are not sent yet.')}
-          </p>
-        )}
-      </section>
-      <section className="card">
-        <h3>{t('Search engines (SEO)')}</h3>
-        <Field label={t('Page title')} value={s.seo.title} onChange={(e) => set('seo.title', e.target.value)} placeholder={s.storeName} />
-        <Field as="textarea" rows={3} label={t('Description')} value={s.seo.description} onChange={(e) => set('seo.description', e.target.value)} placeholder={s.tagline} hint={t('About 150 characters, shown in Google results.')} />
-      </section>
-    </>
+      </div>
+      <Toggle checked={s.inventory.hideOutOfStock} onChange={(v) => set('inventory.hideOutOfStock', v)} label={t('Hide sold-out products from the shop')} />
+    </section>
+  );
+}
+
+function Notifications({ s, set, meta }) {
+  return (
+    <section className="card">
+      <h3>{t('Notifications')}</h3>
+      <Field
+        label={t('Send new order emails to')}
+        type="email"
+        value={s.notifications.orderEmail}
+        onChange={(e) => set('notifications.orderEmail', e.target.value)}
+        placeholder={s.contact.email}
+        hint={t('If empty, the contact email is used.')}
+      />
+      {!meta.emailConfigured && (
+        <p className="notice small">
+          <Info size={16} /> {t('Email sending (Resend or SMTP) is not configured on the server, so emails are not sent yet.')}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Seo({ s, set }) {
+  return (
+    <section className="card">
+      <h3>{t('Search engines (SEO)')}</h3>
+      <Field label={t('Page title')} value={s.seo.title} onChange={(e) => set('seo.title', e.target.value)} placeholder={s.storeName} />
+      <Field as="textarea" rows={3} label={t('Description')} value={s.seo.description} onChange={(e) => set('seo.description', e.target.value)} placeholder={s.tagline} hint={t('About 150 characters, shown in Google results.')} />
+    </section>
   );
 }
 
@@ -347,7 +377,12 @@ const setPath = (obj, path, value) => {
   return { ...obj, [head]: rest.length ? setPath(obj[head], rest.join('.'), value) : value };
 };
 
-export default function Settings() {
+/**
+ * Loads the shop settings, lets `render(props)` edit them and saves them all
+ * together. Used by Appearance, Store details, Pages → Home page and
+ * Shipping & payments → Payments.
+ */
+export function SettingsForm({ title, subtitle, tabs, render }) {
   const { data, setData } = useFetch('/admin/settings');
   const { settings: live, pages, reload, appearance } = useShop();
   const [preview, setPreview] = useState(appearance);
@@ -365,9 +400,8 @@ export default function Settings() {
   }, [s?.theme, preview]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => applyTheme(live.theme, appearance), [live.theme, appearance]);
 
-  if (!s) return <PageLoader />;
   const set = (path, value) => setS((cur) => setPath(cur, path, value));
-  const dirty = JSON.stringify(s) !== JSON.stringify(data);
+  const dirty = !!s && JSON.stringify(s) !== JSON.stringify(data);
 
   const save = async () => {
     setSaving(true);
@@ -387,36 +421,23 @@ export default function Settings() {
     }
   };
 
-  const props = { s, set, meta: s._meta || {}, pages, errors, preview, setPreview };
   return (
     <>
       <PageHeader
-        title={t('Settings')}
+        title={title}
+        subtitle={subtitle}
         actions={
           <button className="btn btn-primary" onClick={save} disabled={saving || !dirty}>
             {saving && <Spinner />} {dirty ? t('Save changes') : t('Saved')}
           </button>
         }
       />
-      <nav className="tabs">
-        <NavLink to="/admin/settings" end>
-          {t('General')}
-        </NavLink>
-        <NavLink to="/admin/settings/appearance">{t('Appearance')}</NavLink>
-        <NavLink to="/admin/settings/home">{t('Home page')}</NavLink>
-        <NavLink to="/admin/settings/checkout">{t('Checkout & payments')}</NavLink>
-        <NavLink to="/admin/settings/advanced">{t('Emails & SEO')}</NavLink>
-      </nav>
-      <div className="stack settings-body">
-        <Routes>
-          <Route index element={<General {...props} />} />
-          <Route path="appearance" element={<Appearance {...props} />} />
-          <Route path="home" element={<HomeTab {...props} />} />
-          <Route path="checkout" element={<Checkout {...props} />} />
-          <Route path="advanced" element={<Advanced {...props} />} />
-          <Route path="*" element={<Navigate to="/admin/settings" replace />} />
-        </Routes>
-      </div>
+      {tabs}
+      {!s ? (
+        <PageLoader />
+      ) : (
+        <div className="stack settings-body">{render({ s, set, meta: s._meta || {}, pages, errors, preview, setPreview })}</div>
+      )}
       {dirty && (
         <div className="save-bar">
           <span>{t('You have unsaved changes')}</span>
@@ -429,5 +450,19 @@ export default function Settings() {
         </div>
       )}
     </>
+  );
+}
+
+export function AppearancePage() {
+  return <SettingsForm title={t('Appearance')} subtitle={t('Logo, colours, light/dark mode and font.')} render={(p) => <Appearance {...p} />} />;
+}
+
+export function StoreDetailsPage() {
+  return (
+    <SettingsForm
+      title={t('Store details')}
+      subtitle={t('Name, contact details, emails, customer sign-in, stock and search engines.')}
+      render={(p) => <StoreDetails {...p} />}
+    />
   );
 }

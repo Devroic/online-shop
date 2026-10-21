@@ -614,4 +614,13 @@ export default {
   'Let visitors switch between Greek and English': 'Οι επισκέπτες μπορούν να αλλάζουν μεταξύ Ελληνικών και Αγγλικών',
   'Menus, buttons and emails change language. Product names, descriptions and pages stay as you wrote them.':
     'Αλλάζουν γλώσσα τα μενού, τα κουμπιά και τα email. Τα ονόματα και οι περιγραφές προϊόντων και οι σελίδες μένουν όπως τα γράψατε.',
+  // Admin sections
+  'Store details': 'Στοιχεία καταστήματος',
+  'Name, contact details, emails, customer sign-in, stock and search engines.':
+    'Όνομα, στοιχεία επικοινωνίας, email, σύνδεση πελατών, απόθεμα και μηχανές αναζήτησης.',
+  'Logo, colours, light/dark mode and font.': 'Λογότυπο, χρώματα, φωτεινό/σκοτεινό θέμα και γραμματοσειρά.',
+  'Shipping & payments': 'Αποστολές & πληρωμές',
+  Payments: 'Πληρωμές',
+  'How customers pay, and the options at checkout.': 'Πώς πληρώνουν οι πελάτες και οι επιλογές στην ολοκλήρωση παραγγελίας.',
+  'The banner and announcement bar on the home page.': 'Το banner της αρχικής σελίδας και η μπάρα ανακοινώσεων.',
 };
