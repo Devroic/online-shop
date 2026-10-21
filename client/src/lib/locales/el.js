@@ -604,12 +604,12 @@ export default {
   'No stock = always available.': 'Χωρίς απόθεμα = πάντα διαθέσιμο.',
 
   // Pages & languages
-  'Show in the footer, under “Help”': 'Εμφάνιση στο κάτω μέρος, στη στήλη «Βοήθεια»',
-  'Turn off for pages you only link to yourself.': 'Απενεργοποιήστε το για σελίδες που θα συνδέετε μόνοι σας.',
+  'Show in the shop’s footer': 'Εμφάνιση στο κάτω μέρος του καταστήματος',
+  'When off, the page is hidden from the footer but still opens from its address, e.g. through a link in the banner.':
+    'Αν το απενεργοποιήσετε, η σελίδα δεν φαίνεται στο κάτω μέρος, αλλά ανοίγει από τη διεύθυνσή της (π.χ. από σύνδεσμο στο banner).',
   'Text pages such as about us, terms and privacy policy. They are listed in the shop’s footer, under “Help”.':
     'Σελίδες κειμένου, όπως σχετικά με εμάς, όροι χρήσης και πολιτική απορρήτου. Εμφανίζονται στο κάτω μέρος του καταστήματος, στη στήλη «Βοήθεια».',
-  'In footer (Help)': 'Στο κάτω μέρος («Βοήθεια»)',
-  'Not in footer': 'Εκτός κάτω μέρους',
+  'Hidden from the footer': 'Δεν φαίνεται στο κάτω μέρος',
   'Default language': 'Προεπιλεγμένη γλώσσα',
   'Let visitors switch between Greek and English': 'Οι επισκέπτες μπορούν να αλλάζουν μεταξύ Ελληνικών και Αγγλικών',
   'Menus, buttons and emails change language. Product names, descriptions and pages stay as you wrote them.':

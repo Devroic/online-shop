@@ -83,8 +83,8 @@ function PageModal({ page, onClose, onSaved }) {
       <Toggle
         checked={form.showInFooter}
         onChange={(v) => set('showInFooter', v)}
-        label={t('Show in the footer, under “Help”')}
-        hint={t('Turn off for pages you only link to yourself.')}
+        label={t('Show in the shop’s footer')}
+        hint={t('When off, the page is hidden from the footer but still opens from its address, e.g. through a link in the banner.')}
       />
     </Modal>
   );
@@ -121,7 +121,7 @@ function HelpPages() {
                   /p/{p.slug} · {t('Updated {date}', { date: date(p.updatedAt) })}
                 </div>
               </div>
-              <span className={`status ${p.showInFooter ? 'status-delivered' : ''}`}>{p.showInFooter ? t('In footer (Help)') : t('Not in footer')}</span>
+              {!p.showInFooter && <span className="status">{t('Hidden from the footer')}</span>}
               <a className="icon-btn" href={`/p/${p.slug}`} target="_blank" rel="noreferrer" aria-label={t('View')}>
                 <ExternalLink size={16} />
               </a>
