@@ -47,7 +47,7 @@ const CONTENT = [
   { type: 'checks', items: [['domain_have', 'I already have it: I will give you access to its DNS settings'], ['domain_buy', 'Please buy it for me']] },
 
   { type: 'h', text: '2. Email' },
-  { type: 'field', name: 'email', label: 'Shop email', hint: 'New orders arrive here and you use it to sign in to the shop\'s admin. We also create the shop\'s accounts (database, email sending, Stripe) with it, so you will receive a few confirmation emails from us.' },
+  { type: 'field', name: 'email', label: 'Shop email', hint: 'New orders arrive here, you sign in to the shop\'s admin with it, and you open your Stripe account (card payments) with it.' },
 
   { type: 'h', text: '3. Business details' },
   { type: 'p', text: 'The law requires them in the shop\'s terms.' },
@@ -57,7 +57,7 @@ const CONTENT = [
   ] },
   { type: 'field', name: 'address', label: 'Business address', hint: 'Street, number, postcode, city' },
 
-  { type: 'note', text: 'Card payments: your customers pay by card, Apple Pay or Google Pay through Stripe and the money is paid into your bank account. We will send you a link to complete your Stripe account yourself (business details, IBAN, identity check). Do not send us an IBAN or a photo of your ID by email.' },
+  { type: 'note', text: 'Card payments: your customers pay by card, Apple Pay or Google Pay through Stripe and the money is paid into your bank account. We will send you short instructions to open your own Stripe account (business details, IBAN, identity check) and give us access to it. Do not send us an IBAN or a photo of your ID by email.' },
 
 ];
 
