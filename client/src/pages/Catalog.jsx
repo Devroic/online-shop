@@ -88,6 +88,7 @@ export default function Catalog() {
 
       {filtersOpen && (
         <form
+          noValidate
           className="filters"
           onSubmit={(e) => {
             e.preventDefault();

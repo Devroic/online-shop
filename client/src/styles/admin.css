@@ -662,6 +662,9 @@
 .variants-row:not(:has(> :nth-child(5))) {
   grid-template-columns: minmax(120px, 2fr) minmax(90px, 1fr) minmax(90px, 1fr) 42px;
 }
+.variants-item .field-error {
+  display: block;
+}
 .variants-row.head {
   font-size: 0.78rem;
   font-weight: 600;
@@ -679,7 +682,8 @@
   .variants-table {
     overflow-x: auto;
   }
-  .variants-row {
+  .variants-row,
+  .variants-item {
     min-width: 520px;
   }
 }

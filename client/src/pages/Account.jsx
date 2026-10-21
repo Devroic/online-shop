@@ -7,7 +7,8 @@ import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { date, money } from '../lib/format.js';
 import { t, ORDER_STATUS } from '../lib/i18n.js';
-import { EmptyState, Field, PageLoader, Spinner, fieldErrors, useTitle } from '../components/ui.jsx';
+import { EmptyState, Field, FormAlert, PageLoader, Spinner, useTitle } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 
 function Orders() {
   const { data, loading } = useFetch('/orders/mine');
@@ -57,25 +58,44 @@ function Profile() {
     region: user.address?.region || '',
   });
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
+  const pv = useValidation();
   const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const set = (k) => (e) => {
+    v.clear(k);
+    setForm({ ...form, [k]: e.target.value });
+  };
+  const setPassword = (k) => (e) => {
+    pv.clear(k);
+    setPw({ ...pw, [k]: e.target.value });
+  };
 
   const saveProfile = async (e) => {
     e.preventDefault();
+    // The address is optional, but once started it needs street, city and postal code.
+    const hasAddress = [form.street, form.city, form.postalCode, form.region].some((x) => x.trim());
+    const addressRule = hasAddress ? [rules.required()] : [];
+    const ok = v.validate(form, {
+      name: [rules.required(), rules.maxLength(100)],
+      phone: [rules.maxLength(40)],
+      street: [...addressRule, rules.maxLength(200)],
+      city: [...addressRule, rules.maxLength(100)],
+      postalCode: [...addressRule, rules.maxLength(20)],
+      region: [rules.maxLength(100)],
+    });
+    if (!ok) return;
     setBusy(true);
     try {
-      const hasAddress = form.street && form.city && form.postalCode;
       const r = await api.put('/auth/me', {
         name: form.name,
         phone: form.phone,
         address: hasAddress ? { street: form.street, city: form.city, postalCode: form.postalCode, region: form.region } : null,
       });
       setUser(r.user);
-      setErrors({});
+      v.reset();
       toast.success(t('Saved'));
     } catch (err) {
-      setErrors(fieldErrors(err));
+      v.fail(err);
     } finally {
       setBusy(false);
     }
@@ -83,20 +103,21 @@ function Profile() {
 
   return (
     <div className="stack">
-      <form className="card" onSubmit={saveProfile}>
+      <form className="card" onSubmit={saveProfile} noValidate>
         <h3>{t('Personal details')}</h3>
         <div className="grid-2">
-          <Field label={t('Full name')} value={form.name} onChange={set('name')} error={errors.name} />
-          <Field label={t('Phone')} value={form.phone} onChange={set('phone')} />
+          <Field label={t('Full name')} autoComplete="name" value={form.name} onChange={set('name')} error={v.errors.name} />
+          <Field label={t('Phone')} type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} error={v.errors.phone} />
         </div>
         <Field label={t('Email')} value={user.email} disabled />
         <h3>{t('Default address')}</h3>
-        <Field label={t('Street address')} value={form.street} onChange={set('street')} />
+        <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={v.errors.street} />
         <div className="grid-3">
-          <Field label={t('City')} value={form.city} onChange={set('city')} />
-          <Field label={t('Postal code')} value={form.postalCode} onChange={set('postalCode')} />
-          <Field label={t('Region (optional)')} value={form.region} onChange={set('region')} />
+          <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={v.errors.city} />
+          <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={v.errors.postalCode} />
+          <Field label={t('Region (optional)')} value={form.region} onChange={set('region')} error={v.errors.region} />
         </div>
+        <FormAlert message={v.errors._} />
         <button className="btn btn-primary" disabled={busy}>
           {busy && <Spinner />} {t('Save')}
         </button>
@@ -104,16 +125,23 @@ function Profile() {
 
       <form
         className="card"
+        noValidate
         onSubmit={async (e) => {
           e.preventDefault();
+          const ok = pv.validate(pw, {
+            currentPassword: user.hasPassword ? [rules.required()] : [],
+            newPassword: [rules.required(), rules.minLength(8)],
+          });
+          if (!ok) return;
           try {
             const r = await api.put('/auth/me/password', pw);
             setUser(r.user);
             setPw({ currentPassword: '', newPassword: '' });
-            setErrors({});
+            pv.reset();
             toast.success(t('Password changed'));
           } catch (err) {
-            setErrors(fieldErrors(err));
+            if (err.details?.currentPassword === 'wrong') pv.show({ currentPassword: t('The current password is wrong') });
+            else pv.fail(err);
           }
         }}
       >
@@ -126,8 +154,8 @@ function Profile() {
             type="password"
             autoComplete="current-password"
             value={pw.currentPassword}
-            onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })}
-            error={errors.currentPassword}
+            onChange={setPassword('currentPassword')}
+            error={pv.errors.currentPassword}
           />
           )}
           <Field
@@ -135,11 +163,12 @@ function Profile() {
             type="password"
             autoComplete="new-password"
             value={pw.newPassword}
-            onChange={(e) => setPw({ ...pw, newPassword: e.target.value })}
-            error={errors.newPassword}
+            onChange={setPassword('newPassword')}
+            error={pv.errors.newPassword}
             hint={t('At least 8 characters')}
           />
         </div>
+        <FormAlert message={pv.errors._} />
         <button className="btn btn-outline">{user.hasPassword ? t('Change password') : t('Set a password')}</button>
       </form>
     </div>

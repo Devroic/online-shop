@@ -453,7 +453,8 @@ router.get('/coupons', async (_req, res) => {
 });
 
 async function saveCoupon(id, d) {
-  if (d.type === 'percent' && d.value > 100) throw badRequest('Validation failed', { value: 'max 100' });
+  if (d.type === 'percent' && d.value > 100) throw badRequest('Validation failed', { value: 'max:100' });
+  if (d.type !== 'free_shipping' && d.value < 1) throw badRequest('Validation failed', { value: d.type === 'percent' ? 'min:1' : 'positive' });
   const clash = await db().one('SELECT id FROM coupons WHERE code = $1', [d.code]);
   if (clash && clash.id !== id) throw badRequest('Validation failed', { code: 'exists' });
   const vals = [d.code, d.type, d.value, d.minOrder, d.maxUses ?? null, d.expiresAt || null, d.active];
@@ -593,7 +594,10 @@ router.get('/settings', async (_req, res) =>
   }),
 );
 
-const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #RRGGBB colour');
+const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'colour');
+// Optional fields: empty, or a valid value.
+const optEmail = z.string().trim().max(200).refine((v) => !v || z.email().safeParse(v).success, 'email');
+const optUrl = z.string().trim().max(300).refine((v) => !v || /^https?:\/\/[^\s.]+\.\S+$/.test(v), 'url');
 const optHex = z.union([hex, z.literal('')]);
 const settingsSchema = z
   .object({
@@ -616,8 +620,8 @@ const settingsSchema = z
       .partial(),
     announcement: z.string().max(300),
     hero: z.object({ title: z.string().max(200), subtitle: z.string().max(400), imageUrl: z.string().max(1000), ctaText: z.string().max(60), ctaLink: z.string().max(300) }).partial(),
-    contact: z.object({ email: z.string().max(200), phone: z.string().max(60), address: z.string().max(300), hours: z.string().max(300) }).partial(),
-    social: z.object({ facebook: z.string().max(300), instagram: z.string().max(300), tiktok: z.string().max(300) }).partial(),
+    contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), hours: z.string().max(300) }).partial(),
+    social: z.object({ facebook: optUrl, instagram: optUrl, tiktok: optUrl }).partial(),
     login: z.object({ google: z.boolean(), apple: z.boolean() }).partial(),
     payments: z
       .object({
@@ -627,7 +631,7 @@ const settingsSchema = z
       .partial(),
     checkout: z.object({ requirePhone: z.boolean(), allowGuest: z.boolean(), pricesIncludeTax: z.boolean(), termsPage: z.string().max(80) }).partial(),
     inventory: z.object({ lowStockThreshold: z.number().int().min(0), hideOutOfStock: z.boolean() }).partial(),
-    notifications: z.object({ orderEmail: z.string().max(200) }).partial(),
+    notifications: z.object({ orderEmail: optEmail }).partial(),
     seo: z.object({ title: z.string().max(200), description: z.string().max(500) }).partial(),
     orderPrefix: z.string().max(10),
   })

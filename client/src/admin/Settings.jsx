@@ -6,7 +6,8 @@ import { t } from '../lib/i18n.js';
 import { FONT_OPTIONS, applyTheme, useShop } from '../context/ShopContext.jsx';
 import { darkPalette } from '../lib/theme.js';
 import { useToast } from '../context/ToastContext.jsx';
-import { Field, PageLoader, Spinner, fieldErrors } from '../components/ui.jsx';
+import { Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { ImageUploader, MoneyInput, PageHeader, Toggle } from './components.jsx';
 
 const PRESETS = [
@@ -18,20 +19,21 @@ const PRESETS = [
   ['Violet', { primary: '#4c1d95', accent: '#7c3aed', background: '#ffffff', surface: '#f6f4fd', text: '#1e1033' }],
 ];
 
-function ColorField({ label, value, onChange, placeholder }) {
+function ColorField({ label, value, onChange, placeholder, error }) {
+  // The colour picker needs a valid colour; while the text is being typed, keep the last good one.
+  const valid = /^#[0-9a-fA-F]{6}$/.test(value) ? value : placeholder || '#000000';
   return (
-    <div className="field color-field">
-      <label>{label}</label>
+    <FieldWrap label={label} error={error} className="color-field">
       <div className="color-input">
-        <input type="color" value={value || placeholder} onChange={(e) => onChange(e.target.value)} aria-label={label} />
-        <input className="input" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} maxLength={7} />
+        <input type="color" value={valid} onChange={(e) => onChange(e.target.value)} aria-label={label} />
+        <input className="input" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value.trim())} aria-label={label} aria-invalid={!!error} />
         {placeholder && value && (
           <button type="button" className="link-btn small" onClick={() => onChange('')}>
             {t('Auto')}
           </button>
         )}
       </div>
-    </div>
+    </FieldWrap>
   );
 }
 
@@ -57,29 +59,29 @@ function Brand({ s, set }) {
 
 /** Admin → Store details: name, contact, emails, region, sign-in, stock, SEO. */
 export function StoreDetails(props) {
-  const { s, set } = props;
+  const { s, set, errors } = props;
   return (
     <>
       <section className="card">
         <h3>{t('Store')}</h3>
         <div className="grid-2">
-          <Field label={t('Store name')} value={s.storeName} onChange={(e) => set('storeName', e.target.value)} />
-          <Field label={t('Tagline')} value={s.tagline} onChange={(e) => set('tagline', e.target.value)} />
+          <Field label={t('Store name')} value={s.storeName} onChange={(e) => set('storeName', e.target.value)} error={errors['storeName']} />
+          <Field label={t('Tagline')} value={s.tagline} onChange={(e) => set('tagline', e.target.value)} error={errors['tagline']} />
         </div>
       </section>
       <section className="card">
         <h3>{t('Region')}</h3>
         <div className="grid-3">
-          <Field as="select" label={t('Default language')} value={s.language} onChange={(e) => set('language', e.target.value)}>
+          <Field as="select" label={t('Default language')} value={s.language} onChange={(e) => set('language', e.target.value)} error={errors['language']}>
             <option value="el">{t('Greek')}</option>
             <option value="en">{t('English')}</option>
           </Field>
-          <Field as="select" label={t('Currency')} value={s.currency} onChange={(e) => set('currency', e.target.value)}>
+          <Field as="select" label={t('Currency')} value={s.currency} onChange={(e) => set('currency', e.target.value)} error={errors['currency']}>
             {['EUR', 'USD', 'GBP', 'CHF', 'RON', 'BGN', 'PLN', 'CZK', 'SEK', 'DKK', 'NOK'].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </Field>
-          <Field as="select" label={t('Number & date format')} value={s.locale} onChange={(e) => set('locale', e.target.value)}>
+          <Field as="select" label={t('Number & date format')} value={s.locale} onChange={(e) => set('locale', e.target.value)} error={errors['locale']}>
             {[
               ['el-GR', `${t('Greece')} (1.234,50 €)`],
               ['el-CY', `${t('Cyprus')} (1.234,50 €)`],
@@ -105,18 +107,18 @@ export function StoreDetails(props) {
         <h3>{t('Contact details')}</h3>
         <p className="muted small">{t('Shown in the footer, the contact page and emails.')}</p>
         <div className="grid-2">
-          <Field label={t('Email')} value={s.contact.email} onChange={(e) => set('contact.email', e.target.value)} />
-          <Field label={t('Phone')} value={s.contact.phone} onChange={(e) => set('contact.phone', e.target.value)} />
+          <Field label={t('Email')} value={s.contact.email} onChange={(e) => set('contact.email', e.target.value)} error={errors['contact.email']} />
+          <Field label={t('Phone')} value={s.contact.phone} onChange={(e) => set('contact.phone', e.target.value)} error={errors['contact.phone']} />
         </div>
         <div className="grid-2">
-          <Field label={t('Address')} value={s.contact.address} onChange={(e) => set('contact.address', e.target.value)} />
-          <Field label={t('Opening hours')} value={s.contact.hours} onChange={(e) => set('contact.hours', e.target.value)} />
+          <Field label={t('Address')} value={s.contact.address} onChange={(e) => set('contact.address', e.target.value)} error={errors['contact.address']} />
+          <Field label={t('Opening hours')} value={s.contact.hours} onChange={(e) => set('contact.hours', e.target.value)} error={errors['contact.hours']} />
         </div>
         <h3 className="mt">{t('Social media')}</h3>
         <div className="grid-3">
-          <Field label="Facebook" value={s.social.facebook} onChange={(e) => set('social.facebook', e.target.value)} placeholder="https://facebook.com/…" />
-          <Field label="Instagram" value={s.social.instagram} onChange={(e) => set('social.instagram', e.target.value)} placeholder="https://instagram.com/…" />
-          <Field label="TikTok" value={s.social.tiktok} onChange={(e) => set('social.tiktok', e.target.value)} placeholder="https://tiktok.com/@…" />
+          <Field label="Facebook" value={s.social.facebook} onChange={(e) => set('social.facebook', e.target.value)} placeholder="https://facebook.com/…" error={errors['social.facebook']} />
+          <Field label="Instagram" value={s.social.instagram} onChange={(e) => set('social.instagram', e.target.value)} placeholder="https://instagram.com/…" error={errors['social.instagram']} />
+          <Field label="TikTok" value={s.social.tiktok} onChange={(e) => set('social.tiktok', e.target.value)} placeholder="https://tiktok.com/@…" error={errors['social.tiktok']} />
         </div>
       </section>
       <Notifications {...props} />
@@ -128,7 +130,7 @@ export function StoreDetails(props) {
 }
 
 /** Admin → Appearance: logo, light/dark mode, colours, font. */
-export function Appearance({ s, set, preview, setPreview }) {
+export function Appearance({ s, set, errors, preview, setPreview }) {
   const th = s.theme;
   const auto = darkPalette({ ...th, dark: {} });
   return (
@@ -167,14 +169,14 @@ export function Appearance({ s, set, preview, setPreview }) {
         <h3 className="mt">{t('Colours')}</h3>
         <p className="muted small">{t('Changes preview live on this page. Save to publish them.')}</p>
         <div className="color-grid">
-          <ColorField label={t('Primary (buttons, header bar)')} value={th.primary} onChange={(v) => set('theme.primary', v)} />
-          <ColorField label={t('Accent (links, highlights)')} value={th.accent} onChange={(v) => set('theme.accent', v)} />
-          <ColorField label={t('Background')} value={th.background} onChange={(v) => set('theme.background', v)} />
-          <ColorField label={t('Surface (cards, sections)')} value={th.surface} onChange={(v) => set('theme.surface', v)} />
-          <ColorField label={t('Text')} value={th.text} onChange={(v) => set('theme.text', v)} />
+          <ColorField label={t('Primary (buttons, header bar)')} value={th.primary} onChange={(v) => set('theme.primary', v)} error={errors['theme.primary']} />
+          <ColorField label={t('Accent (links, highlights)')} value={th.accent} onChange={(v) => set('theme.accent', v)} error={errors['theme.accent']} />
+          <ColorField label={t('Background')} value={th.background} onChange={(v) => set('theme.background', v)} error={errors['theme.background']} />
+          <ColorField label={t('Surface (cards, sections)')} value={th.surface} onChange={(v) => set('theme.surface', v)} error={errors['theme.surface']} />
+          <ColorField label={t('Text')} value={th.text} onChange={(v) => set('theme.text', v)} error={errors['theme.text']} />
         </div>
         <div className="grid-2 mt">
-          <Field as="select" label={t('Font')} value={th.font} onChange={(e) => set('theme.font', e.target.value)}>
+          <Field as="select" label={t('Font')} value={th.font} onChange={(e) => set('theme.font', e.target.value)} error={errors['theme.font']}>
             {FONT_OPTIONS.map((f) => (
               <option key={f}>{f}</option>
             ))}
@@ -214,11 +216,11 @@ export function Appearance({ s, set, preview, setPreview }) {
           <h3>{t('Dark mode colours')}</h3>
           <p className="muted small">{t('Leave empty to have them calculated from the colours above.')}</p>
           <div className="color-grid">
-            <ColorField label={t('Primary (buttons, header bar)')} value={th.dark.primary} placeholder={auto.primary} onChange={(v) => set('theme.dark.primary', v)} />
-            <ColorField label={t('Accent (links, highlights)')} value={th.dark.accent} placeholder={auto.accent} onChange={(v) => set('theme.dark.accent', v)} />
-            <ColorField label={t('Background')} value={th.dark.background} placeholder={auto.background} onChange={(v) => set('theme.dark.background', v)} />
-            <ColorField label={t('Surface (cards, sections)')} value={th.dark.surface} placeholder={auto.surface} onChange={(v) => set('theme.dark.surface', v)} />
-            <ColorField label={t('Text')} value={th.dark.text} placeholder={auto.text} onChange={(v) => set('theme.dark.text', v)} />
+            <ColorField label={t('Primary (buttons, header bar)')} value={th.dark.primary} placeholder={auto.primary} onChange={(v) => set('theme.dark.primary', v)} error={errors['theme.dark.primary']} />
+            <ColorField label={t('Accent (links, highlights)')} value={th.dark.accent} placeholder={auto.accent} onChange={(v) => set('theme.dark.accent', v)} error={errors['theme.dark.accent']} />
+            <ColorField label={t('Background')} value={th.dark.background} placeholder={auto.background} onChange={(v) => set('theme.dark.background', v)} error={errors['theme.dark.background']} />
+            <ColorField label={t('Surface (cards, sections)')} value={th.dark.surface} placeholder={auto.surface} onChange={(v) => set('theme.dark.surface', v)} error={errors['theme.dark.surface']} />
+            <ColorField label={t('Text')} value={th.dark.text} placeholder={auto.text} onChange={(v) => set('theme.dark.text', v)} error={errors['theme.dark.text']} />
           </div>
         </section>
       )}
@@ -227,7 +229,7 @@ export function Appearance({ s, set, preview, setPreview }) {
 }
 
 /** Admin → Pages → Home page: announcement bar and hero banner. */
-export function HomePage({ s, set }) {
+export function HomePage({ s, set, errors }) {
   return (
     <>
       <section className="card">
@@ -235,17 +237,18 @@ export function HomePage({ s, set }) {
         <Field
           value={s.announcement}
           onChange={(e) => set('announcement', e.target.value)}
+          error={errors['announcement']}
           placeholder={t('e.g. Free shipping over 50€')}
           hint={t('A thin bar at the very top of every page. Leave empty to hide it.')}
         />
       </section>
       <section className="card">
         <h3>{t('Hero banner')}</h3>
-        <Field label={t('Title')} value={s.hero.title} onChange={(e) => set('hero.title', e.target.value)} />
-        <Field as="textarea" rows={2} label={t('Subtitle')} value={s.hero.subtitle} onChange={(e) => set('hero.subtitle', e.target.value)} />
+        <Field label={t('Title')} value={s.hero.title} onChange={(e) => set('hero.title', e.target.value)} error={errors['hero.title']} />
+        <Field as="textarea" rows={2} label={t('Subtitle')} value={s.hero.subtitle} onChange={(e) => set('hero.subtitle', e.target.value)} error={errors['hero.subtitle']} />
         <div className="grid-2">
-          <Field label={t('Button text')} value={s.hero.ctaText} onChange={(e) => set('hero.ctaText', e.target.value)} />
-          <Field label={t('Button link')} value={s.hero.ctaLink} onChange={(e) => set('hero.ctaLink', e.target.value)} placeholder="/products" />
+          <Field label={t('Button text')} value={s.hero.ctaText} onChange={(e) => set('hero.ctaText', e.target.value)} error={errors['hero.ctaText']} />
+          <Field label={t('Button link')} value={s.hero.ctaLink} onChange={(e) => set('hero.ctaLink', e.target.value)} placeholder="/products" error={errors['hero.ctaLink']} />
         </div>
         <div className="field">
           <label>{t('Background image (optional)')}</label>
@@ -258,7 +261,7 @@ export function HomePage({ s, set }) {
 }
 
 /** Admin → Shipping & payments → Payments: payment methods and checkout options. */
-export function Payments({ s, set, meta, pages }) {
+export function Payments({ s, set, errors, meta, pages }) {
   return (
     <>
       <section className="card">
@@ -274,10 +277,9 @@ export function Payments({ s, set, meta, pages }) {
         <div className="pay-block">
           <Toggle checked={s.payments.cod.enabled} onChange={(v) => set('payments.cod.enabled', v)} label={t('Cash on delivery')} />
           {s.payments.cod.enabled && (
-            <div className="field indent">
-              <label>{t('Extra fee')}</label>
-              <MoneyInput value={s.payments.cod.fee} onChange={(v) => set('payments.cod.fee', v)} />
-            </div>
+            <FieldWrap label={t('Extra fee')} className="indent" error={errors['payments.cod.fee']}>
+              <MoneyInput value={s.payments.cod.fee} onChange={(v) => set('payments.cod.fee', v)} aria-invalid={!!errors['payments.cod.fee']} />
+            </FieldWrap>
           )}
         </div>
       </section>
@@ -287,7 +289,7 @@ export function Payments({ s, set, meta, pages }) {
         <Toggle checked={s.checkout.requirePhone} onChange={(v) => set('checkout.requirePhone', v)} label={t('Phone number is required')} />
         <Toggle checked={s.checkout.pricesIncludeTax} onChange={(v) => set('checkout.pricesIncludeTax', v)} label={t('Show “Price includes VAT”')} />
         <div className="grid-2 mt">
-          <Field as="select" label={t('Terms page')} value={s.checkout.termsPage} onChange={(e) => set('checkout.termsPage', e.target.value)}>
+          <Field as="select" label={t('Terms page')} value={s.checkout.termsPage} onChange={(e) => set('checkout.termsPage', e.target.value)} error={errors['checkout.termsPage']}>
             <option value="">—</option>
             {pages.map((p) => (
               <option key={p.slug} value={p.slug}>
@@ -295,7 +297,7 @@ export function Payments({ s, set, meta, pages }) {
               </option>
             ))}
           </Field>
-          <Field label={t('Order number prefix')} value={s.orderPrefix} onChange={(e) => set('orderPrefix', e.target.value.toUpperCase())} placeholder="e.g. AB-" hint={t('Order numbers look like {n}', { n: `${s.orderPrefix}1001` })} />
+          <Field label={t('Order number prefix')} value={s.orderPrefix} onChange={(e) => set('orderPrefix', e.target.value.toUpperCase())} placeholder="e.g. AB-" hint={t('Order numbers look like {n}', { n: `${s.orderPrefix}1001` })} error={errors['orderPrefix']} />
         </div>
       </section>
     </>
@@ -323,17 +325,17 @@ function CustomerSignIn({ s, set, meta }) {
   );
 }
 
-function Inventory({ s, set }) {
+function Inventory({ s, set, errors }) {
   return (
     <section className="card">
       <h3>{t('Inventory')}</h3>
       <div className="grid-2">
         <Field
           label={t('Low stock warning at')}
-          type="number"
-          min="0"
+          inputMode="numeric"
           value={s.inventory.lowStockThreshold}
-          onChange={(e) => set('inventory.lowStockThreshold', Math.max(0, parseInt(e.target.value, 10) || 0))}
+          onChange={(e) => set('inventory.lowStockThreshold', Math.max(0, parseInt(e.target.value.replace(/\D/g, ''), 10) || 0))}
+          error={errors['inventory.lowStockThreshold']}
         />
       </div>
       <Toggle checked={s.inventory.hideOutOfStock} onChange={(v) => set('inventory.hideOutOfStock', v)} label={t('Hide sold-out products from the shop')} />
@@ -341,7 +343,7 @@ function Inventory({ s, set }) {
   );
 }
 
-function Notifications({ s, set, meta }) {
+function Notifications({ s, set, errors, meta }) {
   return (
     <section className="card">
       <h3>{t('Notifications')}</h3>
@@ -350,6 +352,7 @@ function Notifications({ s, set, meta }) {
         type="email"
         value={s.notifications.orderEmail}
         onChange={(e) => set('notifications.orderEmail', e.target.value)}
+        error={errors['notifications.orderEmail']}
         placeholder={s.contact.email}
         hint={t('If empty, the contact email is used.')}
       />
@@ -362,15 +365,54 @@ function Notifications({ s, set, meta }) {
   );
 }
 
-function Seo({ s, set }) {
+function Seo({ s, set, errors }) {
   return (
     <section className="card">
       <h3>{t('Search engines (SEO)')}</h3>
-      <Field label={t('Page title')} value={s.seo.title} onChange={(e) => set('seo.title', e.target.value)} placeholder={s.storeName} />
-      <Field as="textarea" rows={3} label={t('Description')} value={s.seo.description} onChange={(e) => set('seo.description', e.target.value)} placeholder={s.tagline} hint={t('About 150 characters, shown in Google results.')} />
+      <Field label={t('Page title')} value={s.seo.title} onChange={(e) => set('seo.title', e.target.value)} placeholder={s.storeName} error={errors['seo.title']} />
+      <Field as="textarea" rows={3} label={t('Description')} value={s.seo.description} onChange={(e) => set('seo.description', e.target.value)} placeholder={s.tagline} hint={t('About 150 characters, shown in Google results.')} error={errors['seo.description']} />
     </section>
   );
 }
+
+const r = rules;
+const COLOURS = ['primary', 'accent', 'background', 'surface', 'text'];
+
+/** What each settings page checks before saving (the server checks the same). */
+export const SETTINGS_RULES = {
+  appearance: Object.fromEntries(
+    COLOURS.flatMap((c) => [
+      [`theme.${c}`, [r.required(), r.colour()]],
+      [`theme.dark.${c}`, [r.colour()]],
+    ]),
+  ),
+  store: {
+    storeName: [r.required(), r.maxLength(100)],
+    tagline: [r.maxLength(200)],
+    'contact.email': [r.email(), r.maxLength(200)],
+    'contact.phone': [r.maxLength(60)],
+    'contact.address': [r.maxLength(300)],
+    'contact.hours': [r.maxLength(300)],
+    'social.facebook': [r.url(), r.maxLength(300)],
+    'social.instagram': [r.url(), r.maxLength(300)],
+    'social.tiktok': [r.url(), r.maxLength(300)],
+    'notifications.orderEmail': [r.email(), r.maxLength(200)],
+    'inventory.lowStockThreshold': [r.integer(), r.min(0)],
+    'seo.title': [r.maxLength(200)],
+    'seo.description': [r.maxLength(500)],
+  },
+  home: {
+    announcement: [r.maxLength(300)],
+    'hero.title': [r.maxLength(200)],
+    'hero.subtitle': [r.maxLength(400)],
+    'hero.ctaText': [r.maxLength(60)],
+    'hero.ctaLink': [r.maxLength(300)],
+  },
+  payments: {
+    'payments.cod.fee': [r.min(0)],
+    orderPrefix: [r.maxLength(10)],
+  },
+};
 
 const setPath = (obj, path, value) => {
   const [head, ...rest] = path.split('.');
@@ -382,12 +424,12 @@ const setPath = (obj, path, value) => {
  * together. Used by Appearance, Store details, Pages → Home page and
  * Shipping & payments → Payments.
  */
-export function SettingsForm({ title, subtitle, tabs, render }) {
+export function SettingsForm({ title, subtitle, tabs, schema = {}, render }) {
   const { data, setData } = useFetch('/admin/settings');
   const { settings: live, pages, reload, appearance } = useShop();
   const [preview, setPreview] = useState(appearance);
   const [s, setS] = useState(null);
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
@@ -400,22 +442,24 @@ export function SettingsForm({ title, subtitle, tabs, render }) {
   }, [s?.theme, preview]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => applyTheme(live.theme, appearance), [live.theme, appearance]);
 
-  const set = (path, value) => setS((cur) => setPath(cur, path, value));
+  const set = (path, value) => {
+    v.clear(path);
+    setS((cur) => setPath(cur, path, value));
+  };
   const dirty = !!s && JSON.stringify(s) !== JSON.stringify(data);
 
   const save = async () => {
+    if (!v.validate(s, schema)) return;
     setSaving(true);
     try {
       const { _meta, ...body } = s;
       const saved = await api.put('/admin/settings', body);
       setData({ ...saved, _meta });
-      setErrors({});
+      v.reset();
       await reload();
       toast.success(t('Settings saved'));
     } catch (err) {
-      const fe = fieldErrors(err);
-      setErrors(fe);
-      toast.error(Object.keys(err.details || {}).length ? `${t('Please check')}: ${Object.keys(err.details).join(', ')}` : err.message);
+      v.fail(err);
     } finally {
       setSaving(false);
     }
@@ -433,15 +477,22 @@ export function SettingsForm({ title, subtitle, tabs, render }) {
         }
       />
       {tabs}
+      <FormAlert message={v.errors._} />
       {!s ? (
         <PageLoader />
       ) : (
-        <div className="stack settings-body">{render({ s, set, meta: s._meta || {}, pages, errors, preview, setPreview })}</div>
+        <div className="stack settings-body">{render({ s, set, meta: s._meta || {}, pages, errors: v.errors, preview, setPreview })}</div>
       )}
       {dirty && (
         <div className="save-bar">
           <span>{t('You have unsaved changes')}</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => setS(data)}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              v.reset();
+              setS(data);
+            }}
+          >
             {t('Discard')}
           </button>
           <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
@@ -454,7 +505,14 @@ export function SettingsForm({ title, subtitle, tabs, render }) {
 }
 
 export function AppearancePage() {
-  return <SettingsForm title={t('Appearance')} subtitle={t('Logo, colours, light/dark mode and font.')} render={(p) => <Appearance {...p} />} />;
+  return (
+    <SettingsForm
+      title={t('Appearance')}
+      subtitle={t('Logo, colours, light/dark mode and font.')}
+      schema={SETTINGS_RULES.appearance}
+      render={(p) => <Appearance {...p} />}
+    />
+  );
 }
 
 export function StoreDetailsPage() {
@@ -462,6 +520,7 @@ export function StoreDetailsPage() {
     <SettingsForm
       title={t('Store details')}
       subtitle={t('Name, contact details, emails, customer sign-in, stock and search engines.')}
+      schema={SETTINGS_RULES.store}
       render={(p) => <StoreDetails {...p} />}
     />
   );

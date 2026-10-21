@@ -36,7 +36,7 @@ const checkoutSchema = z.object({
   couponCode: z.string().trim().max(50).optional(),
   notes: z.string().trim().max(1000).optional().default(''),
   saveAddress: z.boolean().optional(),
-  acceptTerms: z.literal(true, { message: 'You must accept the terms' }),
+  acceptTerms: z.literal(true, { message: 'accept_terms' }),
 });
 
 export function notifyNewOrder(order) {

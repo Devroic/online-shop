@@ -5,7 +5,8 @@ import { useFetch } from '../lib/useFetch.js';
 import { date, money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
-import { EmptyState, Field, PageLoader, Spinner, fieldErrors } from '../components/ui.jsx';
+import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { Modal, MoneyInput, PageHeader, Toggle } from './components.jsx';
 
 const describe = (c) =>
@@ -15,12 +16,27 @@ function CouponModal({ coupon, onClose, onSaved }) {
   const [form, setForm] = useState(
     coupon ? { ...coupon, expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('sv-SE') : '' } : { code: '', type: 'percent', value: 10, minOrder: 0, maxUses: '', expiresAt: '', active: true },
   );
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
+  const { errors } = v;
   const [busy, setBusy] = useState(false);
   const toast = useToast();
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, value) => {
+    v.clear(k);
+    setForm((f) => ({ ...f, [k]: value }));
+  };
 
   const save = async () => {
+    const ok = v.validate(form, {
+      code: [rules.required(), rules.minLength(2), rules.maxLength(50)],
+      value:
+        form.type === 'percent'
+          ? [rules.required(), rules.integer(), rules.min(1), rules.max(100)]
+          : form.type === 'fixed'
+            ? [rules.positive()]
+            : [],
+      maxUses: [rules.integer(), rules.min(1)],
+    });
+    if (!ok) return;
     setBusy(true);
     const body = {
       code: form.code,
@@ -38,7 +54,7 @@ function CouponModal({ coupon, onClose, onSaved }) {
       toast.success(t('Saved'));
       onSaved();
     } catch (err) {
-      setErrors(fieldErrors(err));
+      v.fail(err);
       setBusy(false);
     }
   };
@@ -62,7 +78,7 @@ function CouponModal({ coupon, onClose, onSaved }) {
           <button className="btn btn-ghost" onClick={onClose}>
             {t('Cancel')}
           </button>
-          <button className="btn btn-primary" onClick={save} disabled={busy || form.code.trim().length < 2}>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>
             {busy && <Spinner />} {t('Save')}
           </button>
         </>
@@ -70,30 +86,37 @@ function CouponModal({ coupon, onClose, onSaved }) {
     >
       <Field label={t('Code')} value={form.code} onChange={(e) => set('code', e.target.value.toUpperCase().replace(/\s/g, ''))} error={errors.code} placeholder="SUMMER20" autoFocus />
       <div className="grid-2">
-        <Field as="select" label={t('Type')} value={form.type} onChange={(e) => set('type', e.target.value)}>
+        <Field
+          as="select"
+          label={t('Type')}
+          value={form.type}
+          onChange={(e) => {
+            v.clear('value');
+            set('type', e.target.value);
+          }}
+        >
           <option value="percent">{t('Percentage')}</option>
           <option value="fixed">{t('Fixed amount')}</option>
           <option value="free_shipping">{t('Free shipping')}</option>
         </Field>
         {form.type === 'percent' && (
-          <Field label={t('Discount %')} type="number" min="1" max="100" value={form.value} onChange={(e) => set('value', e.target.value)} error={errors.value} />
+          <Field label={t('Discount %')} inputMode="numeric" value={form.value} onChange={(e) => set('value', e.target.value)} error={errors.value} />
         )}
         {form.type === 'fixed' && (
-          <div className="field">
-            <label>{t('Amount')}</label>
-            <MoneyInput value={form.value} onChange={(v) => set('value', v)} />
-          </div>
+          <FieldWrap label={t('Amount')} error={errors.value}>
+            <MoneyInput value={form.value} onChange={(cents) => set('value', cents)} aria-invalid={!!errors.value} />
+          </FieldWrap>
         )}
       </div>
       <div className="grid-2">
-        <div className="field">
-          <label>{t('Minimum order')}</label>
-          <MoneyInput value={form.minOrder} onChange={(v) => set('minOrder', v)} />
-        </div>
-        <Field label={t('Max uses (optional)')} type="number" min="1" value={form.maxUses ?? ''} onChange={(e) => set('maxUses', e.target.value)} />
+        <FieldWrap label={t('Minimum order')} error={errors.minOrder}>
+          <MoneyInput value={form.minOrder} onChange={(cents) => set('minOrder', cents)} aria-invalid={!!errors.minOrder} />
+        </FieldWrap>
+        <Field label={t('Max uses (optional)')} inputMode="numeric" value={form.maxUses ?? ''} onChange={(e) => set('maxUses', e.target.value)} error={errors.maxUses} />
       </div>
-      <Field label={t('Expires on (optional)')} type="date" value={form.expiresAt} onChange={(e) => set('expiresAt', e.target.value)} />
-      <Toggle checked={form.active} onChange={(v) => set('active', v)} label={t('Active')} />
+      <Field label={t('Expires on (optional)')} type="date" value={form.expiresAt} onChange={(e) => set('expiresAt', e.target.value)} error={errors.expiresAt} />
+      <Toggle checked={form.active} onChange={(on) => set('active', on)} label={t('Active')} />
+      <FormAlert message={errors._} />
     </Modal>
   );
 }

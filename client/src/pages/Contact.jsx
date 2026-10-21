@@ -3,16 +3,20 @@ import { Mail, Phone, MapPin, Clock, CircleCheck } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { api } from '../lib/api.js';
 import { t } from '../lib/i18n.js';
-import { Field, Spinner, fieldErrors, useTitle } from '../components/ui.jsx';
+import { Field, FormAlert, Spinner, useTitle } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 
 export default function Contact() {
   const { settings } = useShop();
   const { contact } = settings;
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
   const [state, setState] = useState('idle');
   useTitle(t('Contact'));
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set = (k) => (e) => {
+    v.clear(k);
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+  };
 
   return (
     <div className="container">
@@ -27,25 +31,34 @@ export default function Contact() {
             </div>
           ) : (
             <form
+              noValidate
               onSubmit={async (e) => {
                 e.preventDefault();
+                const ok = v.validate(form, {
+                  name: [rules.required(), rules.maxLength(100)],
+                  email: [rules.required(), rules.email()],
+                  phone: [rules.maxLength(40)],
+                  message: [rules.required(), rules.minLength(5), rules.maxLength(5000)],
+                });
+                if (!ok) return;
                 setState('sending');
                 try {
                   await api.post('/contact', form);
                   setState('sent');
                 } catch (err) {
-                  setErrors(fieldErrors(err));
-                  setState(err.status === 429 ? 'limited' : 'idle');
+                  if (err.status === 429) v.show({ _: t('Too many messages. Please try again later.') });
+                  else v.fail(err);
+                  setState('idle');
                 }
               }}
             >
               <div className="grid-2">
-                <Field label={t('Name')} value={form.name} onChange={set('name')} error={errors.name} required />
-                <Field label={t('Email')} type="email" value={form.email} onChange={set('email')} error={errors.email} required />
+                <Field label={t('Name')} autoComplete="name" value={form.name} onChange={set('name')} error={v.errors.name} />
+                <Field label={t('Email')} type="email" autoComplete="email" value={form.email} onChange={set('email')} error={v.errors.email} />
               </div>
-              <Field label={t('Phone (optional)')} type="tel" value={form.phone} onChange={set('phone')} />
-              <Field as="textarea" rows={6} label={t('Message')} value={form.message} onChange={set('message')} error={errors.message} required />
-              {state === 'limited' && <p className="field-error">{t('Too many messages. Please try again later.')}</p>}
+              <Field label={t('Phone (optional)')} type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} error={v.errors.phone} />
+              <Field as="textarea" rows={6} label={t('Message')} value={form.message} onChange={set('message')} error={v.errors.message} />
+              <FormAlert message={v.errors._} />
               <button className="btn btn-primary" disabled={state === 'sending'}>
                 {state === 'sending' && <Spinner />} {t('Send message')}
               </button>

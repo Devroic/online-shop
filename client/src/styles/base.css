@@ -369,10 +369,44 @@ hr {
 .field.has-error textarea {
   border-color: var(--danger);
 }
+/* Any invalid control, also outside .field (table rows, coupon box…). */
+input[aria-invalid='true']:not([type='checkbox']):not([type='radio']),
+select[aria-invalid='true'],
+textarea[aria-invalid='true'],
+.field.has-error .money-input input,
+.field.has-error .color-input .input {
+  border-color: var(--danger);
+}
 .field-error {
   color: var(--danger);
   font-size: 0.85rem;
   margin: 4px 0 0;
+}
+.field-check .field-error {
+  display: block;
+  margin: 0 0 8px 30px;
+}
+.field-check.has-error .checkbox {
+  color: var(--danger);
+}
+.field-check.has-error .checkbox input {
+  outline: 2px solid var(--danger);
+  outline-offset: 1px;
+}
+.form-alert {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.92rem;
+}
+.form-alert svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 .field-hint {
   color: var(--muted);

@@ -4,7 +4,6 @@ import { api } from '../lib/api.js';
 import { centsToInput, parseMoney } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
-import { useToast } from '../context/ToastContext.jsx';
 import { Spinner } from '../components/ui.jsx';
 
 export function PageHeader({ title, subtitle, actions }) {
@@ -92,19 +91,20 @@ export function Modal({ title, onClose, children, footer, wide }) {
 export function ImageUploader({ value, onChange, multiple = true, kind }) {
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [error, setError] = useState('');
   const dragIndex = useRef(null);
   const input = useRef(null);
-  const toast = useToast();
 
   const upload = async (files) => {
     const list = [...files].filter((f) => f.type.startsWith('image/'));
+    setError(list.length < files.length ? t('Only image files are allowed') : '');
     if (!list.length) return;
     setBusy(true);
     try {
       const { urls } = await api.upload(multiple ? list : list.slice(0, 1), kind);
       onChange(multiple ? [...value, ...urls] : urls.slice(0, 1));
     } catch (err) {
-      toast.error(err.message);
+      setError(err.message);
     } finally {
       setBusy(false);
     }
@@ -119,66 +119,73 @@ export function ImageUploader({ value, onChange, multiple = true, kind }) {
   };
 
   return (
-    <div className={`uploader ${multiple ? '' : 'single'}`}>
-      {value.map((url, i) => (
-        <div
-          key={url}
-          className="uploader-item"
-          draggable={multiple}
-          onDragStart={() => (dragIndex.current = i)}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            move(dragIndex.current, i);
-            dragIndex.current = null;
-          }}
-        >
-          <img src={url} alt="" />
-          {multiple && i === 0 && <span className="uploader-main">{t('Main')}</span>}
-          {multiple && (
-            <span className="uploader-grip" aria-hidden="true">
-              <GripVertical size={14} />
-            </span>
-          )}
-          <button type="button" className="uploader-remove" onClick={() => onChange(value.filter((u) => u !== url))} aria-label={t('Remove')}>
-            <X size={14} />
+    <>
+      <div className={`uploader ${multiple ? '' : 'single'}`}>
+        {value.map((url, i) => (
+          <div
+            key={url}
+            className="uploader-item"
+            draggable={multiple}
+            onDragStart={() => (dragIndex.current = i)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              move(dragIndex.current, i);
+              dragIndex.current = null;
+            }}
+          >
+            <img src={url} alt="" />
+            {multiple && i === 0 && <span className="uploader-main">{t('Main')}</span>}
+            {multiple && (
+              <span className="uploader-grip" aria-hidden="true">
+                <GripVertical size={14} />
+              </span>
+            )}
+            <button type="button" className="uploader-remove" onClick={() => onChange(value.filter((u) => u !== url))} aria-label={t('Remove')}>
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+        {(multiple || !value.length) && (
+          <button
+            type="button"
+            className={`uploader-drop ${dragOver ? 'over' : ''}`}
+            onClick={() => input.current.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files?.length) upload(e.dataTransfer.files);
+            }}
+          >
+            {busy ? <Spinner /> : value.length ? <ImagePlus size={22} /> : <Upload size={22} />}
+            <span>{busy ? t('Uploading…') : t('Add images')}</span>
+            <small className="muted">{t('or drag & drop')}</small>
           </button>
-        </div>
-      ))}
-      {(multiple || !value.length) && (
-        <button
-          type="button"
-          className={`uploader-drop ${dragOver ? 'over' : ''}`}
-          onClick={() => input.current.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
+        )}
+        <input
+          ref={input}
+          type="file"
+          accept="image/*"
+          multiple={multiple}
+          hidden
+          onChange={(e) => {
+            upload(e.target.files);
+            e.target.value = '';
           }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            if (e.dataTransfer.files?.length) upload(e.dataTransfer.files);
-          }}
-        >
-          {busy ? <Spinner /> : value.length ? <ImagePlus size={22} /> : <Upload size={22} />}
-          <span>{busy ? t('Uploading…') : t('Add images')}</span>
-          <small className="muted">{t('or drag & drop')}</small>
-        </button>
+        />
+      </div>
+      {error && (
+        <span className="field-error" role="alert">
+          {error}
+        </span>
       )}
-      <input
-        ref={input}
-        type="file"
-        accept="image/*"
-        multiple={multiple}
-        hidden
-        onChange={(e) => {
-          upload(e.target.files);
-          e.target.value = '';
-        }}
-      />
-    </div>
+    </>
   );
 }
 

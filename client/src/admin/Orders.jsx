@@ -6,7 +6,8 @@ import { useFetch } from '../lib/useFetch.js';
 import { money, dateTime } from '../lib/format.js';
 import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
-import { Checkbox, EmptyState, Field, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
+import { Checkbox, EmptyState, Field, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { OrderItems, OrderTotals } from '../pages/OrderPage.jsx';
 import { PageHeader, SearchInput } from './components.jsx';
 
@@ -112,6 +113,11 @@ export function OrderDetail({ onChange }) {
   const [form, setForm] = useState(null);
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
+  const v = useValidation();
+  const set = (k) => (e) => {
+    v.clear(k);
+    setForm({ ...form, [k]: e.target.value });
+  };
 
   useEffect(() => {
     if (order) setForm({ status: order.status, paymentStatus: order.paymentStatus, trackingNumber: order.trackingNumber, adminNotes: order.adminNotes });
@@ -123,15 +129,17 @@ export function OrderDetail({ onChange }) {
   const customerWillBeNotified = form.status !== order.status || (form.trackingNumber && form.trackingNumber !== order.trackingNumber);
 
   const save = async (patch = form) => {
+    if (!v.validate(patch, { trackingNumber: [rules.maxLength(200)], adminNotes: [rules.maxLength(5000)] })) return;
     if (patch.status === 'cancelled' && order.status !== 'cancelled' && !window.confirm(t('Cancel this order? Stock will be returned to inventory.'))) return;
     setSaving(true);
     try {
       const updated = await api.put(`/admin/orders/${id}`, { ...patch, notifyCustomer: notify });
       setData(updated);
       onChange?.();
+      v.reset();
       toast.success(t('Order updated'));
     } catch (err) {
-      toast.error(err.message);
+      v.fail(err);
     } finally {
       setSaving(false);
     }
@@ -234,23 +242,24 @@ export function OrderDetail({ onChange }) {
 
           <section className="card no-print">
             <h3>{t('Manage order')}</h3>
-            <Field as="select" label={t('Order status')} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+            <Field as="select" label={t('Order status')} value={form.status} onChange={set('status')} error={v.errors.status}>
               {Object.keys(ORDER_STATUS).map((s) => (
                 <option key={s} value={s}>
                   {t(ORDER_STATUS[s])}
                 </option>
               ))}
             </Field>
-            <Field as="select" label={t('Payment status')} value={form.paymentStatus} onChange={(e) => setForm({ ...form, paymentStatus: e.target.value })}>
+            <Field as="select" label={t('Payment status')} value={form.paymentStatus} onChange={set('paymentStatus')} error={v.errors.paymentStatus}>
               {Object.keys(PAYMENT_STATUS).map((s) => (
                 <option key={s} value={s}>
                   {t(PAYMENT_STATUS[s])}
                 </option>
               ))}
             </Field>
-            <Field label={t('Tracking number')} value={form.trackingNumber} onChange={(e) => setForm({ ...form, trackingNumber: e.target.value })} />
-            <Field as="textarea" rows={3} label={t('Internal notes')} hint={t('Only visible to admins')} value={form.adminNotes} onChange={(e) => setForm({ ...form, adminNotes: e.target.value })} />
+            <Field label={t('Tracking number')} value={form.trackingNumber} onChange={set('trackingNumber')} error={v.errors.trackingNumber} />
+            <Field as="textarea" rows={3} label={t('Internal notes')} hint={t('Only visible to admins')} value={form.adminNotes} onChange={set('adminNotes')} error={v.errors.adminNotes} />
             {customerWillBeNotified && <Checkbox label={t('Email the customer about this change')} checked={notify} onChange={(e) => setNotify(e.target.checked)} />}
+            <FormAlert message={v.errors._} />
             <button className="btn btn-primary btn-block mt" disabled={!dirty || saving} onClick={() => save()}>
               {saving && <Spinner />} {t('Save changes')}
             </button>

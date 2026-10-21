@@ -1,4 +1,4 @@
-import { getLanguage } from './i18n.js';
+import { getLanguage, t } from './i18n.js';
 
 export class ApiError extends Error {
   constructor(status, message, details) {
@@ -20,7 +20,8 @@ async function request(method, url, body) {
     body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
   });
   const data = res.headers.get('content-type')?.includes('application/json') ? await res.json() : null;
-  if (!res.ok) throw new ApiError(res.status, data?.error || res.statusText, data?.details);
+  // Server messages are written in English; show them in the shop's language.
+  if (!res.ok) throw new ApiError(res.status, t(data?.error || res.statusText), data?.details);
   return data;
 }
 

@@ -13,13 +13,45 @@ export const badRequest = (msg, details) => new HttpError(400, msg, details);
 export const notFound = (msg = 'Not found') => new HttpError(404, msg);
 
 /** Parses `data` with a zod schema, throwing a 400 with field errors on failure. */
+const valueAt = (obj, path) => path.reduce((o, k) => (o == null ? undefined : o[k]), obj);
+
+/**
+ * Zod issue → short error code the client translates (client/src/lib/validation.js):
+ * required, email, url, min_length:8, max_length:200, min:0, max:100, integer, number…
+ * A schema can also set its own code as the message, e.g. z.literal(true, { message: 'accept_terms' }).
+ */
+function issueCode(issue, data) {
+  if (/^[a-z_]+(:[\w.-]+)?$/.test(issue.message)) return issue.message;
+  const value = valueAt(data, issue.path);
+  const blank = value === undefined || value === null || (typeof value === 'string' && !value.trim());
+  switch (issue.code) {
+    case 'invalid_type':
+      return blank ? 'required' : issue.expected === 'number' || issue.expected === 'int' ? 'number' : 'invalid';
+    case 'too_small':
+      if (issue.origin === 'string') return blank || issue.minimum <= 1 ? 'required' : `min_length:${issue.minimum}`;
+      if (issue.origin === 'array' || issue.origin === 'set') return 'required';
+      return `min:${issue.inclusive === false ? Number(issue.minimum) + 1 : issue.minimum}`;
+    case 'too_big':
+      if (issue.origin === 'string') return `max_length:${issue.maximum}`;
+      if (issue.origin === 'array' || issue.origin === 'set') return `max_items:${issue.maximum}`;
+      return `max:${issue.inclusive === false ? Number(issue.maximum) - 1 : issue.maximum}`;
+    case 'invalid_format':
+      return blank ? 'required' : issue.format === 'email' ? 'email' : issue.format === 'url' ? 'url' : 'invalid';
+    case 'invalid_value':
+    case 'invalid_union':
+      return blank ? 'required' : 'invalid';
+    default:
+      return 'invalid';
+  }
+}
+
 export function validate(schema, data) {
   const result = schema.safeParse(data);
   if (!result.success) {
     const fields = {};
     for (const issue of result.error.issues) {
       const key = issue.path.join('.') || '_';
-      if (!fields[key]) fields[key] = issue.message;
+      if (!fields[key]) fields[key] = issueCode(issue, data);
     }
     throw badRequest('Validation failed', fields);
   }

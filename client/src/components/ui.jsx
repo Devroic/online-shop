@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react';
 import { Link } from 'react-router-dom';
-import { Minus, Plus, LoaderCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Minus, Plus, LoaderCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
@@ -60,26 +60,58 @@ export function QuantityStepper({ value, onChange, max, min = 1, size = 'md' }) 
   );
 }
 
-/** Labelled input with inline error. Pass `as="textarea"` or `as="select"`. */
-export function Field({ label, error, hint, as: Tag = 'input', className = '', children, ...props }) {
-  const id = useId();
+/** Label, hint and error around any control: the same look for every form field. */
+export function FieldWrap({ label, error, hint, htmlFor, className = '', children }) {
   return (
     <div className={`field ${error ? 'has-error' : ''} ${className}`}>
-      {label && <label htmlFor={id}>{label}</label>}
-      <Tag id={id} aria-invalid={!!error} {...props}>
-        {children}
-      </Tag>
-      {error ? <span className="field-error">{error}</span> : hint ? <span className="field-hint">{hint}</span> : null}
+      {label && <label htmlFor={htmlFor}>{label}</label>}
+      {children}
+      {error ? (
+        <span className="field-error" role="alert">
+          {error}
+        </span>
+      ) : hint ? (
+        <span className="field-hint">{hint}</span>
+      ) : null}
     </div>
   );
 }
 
-export function Checkbox({ label, ...props }) {
+/** Labelled input with inline error. Pass `as="textarea"` or `as="select"`. */
+export function Field({ label, error, hint, as: Tag = 'input', className = '', children, ...props }) {
+  const id = useId();
   return (
-    <label className="checkbox">
-      <input type="checkbox" {...props} />
-      <span>{label}</span>
-    </label>
+    <FieldWrap label={label} error={error} hint={hint} htmlFor={id} className={className}>
+      <Tag id={id} aria-invalid={!!error} {...props}>
+        {children}
+      </Tag>
+    </FieldWrap>
+  );
+}
+
+/** Form-level error (not about a single field), shown above the submit button. */
+export function FormAlert({ message }) {
+  if (!message) return null;
+  return (
+    <p className="form-alert" role="alert">
+      <AlertCircle size={18} aria-hidden="true" /> <span>{message}</span>
+    </p>
+  );
+}
+
+export function Checkbox({ label, error, ...props }) {
+  return (
+    <div className={`field-check ${error ? 'has-error' : ''}`}>
+      <label className="checkbox">
+        <input type="checkbox" aria-invalid={!!error} {...props} />
+        <span>{label}</span>
+      </label>
+      {error && (
+        <span className="field-error" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -154,29 +186,8 @@ export function Breadcrumbs({ items }) {
   );
 }
 
-/** Translates API validation details (field → code) into readable messages. */
-export function fieldErrors(err) {
-  const out = {};
-  for (const [k, v] of Object.entries(err?.details || {})) {
-    if (typeof v !== 'string') continue;
-    const key = k.split('.').pop();
-    out[key] =
-      v === 'required'
-        ? t('This field is required')
-        : v === 'exists'
-          ? t('Already in use')
-          : v === 'wrong'
-            ? t('Incorrect')
-            : /email/i.test(v)
-              ? t('Enter a valid email')
-              : /at least 8/.test(v)
-                ? t('At least 8 characters')
-                : /accept the terms/.test(v)
-                  ? t('Please accept the terms')
-                  : t('Please check this field');
-  }
-  return out;
-}
+// Server errors → field messages (kept here for existing imports).
+export { fieldErrors } from '../lib/validation.js';
 
 const svg = (path) =>
   function Icon({ size = 20 }) {

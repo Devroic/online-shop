@@ -147,9 +147,21 @@ test('coupons apply and respect limits', async () => {
 
 test('checkout validation', async () => {
   const res = await request(app).post('/api/orders').send(checkout({ items: [{ productId, quantity: 1 }], acceptTerms: false, email: 'nope' })).expect(400);
-  assert.ok(res.body.details.email);
-  assert.ok(res.body.details.acceptTerms);
+  assert.equal(res.body.details.email, 'email');
+  assert.equal(res.body.details.acceptTerms, 'accept_terms');
   await request(app).post('/api/orders').send(checkout({ items: [{ productId, quantity: 1 }], paymentMethod: 'card' })).expect(400);
+});
+
+test('validation errors come back as short codes the UI translates', async () => {
+  const reg = await request(app).post('/api/auth/register').send({ email: '', password: 'short', name: ' ' }).expect(400);
+  assert.deepEqual(reg.body.details, { email: 'required', password: 'min_length:8', name: 'required' });
+  const coupon = await admin.post('/api/admin/coupons').send({ code: 'X', type: 'percent', value: 0 }).expect(400);
+  assert.equal(coupon.body.details.code, 'min_length:2');
+  const zero = await admin.post('/api/admin/coupons').send({ code: 'ZERO', type: 'percent', value: 0 }).expect(400);
+  assert.equal(zero.body.details.value, 'min:1');
+  const settings = await admin.put('/api/admin/settings').send({ contact: { email: 'nope' }, social: { instagram: 'instagram' }, theme: { primary: 'red' } }).expect(400);
+  assert.deepEqual(settings.body.details, { 'contact.email': 'email', 'social.instagram': 'url', 'theme.primary': 'colour' });
+  await admin.put('/api/admin/settings').send({ contact: { email: '' }, social: { instagram: '' } }).expect(200);
 });
 
 test('customer registers, sees linked guest orders', async () => {

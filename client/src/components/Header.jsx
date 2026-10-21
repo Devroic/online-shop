@@ -21,6 +21,7 @@ function SearchBox({ autoFocus, onDone }) {
   const navigate = useNavigate();
   return (
     <form
+      noValidate
       className="search-box"
       role="search"
       onSubmit={(e) => {

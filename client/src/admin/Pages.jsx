@@ -8,25 +8,37 @@ import { renderMarkdown } from '../lib/markdown.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { EmptyState, Field, PageLoader, Spinner } from '../components/ui.jsx';
+import { EmptyState, Field, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { Modal, PageHeader, Toggle } from './components.jsx';
-import { HomePage, SettingsForm } from './Settings.jsx';
+import { HomePage, SETTINGS_RULES, SettingsForm } from './Settings.jsx';
 
 function PageModal({ page, onClose, onSaved }) {
   const [form, setForm] = useState(page || { slug: '', title: '', content: '', showInFooter: true });
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
+  const v = useValidation();
+  const { errors } = v;
   const toast = useToast();
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, value) => {
+    v.clear(k);
+    setForm((f) => ({ ...f, [k]: value }));
+  };
 
   const save = async () => {
+    const ok = v.validate(form, {
+      title: [rules.required(), rules.maxLength(200)],
+      slug: [rules.maxLength(80)],
+      content: [rules.maxLength(100000)],
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await api.put(`/admin/pages/${encodeURIComponent(page?.slug || form.slug || form.title)}`, { ...form, slug: form.slug || form.title });
       toast.success(t('Saved'));
       onSaved();
     } catch (err) {
-      toast.error(err.message);
+      v.fail(err);
       setBusy(false);
     }
   };
@@ -51,15 +63,15 @@ function PageModal({ page, onClose, onSaved }) {
           <button className="btn btn-ghost" onClick={onClose}>
             {t('Cancel')}
           </button>
-          <button className="btn btn-primary" onClick={save} disabled={busy || !form.title.trim()}>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>
             {busy && <Spinner />} {t('Save')}
           </button>
         </>
       }
     >
       <div className="grid-2">
-        <Field label={t('Title')} value={form.title} onChange={(e) => set('title', e.target.value)} autoFocus />
-        <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} hint={form.slug && `/p/${form.slug}`} placeholder={t('Generated from the name')} />
+        <Field label={t('Title')} value={form.title} onChange={(e) => set('title', e.target.value)} error={errors.title} autoFocus />
+        <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} hint={form.slug && `/p/${form.slug}`} placeholder={t('Generated from the name')} error={errors.slug} />
       </div>
       <div className="tabs">
         <button type="button" className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>
@@ -77,15 +89,17 @@ function PageModal({ page, onClose, onSaved }) {
           rows={14}
           value={form.content}
           onChange={(e) => set('content', e.target.value)}
+          error={errors.content}
           hint={t('## Heading · **bold** · *italic* · - list item · [link text](https://…)')}
         />
       )}
       <Toggle
         checked={form.showInFooter}
-        onChange={(v) => set('showInFooter', v)}
+        onChange={(on) => set('showInFooter', on)}
         label={t('Show in the shop’s footer')}
         hint={t('When off, the page is hidden from the footer but still opens from its address, e.g. through a link in the banner.')}
       />
+      <FormAlert message={errors._} />
     </Modal>
   );
 }
@@ -164,7 +178,7 @@ export default function Pages() {
     <Routes>
       <Route
         index
-        element={<SettingsForm title={t('Pages')} subtitle={t('The banner and announcement bar on the home page.')} tabs={<PageTabs />} render={(props) => <HomePage {...props} />} />}
+        element={<SettingsForm title={t('Pages')} subtitle={t('The banner and announcement bar on the home page.')} tabs={<PageTabs />} schema={SETTINGS_RULES.home} render={(props) => <HomePage {...props} />} />}
       />
       <Route path="help" element={<HelpPages />} />
       <Route path="*" element={<Navigate to="/admin/pages" replace />} />

@@ -6,17 +6,29 @@ import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { EmptyState, Field, PageLoader, Spinner, fieldErrors } from '../components/ui.jsx';
+import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { ImageUploader, Modal, PageHeader, Toggle } from './components.jsx';
 
 function CategoryModal({ category, onClose, onSaved }) {
   const [form, setForm] = useState(category || { name: '', slug: '', description: '', image: null, sortOrder: 0, active: true });
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
+  const { errors } = v;
   const [busy, setBusy] = useState(false);
   const toast = useToast();
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, value) => {
+    v.clear(k);
+    setForm((f) => ({ ...f, [k]: value }));
+  };
 
   const save = async () => {
+    const ok = v.validate(form, {
+      name: [rules.required(), rules.maxLength(100)],
+      slug: [rules.maxLength(100)],
+      description: [rules.maxLength(2000)],
+      sortOrder: [rules.integer()],
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const body = { name: form.name, slug: form.slug || undefined, description: form.description, image: form.image, sortOrder: Number(form.sortOrder) || 0, active: form.active };
@@ -25,7 +37,7 @@ function CategoryModal({ category, onClose, onSaved }) {
       toast.success(t('Saved'));
       onSaved();
     } catch (err) {
-      setErrors(fieldErrors(err));
+      v.fail(err);
       setBusy(false);
     }
   };
@@ -49,23 +61,23 @@ function CategoryModal({ category, onClose, onSaved }) {
           <button className="btn btn-ghost" onClick={onClose}>
             {t('Cancel')}
           </button>
-          <button className="btn btn-primary" onClick={save} disabled={busy || !form.name.trim()}>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>
             {busy && <Spinner />} {t('Save')}
           </button>
         </>
       }
     >
       <Field label={t('Name')} value={form.name} onChange={(e) => set('name', e.target.value)} error={errors.name} autoFocus />
-      <Field as="textarea" rows={3} label={t('Description (optional)')} value={form.description} onChange={(e) => set('description', e.target.value)} />
-      <div className="field">
-        <label>{t('Image (optional)')}</label>
-        <ImageUploader multiple={false} value={form.image ? [form.image] : []} onChange={(v) => set('image', v[0] || null)} />
-      </div>
+      <Field as="textarea" rows={3} label={t('Description (optional)')} value={form.description} onChange={(e) => set('description', e.target.value)} error={errors.description} />
+      <FieldWrap label={t('Image (optional)')} error={errors.image}>
+        <ImageUploader multiple={false} value={form.image ? [form.image] : []} onChange={(list) => set('image', list[0] || null)} />
+      </FieldWrap>
       <div className="grid-2">
-        <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder={t('Generated from the name')} />
-        <Field label={t('Sort order')} type="number" value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} hint={t('Lower numbers come first')} />
+        <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder={t('Generated from the name')} error={errors.slug} />
+        <Field label={t('Sort order')} inputMode="numeric" value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} hint={t('Lower numbers come first')} error={errors.sortOrder} />
       </div>
-      <Toggle checked={form.active} onChange={(v) => set('active', v)} label={t('Visible in shop')} />
+      <Toggle checked={form.active} onChange={(on) => set('active', on)} label={t('Visible in shop')} />
+      <FormAlert message={errors._} />
     </Modal>
   );
 }

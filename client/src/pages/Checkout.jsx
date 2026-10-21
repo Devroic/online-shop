@@ -4,11 +4,11 @@ import { CreditCard, Banknote, Lock, Tag, X, ChevronDown, ShoppingBag, Info } fr
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
-import { useToast } from '../context/ToastContext.jsx';
 import { api } from '../lib/api.js';
 import { money } from '../lib/format.js';
 import { t, PAYMENT_METHOD } from '../lib/i18n.js';
-import { Checkbox, EmptyState, Field, Spinner, fieldErrors, useTitle } from '../components/ui.jsx';
+import { Checkbox, EmptyState, Field, FormAlert, Spinner, useTitle } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { problemText, useQuote } from '../components/useQuote.js';
 
 const PAYMENT_ICONS = { card: CreditCard, cod: Banknote };
@@ -76,6 +76,7 @@ function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
               }}
               placeholder={t('Discount code')}
               aria-label={t('Discount code')}
+              aria-invalid={!!quote?.couponError}
             />
             <button type="button" className="btn btn-outline" onClick={apply}>
               {t('Apply')}
@@ -119,7 +120,6 @@ export default function Checkout() {
   const { items, payload, clear } = useCart();
   const { user } = useAuth();
   const { settings, pages } = useShop();
-  const toast = useToast();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   useTitle(t('Checkout'));
@@ -139,7 +139,8 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState(settings.paymentMethods[0]);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [saveAddress, setSaveAddress] = useState(true);
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
+  const { errors } = v;
   const [submitting, setSubmitting] = useState(false);
 
   const { quote, loading, problemFor } = useQuote({ couponCode: coupon, shippingMethodId, paymentMethod });
@@ -212,31 +213,28 @@ export default function Checkout() {
   }
 
   const set = (k) => (e) => {
+    v.clear(k);
     setForm((f) => ({ ...f, [k]: e.target.value }));
-    if (errors[k]) setErrors((er) => ({ ...er, [k]: undefined }));
-  };
-
-  const validateLocal = () => {
-    const er = {};
-    const req = t('This field is required');
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) er.email = t('Enter a valid email');
-    if (form.name.trim().length < 2) er.name = req;
-    if (settings.checkout.requirePhone && !form.phone.trim()) er.phone = req;
-    if (shipping?.requiresAddress) {
-      for (const k of ['street', 'city', 'postalCode']) if (!form[k].trim()) er[k] = req;
-    }
-    if (!acceptTerms) er.acceptTerms = t('Please accept the terms');
-    return er;
   };
 
   const submit = async (e) => {
     e.preventDefault();
-    const er = validateLocal();
-    setErrors(er);
-    if (Object.keys(er).length) {
-      document.querySelector('.has-error, .terms-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
+    const address = shipping?.requiresAddress ? [rules.required()] : [];
+    const ok = v.validate(
+      { ...form, acceptTerms },
+      {
+        email: [rules.required(), rules.email()],
+        phone: [settings.checkout.requirePhone && rules.required(), rules.maxLength(40)],
+        name: [rules.required(), rules.minLength(2), rules.maxLength(100)],
+        street: [...address, rules.maxLength(200)],
+        city: [...address, rules.maxLength(100)],
+        postalCode: [...address, rules.maxLength(20)],
+        region: [rules.maxLength(100)],
+        notes: [rules.maxLength(1000)],
+        acceptTerms: [rules.acceptTerms()],
+      },
+    );
+    if (!ok) return;
     setSubmitting(true);
     try {
       const res = await api.post('/orders', {
@@ -262,11 +260,10 @@ export default function Checkout() {
       navigate(`/order/${res.order.number}?token=${res.order.accessToken}&new=1`, { replace: true });
     } catch (err) {
       setSubmitting(false);
-      if (err.status === 409) toast.error(t('Some items in your cart changed. Please review your order.'));
-      else if (err.status === 400) {
-        setErrors(fieldErrors(err));
-        toast.error(t('Please check the highlighted fields.'));
-      } else toast.error(err.status === 502 ? t('Card payment is unavailable right now. Please choose another payment method.') : t('Something went wrong. Please try again.'));
+      if (err.status === 409) v.show({ _: t('Some items in your cart changed. Please review your order.') });
+      else if (err.status === 502) v.show({ _: t('Card payment is unavailable right now. Please choose another payment method.') });
+      else if (err.status === 400) v.fail(err);
+      else v.show({ _: t('Something went wrong. Please try again.') });
     }
   };
 
@@ -322,7 +319,7 @@ export default function Checkout() {
                 <div className="grid-3">
                   <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={errors.city} />
                   <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={errors.postalCode} />
-                  <Field label={t('Region (optional)')} autoComplete="address-level1" value={form.region} onChange={set('region')} />
+                  <Field label={t('Region (optional)')} autoComplete="address-level1" value={form.region} onChange={set('region')} error={errors.region} />
                 </div>
                 {user && <Checkbox label={t('Save this address to my account')} checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />}
               </div>
@@ -351,32 +348,31 @@ export default function Checkout() {
                 );
               })}
             </div>
-            <Field as="textarea" rows={3} label={t('Order notes (optional)')} value={form.notes} onChange={set('notes')} placeholder={t('e.g. delivery instructions')} />
+            <Field as="textarea" rows={3} label={t('Order notes (optional)')} value={form.notes} onChange={set('notes')} placeholder={t('e.g. delivery instructions')} error={errors.notes} />
           </section>
 
           <div className="place-order">
-            <div className={errors.acceptTerms ? 'terms-error' : ''}>
-              <Checkbox
-                checked={acceptTerms}
-                onChange={(e) => {
-                  setAcceptTerms(e.target.checked);
-                  setErrors((er) => ({ ...er, acceptTerms: undefined }));
-                }}
-                label={
-                  <>
-                    {t('I accept the')}{' '}
-                    {termsPage ? (
-                      <Link to={`/p/${termsPage.slug}`} target="_blank">
-                        {t('terms & conditions')}
-                      </Link>
-                    ) : (
-                      t('terms & conditions')
-                    )}
-                  </>
-                }
-              />
-              {errors.acceptTerms && <p className="field-error">{errors.acceptTerms}</p>}
-            </div>
+            <Checkbox
+              checked={acceptTerms}
+              error={errors.acceptTerms}
+              onChange={(e) => {
+                setAcceptTerms(e.target.checked);
+                v.clear('acceptTerms');
+              }}
+              label={
+                <>
+                  {t('I accept the')}{' '}
+                  {termsPage ? (
+                    <Link to={`/p/${termsPage.slug}`} target="_blank">
+                      {t('terms & conditions')}
+                    </Link>
+                  ) : (
+                    t('terms & conditions')
+                  )}
+                </>
+              }
+            />
+            <FormAlert message={errors._} />
             <button className="btn btn-primary btn-lg btn-block" disabled={submitting || hasProblems || !quote}>
               {submitting ? <Spinner /> : <Lock size={18} />}
               {paymentMethod === 'card' ? t('Continue to payment') : t('Place order')} · {money(quote?.total ?? 0)}

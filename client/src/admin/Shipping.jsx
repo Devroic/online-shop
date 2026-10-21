@@ -6,18 +6,29 @@ import { useFetch } from '../lib/useFetch.js';
 import { money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
-import { EmptyState, Field, PageLoader, Spinner, fieldErrors } from '../components/ui.jsx';
+import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { Modal, MoneyInput, PageHeader, Toggle } from './components.jsx';
-import { Payments, SettingsForm } from './Settings.jsx';
+import { Payments, SETTINGS_RULES, SettingsForm } from './Settings.jsx';
 
 function ShippingModal({ method, onClose, onSaved }) {
   const [form, setForm] = useState(method || { name: '', description: '', price: 0, freeOver: null, requiresAddress: true, active: true, sortOrder: 0 });
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
+  const { errors } = v;
   const [busy, setBusy] = useState(false);
   const toast = useToast();
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, value) => {
+    v.clear(k);
+    setForm((f) => ({ ...f, [k]: value }));
+  };
 
   const save = async () => {
+    const ok = v.validate(form, {
+      name: [rules.required(), rules.maxLength(100)],
+      description: [rules.maxLength(500)],
+      sortOrder: [rules.integer()],
+    });
+    if (!ok) return;
     setBusy(true);
     const body = { ...form, sortOrder: Number(form.sortOrder) || 0 };
     delete body.id;
@@ -27,7 +38,7 @@ function ShippingModal({ method, onClose, onSaved }) {
       toast.success(t('Saved'));
       onSaved();
     } catch (err) {
-      setErrors(fieldErrors(err));
+      v.fail(err);
       setBusy(false);
     }
   };
@@ -51,27 +62,26 @@ function ShippingModal({ method, onClose, onSaved }) {
           <button className="btn btn-ghost" onClick={onClose}>
             {t('Cancel')}
           </button>
-          <button className="btn btn-primary" onClick={save} disabled={busy || !form.name.trim()}>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>
             {busy && <Spinner />} {t('Save')}
           </button>
         </>
       }
     >
       <Field label={t('Name')} value={form.name} onChange={(e) => set('name', e.target.value)} error={errors.name} placeholder={t('Courier, ACS, ELTA…')} autoFocus />
-      <Field label={t('Description (optional)')} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder={t('e.g. Delivery in 1-3 business days')} />
+      <Field label={t('Description (optional)')} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder={t('e.g. Delivery in 1-3 business days')} error={errors.description} />
       <div className="grid-2">
-        <div className="field">
-          <label>{t('Cost')}</label>
-          <MoneyInput value={form.price} onChange={(v) => set('price', v)} />
-        </div>
-        <div className="field">
-          <label>{t('Free for orders over (optional)')}</label>
-          <MoneyInput value={form.freeOver} onChange={(v) => set('freeOver', v)} allowEmpty />
-        </div>
+        <FieldWrap label={t('Cost')} error={errors.price}>
+          <MoneyInput value={form.price} onChange={(cents) => set('price', cents)} aria-invalid={!!errors.price} />
+        </FieldWrap>
+        <FieldWrap label={t('Free for orders over (optional)')} error={errors.freeOver}>
+          <MoneyInput value={form.freeOver} onChange={(cents) => set('freeOver', cents)} allowEmpty aria-invalid={!!errors.freeOver} />
+        </FieldWrap>
       </div>
-      <Field label={t('Sort order')} type="number" value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} />
-      <Toggle checked={form.requiresAddress} onChange={(v) => set('requiresAddress', v)} label={t('Requires a delivery address')} hint={t('Turn off for store pickup')} />
-      <Toggle checked={form.active} onChange={(v) => set('active', v)} label={t('Active')} />
+      <Field label={t('Sort order')} inputMode="numeric" value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} error={errors.sortOrder} />
+      <Toggle checked={form.requiresAddress} onChange={(on) => set('requiresAddress', on)} label={t('Requires a delivery address')} hint={t('Turn off for store pickup')} />
+      <Toggle checked={form.active} onChange={(on) => set('active', on)} label={t('Active')} />
+      <FormAlert message={errors._} />
     </Modal>
   );
 }
@@ -154,6 +164,7 @@ export default function Shipping() {
             title={t('Shipping & payments')}
             subtitle={t('How customers pay, and the options at checkout.')}
             tabs={<ShippingTabs />}
+            schema={SETTINGS_RULES.payments}
             render={(props) => <Payments {...props} />}
           />
         }

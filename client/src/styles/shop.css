@@ -1105,8 +1105,12 @@
   gap: 14px;
   padding: 4px 0;
 }
-.terms-error .checkbox {
-  color: var(--danger);
+.place-order .form-alert,
+.place-order .field-check .field-error {
+  margin: 0;
+}
+.place-order .field-check .field-error {
+  margin-top: 4px;
 }
 .summary-toggle {
   display: flex;

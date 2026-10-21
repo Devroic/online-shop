@@ -7,7 +7,8 @@ import { money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
-import { EmptyState, Field, PageLoader, Pagination, Spinner, fieldErrors } from '../components/ui.jsx';
+import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
+import { rules, useValidation } from '../lib/validation.js';
 import { ImageUploader, MoneyInput, PageHeader, SearchInput, Toggle } from './components.jsx';
 import ProductImport from './ProductImport.jsx';
 
@@ -208,7 +209,8 @@ export function ProductEdit() {
   const categories = useFetch('/admin/categories').data || [];
   const existing = useFetch(isNew ? null : `/admin/products/${id}`, { keepPrevious: false });
   const [form, setForm] = useState(EMPTY);
-  const [errors, setErrors] = useState({});
+  const v = useValidation();
+  const { errors } = v;
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -225,11 +227,19 @@ export function ProductEdit() {
 
   if (!isNew && !existing.data) return <PageLoader />;
 
-  const set = (k, v) => {
-    setForm((f) => ({ ...f, [k]: v }));
-    if (errors[k]) setErrors((e) => ({ ...e, [k]: undefined }));
+  const set = (k, value) => {
+    v.clear(k);
+    setForm((f) => ({ ...f, [k]: value }));
   };
-  const setVariant = (i, k, v) => set('variants', form.variants.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  const setVariant = (i, k, value) => {
+    v.clear(`variants.${i}.${k}`);
+    setForm((f) => ({ ...f, variants: f.variants.map((x, j) => (j === i ? { ...x, [k]: value } : x)) }));
+  };
+  // Removing a row shifts the ones below it, so their errors no longer match.
+  const removeVariant = (i) => {
+    v.reset();
+    set('variants', form.variants.filter((_, j) => j !== i));
+  };
 
   const body = () => ({
     name: form.name,
@@ -244,15 +254,24 @@ export function ProductEdit() {
     featured: form.featured,
     active: form.active,
     images: form.images,
-    variants: form.variants.filter((v) => v.name.trim()),
+    variants: form.variants,
   });
 
   const save = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) {
-      setErrors({ name: t('This field is required') });
-      return;
-    }
+    const schema = {
+      name: [rules.required(), rules.maxLength(200)],
+      description: [rules.maxLength(20000)],
+      price: [rules.positive()],
+      compareAtPrice: [(value) => (value != null && value <= form.price ? 'above_price' : null)],
+      sku: [rules.maxLength(100)],
+      slug: [rules.maxLength(100)],
+    };
+    form.variants.forEach((_, i) => {
+      schema[`variants.${i}.name`] = [rules.required(), rules.maxLength(100)];
+      schema[`variants.${i}.sku`] = [rules.maxLength(100)];
+    });
+    if (!v.validate(form, schema)) return;
     setSaving(true);
     try {
       const saved = isNew ? await api.post('/admin/products', body()) : await api.put(`/admin/products/${id}`, body());
@@ -261,8 +280,7 @@ export function ProductEdit() {
       if (isNew) navigate(`/admin/products/${saved.id}`, { replace: true });
       else existing.setData(saved);
     } catch (err) {
-      setErrors(fieldErrors(err));
-      toast.error(t('Please check the highlighted fields.'));
+      v.fail(err);
     } finally {
       setSaving(false);
     }
@@ -284,7 +302,7 @@ export function ProductEdit() {
   };
 
   return (
-    <form onSubmit={save}>
+    <form onSubmit={save} noValidate>
       <Link to="/admin/products" className="back-link">
         <ArrowLeft size={16} /> {t('Products')}
       </Link>
@@ -308,6 +326,7 @@ export function ProductEdit() {
           </>
         }
       />
+      <FormAlert message={errors._} />
       <div className="a-edit">
         <div className="stack">
           <section className="card">
@@ -318,6 +337,7 @@ export function ProductEdit() {
               label={t('Description')}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
+              error={errors.description}
               hint={t('Tip: **bold**, - bullet lists and ## headings are supported.')}
             />
           </section>
@@ -325,31 +345,36 @@ export function ProductEdit() {
           <section className="card">
             <h3>{t('Images')}</h3>
             <p className="muted small">{t('The first image is shown in listings. Drag to reorder. Square photos look best.')}</p>
-            <ImageUploader value={form.images} onChange={(v) => set('images', v)} />
+            <FieldWrap error={errors.images}>
+              <ImageUploader value={form.images} onChange={(list) => set('images', list)} />
+            </FieldWrap>
           </section>
 
           <section className="card">
             <h3>{t('Pricing')}</h3>
             <div className="grid-2">
-              <div className="field">
-                <label>{t('Price')}</label>
-                <MoneyInput value={form.price} onChange={(v) => set('price', v)} />
-              </div>
-              <div className="field">
-                <label>{t('Compare-at price (optional)')}</label>
-                <MoneyInput value={form.compareAtPrice} onChange={(v) => set('compareAtPrice', v)} allowEmpty />
-                <span className="field-hint">{t('Shown crossed out, to display a sale.')}</span>
-              </div>
+              <FieldWrap label={t('Price')} error={errors.price}>
+                <MoneyInput value={form.price} onChange={(cents) => set('price', cents)} aria-invalid={!!errors.price} />
+              </FieldWrap>
+              <FieldWrap label={t('Compare-at price (optional)')} error={errors.compareAtPrice} hint={t('Shown crossed out, to display a sale.')}>
+                <MoneyInput value={form.compareAtPrice} onChange={(cents) => set('compareAtPrice', cents)} allowEmpty aria-invalid={!!errors.compareAtPrice} />
+              </FieldWrap>
             </div>
           </section>
 
           <section className="card">
             <h3>{t('Inventory')}</h3>
-            <Toggle checked={form.trackStock} onChange={(v) => set('trackStock', v)} label={t('Track stock')} hint={t('Stop selling when stock reaches zero')} />
+            <Toggle checked={form.trackStock} onChange={(on) => set('trackStock', on)} label={t('Track stock')} hint={t('Stop selling when stock reaches zero')} />
             <div className="grid-2 mt">
-              <Field label={t('Code (SKU)')} value={form.sku} onChange={(e) => set('sku', e.target.value)} />
+              <Field label={t('Code (SKU)')} value={form.sku} onChange={(e) => set('sku', e.target.value)} error={errors.sku} />
               {form.trackStock && !form.variants.length && (
-                <Field label={t('Stock')} type="number" min="0" value={form.stock} onChange={(e) => set('stock', Math.max(0, parseInt(e.target.value, 10) || 0))} />
+                <Field
+                  label={t('Stock')}
+                  inputMode="numeric"
+                  value={form.stock}
+                  onChange={(e) => set('stock', Math.max(0, parseInt(e.target.value.replace(/\D/g, ''), 10) || 0))}
+                  error={errors.stock}
+                />
               )}
             </div>
           </section>
@@ -370,26 +395,51 @@ export function ProductEdit() {
                   <span>{t('Code (SKU)')}</span>
                   <span />
                 </div>
-                {form.variants.map((v, i) => (
-                  <div key={v.id || `new-${i}`} className="variants-row">
-                    <input className="input" value={v.name} onChange={(e) => setVariant(i, 'name', e.target.value)} placeholder={t('e.g. Medium')} aria-label={t('Option name')} />
-                    <MoneyInput value={v.price} onChange={(val) => setVariant(i, 'price', val)} allowEmpty placeholder={(form.price / 100).toFixed(2)} aria-label={t('Price')} />
-                    {form.trackStock && (
-                      <input
-                        className="input"
-                        type="number"
-                        min="0"
-                        value={v.stock}
-                        onChange={(e) => setVariant(i, 'stock', Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        aria-label={t('Stock')}
-                      />
-                    )}
-                    <input className="input" value={v.sku} onChange={(e) => setVariant(i, 'sku', e.target.value)} aria-label={t('Code (SKU)')} />
-                    <button type="button" className="icon-btn" onClick={() => set('variants', form.variants.filter((_, j) => j !== i))} aria-label={t('Remove')}>
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+                {form.variants.map((variant, i) => {
+                  const err = (k) => errors[`variants.${i}.${k}`];
+                  const rowErrors = ['name', 'price', 'stock', 'sku'].map(err).filter(Boolean);
+                  return (
+                    <div key={variant.id || `new-${i}`} className={`variants-item ${rowErrors.length ? 'has-error' : ''}`}>
+                      <div className="variants-row">
+                        <input
+                          className="input"
+                          value={variant.name}
+                          onChange={(e) => setVariant(i, 'name', e.target.value)}
+                          placeholder={t('e.g. Medium')}
+                          aria-label={t('Option name')}
+                          aria-invalid={!!err('name')}
+                        />
+                        <MoneyInput
+                          value={variant.price}
+                          onChange={(cents) => setVariant(i, 'price', cents)}
+                          allowEmpty
+                          placeholder={(form.price / 100).toFixed(2)}
+                          aria-label={t('Price')}
+                          aria-invalid={!!err('price')}
+                        />
+                        {form.trackStock && (
+                          <input
+                            className="input"
+                            inputMode="numeric"
+                            value={variant.stock}
+                            onChange={(e) => setVariant(i, 'stock', Math.max(0, parseInt(e.target.value.replace(/\D/g, ''), 10) || 0))}
+                            aria-label={t('Stock')}
+                            aria-invalid={!!err('stock')}
+                          />
+                        )}
+                        <input className="input" value={variant.sku} onChange={(e) => setVariant(i, 'sku', e.target.value)} aria-label={t('Code (SKU)')} aria-invalid={!!err('sku')} />
+                        <button type="button" className="icon-btn" onClick={() => removeVariant(i)} aria-label={t('Remove')}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      {rowErrors.length > 0 && (
+                        <span className="field-error" role="alert">
+                          {rowErrors[0]}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             <button type="button" className="btn btn-outline btn-sm" onClick={() => set('variants', [...form.variants, { name: '', sku: '', price: null, stock: 0 }])}>
@@ -401,8 +451,8 @@ export function ProductEdit() {
         <div className="stack">
           <section className="card">
             <h3>{t('Status')}</h3>
-            <Toggle checked={form.active} onChange={(v) => set('active', v)} label={t('Visible in shop')} />
-            <Toggle checked={form.featured} onChange={(v) => set('featured', v)} label={t('Featured on home page')} />
+            <Toggle checked={form.active} onChange={(on) => set('active', on)} label={t('Visible in shop')} />
+            <Toggle checked={form.featured} onChange={(on) => set('featured', on)} label={t('Featured on home page')} />
           </section>
           <section className="card">
             <h3>{t('Organisation')}</h3>
@@ -419,7 +469,7 @@ export function ProductEdit() {
                 <Link to="/admin/categories">{t('Create categories')}</Link>
               </p>
             )}
-            <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder={t('Generated from the name')} hint={form.slug && `/product/${form.slug}`} />
+            <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder={t('Generated from the name')} hint={form.slug && `/product/${form.slug}`} error={errors.slug} />
           </section>
           {!isNew && (
             <button type="button" className="btn btn-ghost danger-text" onClick={remove}>
