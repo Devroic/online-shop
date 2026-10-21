@@ -13,7 +13,7 @@ const describe = (c) =>
 
 function CouponModal({ coupon, onClose, onSaved }) {
   const [form, setForm] = useState(
-    coupon ? { ...coupon, expiresAt: coupon.expiresAt?.slice(0, 10) || '' } : { code: '', type: 'percent', value: 10, minOrder: 0, maxUses: '', expiresAt: '', active: true },
+    coupon ? { ...coupon, expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('sv-SE') : '' } : { code: '', type: 'percent', value: 10, minOrder: 0, maxUses: '', expiresAt: '', active: true },
   );
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
@@ -28,7 +28,8 @@ function CouponModal({ coupon, onClose, onSaved }) {
       value: form.type === 'free_shipping' ? 0 : Number(form.value) || 0,
       minOrder: form.minOrder || 0,
       maxUses: form.maxUses ? Number(form.maxUses) : null,
-      expiresAt: form.expiresAt ? `${form.expiresAt}T23:59:59` : null,
+      // End of the chosen day in the admin's time zone (the server runs in UTC).
+      expiresAt: form.expiresAt ? new Date(`${form.expiresAt}T23:59:59`).toISOString() : null,
       active: form.active,
     };
     try {
@@ -104,7 +105,7 @@ export default function Coupons() {
     <>
       <PageHeader
         title={t('Discount codes')}
-        subtitle={t('Codes customers can enter at checkout.')}
+        subtitle={t('Codes customers can enter at checkout. Codes are not shown in the shop by themselves: if you mention one in the announcement bar, update it in Pages → Home page.')}
         actions={
           <button className="btn btn-primary" onClick={() => setEditing({})}>
             <Plus size={18} /> {t('Add code')}

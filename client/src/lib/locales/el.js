@@ -623,4 +623,6 @@ export default {
   Payments: 'Πληρωμές',
   'How customers pay, and the options at checkout.': 'Πώς πληρώνουν οι πελάτες και οι επιλογές στην ολοκλήρωση παραγγελίας.',
   'The banner and announcement bar on the home page.': 'Το banner της αρχικής σελίδας και η μπάρα ανακοινώσεων.',
+  'Codes customers can enter at checkout. Codes are not shown in the shop by themselves: if you mention one in the announcement bar, update it in Pages → Home page.':
+    'Κωδικοί που βάζουν οι πελάτες στην ολοκλήρωση της παραγγελίας. Οι κωδικοί δεν εμφανίζονται μόνοι τους στο κατάστημα: αν αναφέρετε κάποιον στη μπάρα ανακοινώσεων, αλλάξτε τη από Σελίδες → Αρχική σελίδα.',
 };
