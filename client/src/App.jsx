@@ -14,7 +14,7 @@ import TrackOrder from './pages/TrackOrder.jsx';
 import ContentPage from './pages/ContentPage.jsx';
 import Contact from './pages/Contact.jsx';
 import NotFound from './pages/NotFound.jsx';
-import { Login, Register, ForgotPassword, ResetPassword } from './pages/AuthPages.jsx';
+import { Login, Register, ForgotPassword, ResetPassword, VerifyEmail } from './pages/AuthPages.jsx';
 import Account from './pages/Account.jsx';
 import AuthCallback from './pages/AuthCallback.jsx';
 
@@ -75,6 +75,7 @@ export default function App() {
           <Route path="auth/callback" element={<AuthCallback />} />
           <Route path="account/forgot" element={<ForgotPassword />} />
           <Route path="account/reset" element={<ResetPassword />} />
+          <Route path="account/verify" element={<VerifyEmail />} />
           <Route path="account/*" element={<Account />} />
           <Route path="*" element={<NotFound />} />
         </Route>

@@ -21,6 +21,7 @@ export function publicUser(u) {
     address: u.address ?? null,
     provider: u.auth_provider,
     hasPassword: !!u.password_hash,
+    emailVerified: !!u.email_verified_at,
     createdAt: u.created_at,
   };
 }

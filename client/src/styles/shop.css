@@ -1490,3 +1490,11 @@
   background: var(--text);
   color: var(--bg);
 }
+
+.confirm-email {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.confirm-email .grow {
+  min-width: 200px;
+}

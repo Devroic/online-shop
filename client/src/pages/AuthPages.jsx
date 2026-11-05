@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
@@ -218,7 +218,9 @@ export function ResetPassword() {
               setUser(r.user);
               navigate('/account', { replace: true });
             } catch (err) {
-              v.fail(err);
+              // Only the password is a field here; anything else means the link is bad.
+              if (err.status === 400 && !err.details?.password) v.show({ _: t('This link is invalid or has expired') });
+              else v.fail(err);
               setBusy(false);
             }
           }}
@@ -240,6 +242,47 @@ export function ResetPassword() {
             {busy && <Spinner />} {t('Save password')}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/** Opened from the link in the welcome email. */
+export function VerifyEmail() {
+  const [params] = useSearchParams();
+  const { setUser } = useAuth();
+  const [state, setState] = useState('working');
+  const [error, setError] = useState('');
+  const started = useRef(false);
+  useTitle(t('Confirm your email'));
+
+  useEffect(() => {
+    if (started.current) return; // StrictMode runs effects twice; the token is single-use
+    started.current = true;
+    api
+      .post('/auth/verify', { token: params.get('token') || '' })
+      .then((r) => {
+        setUser(r.user);
+        setState('done');
+      })
+      .catch((err) => {
+        setError(err.status === 400 ? t('This link is invalid or has expired') : err.message);
+        setState('failed');
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="container narrow">
+      <div className="card auth-card">
+        <h1>{t('Confirm your email')}</h1>
+        {state === 'working' && <Spinner />}
+        {state === 'done' && <p>{t('Thank you! Your email is confirmed.')}</p>}
+        <FormAlert message={state === 'failed' ? error : ''} />
+        {state !== 'working' && (
+          <Link to="/account" className="btn btn-primary btn-block">
+            {t('My account')}
+          </Link>
+        )}
       </div>
     </div>
   );

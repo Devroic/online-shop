@@ -50,8 +50,9 @@ export async function ensureInitialData() {
 export async function createAdmin(email, password, name = 'Admin') {
   const hash = await hashPassword(password);
   const row = await db().one(
-    `INSERT INTO users (email, password_hash, name, role) VALUES ($1, $2, $3, 'admin')
-     ON CONFLICT (email) DO UPDATE SET role = 'admin', password_hash = excluded.password_hash RETURNING id`,
+    `INSERT INTO users (email, password_hash, name, role, email_verified_at) VALUES ($1, $2, $3, 'admin', now())
+     ON CONFLICT (email) DO UPDATE SET role = 'admin', password_hash = excluded.password_hash,
+       email_verified_at = COALESCE(users.email_verified_at, now()) RETURNING id`,
     [normEmail(email), hash, name],
   );
   return row.id;

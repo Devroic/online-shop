@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom';
-import { Package, LogOut, LayoutDashboard, ChevronRight } from 'lucide-react';
+import { Package, LogOut, LayoutDashboard, ChevronRight, MailCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { api } from '../lib/api.js';
@@ -175,6 +175,40 @@ function Profile() {
   );
 }
 
+/** Shown until the customer clicks the link in the welcome email. */
+function ConfirmEmailNotice({ email }) {
+  const [state, setState] = useState('idle');
+  const toast = useToast();
+  const resend = async () => {
+    setState('sending');
+    try {
+      await api.post('/auth/verify/resend');
+      setState('sent');
+    } catch (err) {
+      toast.error(err.message);
+      setState('idle');
+    }
+  };
+  return (
+    <div className="notice confirm-email">
+      <MailCheck size={20} />
+      <div className="grow">
+        <strong>{t('Please confirm your email')}</strong>
+        <div className="small">
+          {t('We sent a link to {email}. Your earlier orders with this email appear here once you confirm it.', { email })}
+        </div>
+      </div>
+      {state === 'sent' ? (
+        <span className="small">{t('Sent!')}</span>
+      ) : (
+        <button type="button" className="btn btn-outline btn-sm" onClick={resend} disabled={state === 'sending'}>
+          {state === 'sending' && <Spinner size={16} />} {t('Send again')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Account() {
   const { user, loading, logout } = useAuth();
   useTitle(t('My account'));
@@ -199,6 +233,7 @@ export default function Account() {
           </button>
         </div>
       </div>
+      {!user.emailVerified && <ConfirmEmailNotice email={user.email} />}
       <nav className="tabs">
         <NavLink to="/account" end>
           {t('My orders')}

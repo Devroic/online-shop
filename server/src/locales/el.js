@@ -39,6 +39,12 @@ const strings = {
     'Από τον λογαριασμό σας μπορείτε να βλέπετε τις παραγγελίες σας και να αποθηκεύσετε τη διεύθυνσή σας για γρηγορότερες αγορές.',
   'Start shopping': 'Ξεκινήστε τις αγορές',
   'Welcome to {store}': 'Καλώς ήρθατε στο {store}',
+  'Please confirm your email address, so we can link your earlier orders and keep your account safe.':
+    'Επιβεβαιώστε τη διεύθυνση email σας, ώστε να συνδέσουμε τις παλαιότερες παραγγελίες σας και να προστατεύσουμε τον λογαριασμό σας.',
+  'Confirm my email': 'Επιβεβαίωση email',
+  'The link expires in 7 days. If you did not create this account, ignore this email.':
+    'Ο σύνδεσμος λήγει σε 7 ημέρες. Αν δεν δημιουργήσατε εσείς αυτόν τον λογαριασμό, αγνοήστε αυτό το email.',
+  'Confirm your email': 'Επιβεβαιώστε το email σας',
 
   // Default pages
   'About us': 'Σχετικά με εμάς',

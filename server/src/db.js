@@ -191,6 +191,18 @@ const migrations = [
   `,
   // 2: remember the language the customer ordered in, for later emails.
   `ALTER TABLE orders ADD COLUMN language TEXT;`,
+  // 3: email confirmation for accounts created with email & password.
+  // Accounts that already exist count as confirmed, so nobody is locked out.
+  `
+  ALTER TABLE users ADD COLUMN email_verified_at TIMESTAMPTZ;
+  UPDATE users SET email_verified_at = created_at;
+  CREATE TABLE email_verifications (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMPTZ NOT NULL
+  );
+  ALTER TABLE email_verifications ENABLE ROW LEVEL SECURITY;
+  `,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

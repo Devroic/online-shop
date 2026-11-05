@@ -653,4 +653,12 @@ export default {
   'No email from provider': 'Ο λογαριασμός δεν έδωσε email',
   'Your account did not share an email address, which we need for your orders. Please sign in with email instead.':
     'Ο λογαριασμός σας δεν μας έδωσε διεύθυνση email, που τη χρειαζόμαστε για τις παραγγελίες σας. Συνδεθείτε με email.',
+  // Email confirmation
+  'Please confirm your email': 'Επιβεβαιώστε το email σας',
+  'We sent a link to {email}. Your earlier orders with this email appear here once you confirm it.':
+    'Στείλαμε σύνδεσμο στο {email}. Οι παλαιότερες παραγγελίες σας με αυτό το email θα εμφανιστούν εδώ μόλις το επιβεβαιώσετε.',
+  'Send again': 'Αποστολή ξανά',
+  'Sent!': 'Στάλθηκε!',
+  'Confirm your email': 'Επιβεβαίωση email',
+  'Thank you! Your email is confirmed.': 'Ευχαριστούμε! Το email σας επιβεβαιώθηκε.',
 };

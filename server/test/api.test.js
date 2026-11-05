@@ -164,11 +164,25 @@ test('validation errors come back as short codes the UI translates', async () =>
   await admin.put('/api/admin/settings').send({ contact: { email: '' }, social: { instagram: '' } }).expect(200);
 });
 
-test('customer registers, sees linked guest orders', async () => {
+test('guest orders join an account only after the email is confirmed', async () => {
+  const { sha256 } = await import('../src/utils.js');
   const user = request.agent(app);
-  await user.post('/api/auth/register').send({ email: 'BUYER@test.dev', password: 'password123', name: 'Buyer' }).expect(201);
-  const mine = await user.get('/api/orders/mine').expect(200);
-  assert.ok(mine.body.length >= 2);
+  const reg = await user.post('/api/auth/register').send({ email: 'BUYER@test.dev', password: 'password123', name: 'Buyer' }).expect(201);
+  assert.equal(reg.body.user.emailVerified, false);
+  // Anyone could sign up with this email: its guest orders must stay hidden until it is confirmed.
+  assert.equal((await user.get('/api/orders/mine').expect(200)).body.length, 0);
+  await user.post('/api/auth/verify/resend').expect(200);
+  await request(app).post('/api/auth/verify').send({ token: 'not-a-real-token' }).expect(400);
+
+  // The real link is only in the email; use a known token instead.
+  await db().query("INSERT INTO email_verifications (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '1 day')", [
+    sha256('known-test-token'),
+    reg.body.user.id,
+  ]);
+  const ok = await request(app).post('/api/auth/verify').send({ token: 'known-test-token' }).expect(200);
+  assert.equal(ok.body.user.emailVerified, true);
+  assert.ok((await user.get('/api/orders/mine').expect(200)).body.length >= 2);
+  await request(app).post('/api/auth/verify').send({ token: 'known-test-token' }).expect(400); // single use
   await user.get('/api/admin/stats').expect(403);
 });
 

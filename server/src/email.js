@@ -134,6 +134,15 @@ export async function sendStatusUpdate(order) {
   return sendMail({ to: order.email, subject: `#${order.number}: ${statusText}`, html: layout(s, body) });
 }
 
+export async function sendEmailConfirmation(user, token, lang) {
+  const s = await getSettings();
+  const t = translator(lang || s.language);
+  const body = `<p>${t('Please confirm your email address, so we can link your earlier orders and keep your account safe.')}</p>
+    <p>${button(`${config.publicUrl}/account/verify?token=${token}`, t('Confirm my email'), s.theme.primary)}</p>
+    <p style="color:#71717a;font-size:13px">${t('The link expires in 7 days. If you did not create this account, ignore this email.')}</p>`;
+  return sendMail({ to: user.email, subject: t('Confirm your email'), html: layout(s, body) });
+}
+
 export async function sendPasswordReset(user, token, lang) {
   const s = await getSettings();
   const t = translator(lang || s.language);
@@ -151,12 +160,18 @@ export async function sendContactMessage(msg) {
   return sendMail({ to: s.contact.email, subject: `${t('Contact form')}: ${msg.name}`, html: layout(s, body), replyTo: msg.email });
 }
 
-export async function sendWelcome(user, lang) {
+/** Welcome email. With `verifyToken` (email & password sign-up) it also asks to confirm the address. */
+export async function sendWelcome(user, lang, verifyToken) {
   const s = await getSettings();
   const t = translator(lang || s.language);
+  const action = verifyToken
+    ? `<p>${t('Please confirm your email address, so we can link your earlier orders and keep your account safe.')}</p>
+    <p style="margin-top:24px">${button(`${config.publicUrl}/account/verify?token=${verifyToken}`, t('Confirm my email'), s.theme.primary)}</p>
+    <p style="color:#71717a;font-size:13px">${t('The link expires in 7 days. If you did not create this account, ignore this email.')}</p>`
+    : `<p style="margin-top:24px">${button(`${config.publicUrl}/products`, t('Start shopping'), s.theme.primary)}</p>`;
   const body = `<h2 style="margin-top:0">${t('Welcome, {name}!', { name: esc(user.name) })}</h2>
     <p>${t('Your account at {store} is ready.', { store: `<strong>${esc(s.storeName)}</strong>` })}</p>
     <p>${t('From your account you can follow your orders and save your address for faster checkout.')}</p>
-    <p style="margin-top:24px">${button(`${config.publicUrl}/products`, t('Start shopping'), s.theme.primary)}</p>`;
+    ${action}`;
   return sendMail({ to: user.email, subject: t('Welcome to {store}', { store: s.storeName }), html: layout(s, body) });
 }

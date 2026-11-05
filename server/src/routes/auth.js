@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { db } from '../db.js';
 import { checkPassword, clearSession, hashPassword, normEmail, publicUser, requireUser, setSession } from '../auth.js';
 import { HttpError, badRequest, randomToken, sha256, validate } from '../utils.js';
-import { background, sendPasswordReset, sendWelcome } from '../email.js';
+import { background, sendEmailConfirmation, sendPasswordReset, sendWelcome } from '../email.js';
 import { getSettings } from '../settings.js';
 import { config } from '../config.js';
 import { requestLanguage } from '../i18n.js';
@@ -37,9 +37,30 @@ const registerSchema = z.object({
   phone: z.string().trim().max(40).optional().default(''),
 });
 
-/** Links earlier guest orders placed with the same email to the account. */
+/**
+ * Links earlier guest orders placed with the same email to the account.
+ * Only once the email is proven to be theirs (confirmation link, password
+ * reset or Google/Facebook), so nobody can see someone else's orders.
+ */
 const claimGuestOrders = (user) =>
   db().query('UPDATE orders SET user_id = $1 WHERE user_id IS NULL AND lower(email) = $2', [user.id, user.email]);
+
+/** Marks the email as confirmed and links guest orders. Returns the updated user. */
+async function confirmEmail(userId) {
+  const user = await db().one('UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1 RETURNING *', [userId]);
+  await db().query('DELETE FROM email_verifications WHERE user_id = $1', [userId]);
+  await claimGuestOrders(user);
+  return user;
+}
+
+async function newVerificationToken(userId) {
+  const token = randomToken(32);
+  await db().query("INSERT INTO email_verifications (token_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '7 days')", [
+    sha256(token),
+    userId,
+  ]);
+  return token;
+}
 
 router.post('/register', limiter, async (req, res) => {
   const data = validate(registerSchema, req.body);
@@ -53,8 +74,8 @@ router.post('/register', limiter, async (req, res) => {
     data.name,
     data.phone,
   ]);
-  await claimGuestOrders(user);
-  background(sendWelcome(user, requestLanguage(req, await getSettings())));
+  const token = await newVerificationToken(user.id);
+  background(sendWelcome(user, requestLanguage(req, await getSettings()), token));
   setSession(res, user);
   res.status(201).json({ user: publicUser(user) });
 });
@@ -102,10 +123,11 @@ router.post('/oauth', limiter, async (req, res) => {
       String(meta.full_name || meta.name || email.split('@')[0]).slice(0, 100),
       provider,
     ]);
-    await claimGuestOrders(user);
     created = true;
     background(sendWelcome(user, requestLanguage(req, settings)));
   }
+  // The provider has confirmed the email address.
+  if (!user.email_verified_at || created) user = await confirmEmail(user.id);
   setSession(res, user);
   res.status(created ? 201 : 200).json({ user: publicUser(user), created });
 });
@@ -173,8 +195,27 @@ router.post('/reset', limiter, async (req, res) => {
     row.user_id,
   ]);
   await db().query('DELETE FROM password_resets WHERE user_id = $1', [row.user_id]);
+  // The reset link arrived by email, so the address is theirs.
+  const confirmed = user.email_verified_at ? user : await confirmEmail(user.id);
+  setSession(res, confirmed);
+  res.json({ user: publicUser(confirmed) });
+});
+
+router.post('/verify', limiter, async (req, res) => {
+  const { token } = validate(z.object({ token: z.string().min(10).max(200) }), req.body);
+  const row = await db().one('SELECT * FROM email_verifications WHERE token_hash = $1 AND expires_at > now()', [sha256(token)]);
+  if (!row) throw badRequest('This link is invalid or has expired');
+  const user = await confirmEmail(row.user_id);
   setSession(res, user);
   res.json({ user: publicUser(user) });
+});
+
+router.post('/verify/resend', requireUser, limiter, async (req, res) => {
+  if (!req.user.email_verified_at) {
+    const token = await newVerificationToken(req.user.id);
+    background(sendEmailConfirmation(req.user, token, requestLanguage(req, await getSettings())));
+  }
+  res.json({ ok: true });
 });
 
 export default router;
