@@ -110,7 +110,7 @@ router.post('/oauth', limiter, async (req, res) => {
 
   const provider = sbUser.app_metadata?.provider || 'oauth';
   const settings = await getSettings();
-  if (!settings.login?.[provider]) throw new HttpError(403, 'This sign-in method is not enabled');
+  if (!config.loginProviders.includes(provider)) throw new HttpError(403, 'This sign-in method is not enabled');
   if (!sbUser.email_confirmed_at) throw new HttpError(401, 'Email not verified by provider');
 
   const email = normEmail(sbUser.email);

@@ -52,6 +52,11 @@ export const config = {
     secretKey: env.STRIPE_SECRET_KEY,
     webhookSecret: env.STRIPE_WEBHOOK_SECRET,
   },
+  // Google/Facebook buttons, e.g. LOGIN_PROVIDERS=google,facebook (each must be set up in Supabase first).
+  loginProviders: (env.LOGIN_PROVIDERS || '')
+    .split(',')
+    .map((p) => p.trim().toLowerCase())
+    .filter((p) => ['google', 'facebook'].includes(p)),
   admin: {
     email: env.ADMIN_EMAIL,
     password: env.ADMIN_PASSWORD,

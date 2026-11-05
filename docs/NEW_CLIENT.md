@@ -1,7 +1,7 @@
 # Νέος πελάτης: τι κάνω βήμα-βήμα
 
 Ξεκινάς όταν σου έρθει συμπληρωμένο το ερωτηματολόγιο (PDF, μία σελίδα: όνομα, domain, email, στοιχεία επιχείρησης).
-Όλα τα υπόλοιπα (λογότυπο, χρώματα, αποστολές, αντικαταβολή, προϊόντα) τα βάζει ο πελάτης από το admin μετά την παράδοση (Βήμα 10).
+Όλα τα υπόλοιπα (λογότυπο, χρώματα, αποστολές, αντικαταβολή, προϊόντα) τα βάζει ο πελάτης από το admin μετά την παράδοση (Βήμα 9).
 Στα παραδείγματα ο πελάτης λέγεται `margarita` και το domain του `margarita.gr`: βάλε τα δικά του.
 
 Χρόνος: ~45 λεπτά την πρώτη φορά, ~20 λεπτά μετά.
@@ -27,16 +27,14 @@
 - Άνοιξε έναν φάκελο για τον πελάτη στον password manager σου. Εκεί κρατάς ό,τι κωδικό/κλειδί φτιάχνεις παρακάτω.
 - Γράψε τον πελάτη στη λίστα πελατών σου (domain, email λογαριασμών, Vercel project, email Stripe, λήξη domain).
 - Στείλε στον πελάτη να ανοίξει **λογαριασμό Stripe** (Βήμα 4), ώστε να είναι έτοιμος όταν φτάσεις εκεί.
-- Στο repository φτιάξε δύο αρχεία (**δεν** ανεβαίνουν στο git):
-  - `.env.margarita`: αντέγραψε το [template του .env](#template-env) στο τέλος του οδηγού
-  - `clients/margarita.json`: αντέγραψε το [template του JSON](#template-json) στο τέλος του οδηγού
-- Συμπλήρωσε στο JSON το όνομα καταστήματος και το email από το ερωτηματολόγιο.
-- Βγάλε ένα τυχαίο κλειδί για το `JWT_SECRET` και έναν κωδικό για τον admin:
+- Φτιάξε ένα σημείωμα `.env.margarita` (στον password manager ή στον φάκελο του repository: **δεν**
+  ανεβαίνει στο git) με το [template του .env](#template-env) στο τέλος του οδηγού. Εκεί μαζεύεις τις τιμές των επόμενων βημάτων.
+- `ADMIN_EMAIL`: το email του πελάτη (από το ερωτηματολόγιο).
+- Βγάλε ένα τυχαίο κλειδί για το `JWT_SECRET` και έναν προσωρινό κωδικό για το `ADMIN_PASSWORD`:
   ```bash
   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
   node -e "console.log(require('crypto').randomBytes(9).toString('base64url'))"
   ```
-  Βάλε το πρώτο στο `JWT_SECRET` του `.env.margarita` και το δεύτερο στο `admin.password` του JSON.
 
 ## Βήμα 1. Domain
 
@@ -54,13 +52,14 @@
 - Περίμενε 1-2 λεπτά να ετοιμαστεί.
 - Πάτα **Connect** (πάνω στη μέση). Αντέγραψε το **Transaction pooler** connection string (port **6543**):
   - Στο `.env.margarita` → `DATABASE_URL=` (βάλε τον κωδικό της βάσης στη θέση του `[YOUR-PASSWORD]`)
-- Στο ίδιο παράθυρο αντέγραψε και το **Session pooler** string (port **5432**) στον password manager. Θα το χρειαστείς στο Βήμα 9 (backup).
+- Στο ίδιο παράθυρο αντέγραψε και το **Session pooler** string (port **5432**) στον password manager. Θα το χρειαστείς στο Βήμα 8 (backup).
 - Πήγαινε **Project Settings → API**:
   - Project URL → `SUPABASE_URL=`
   - `anon` / publishable key → `SUPABASE_ANON_KEY=`
   - `service_role` / secret key → `SUPABASE_SERVICE_ROLE_KEY=` (**μυστικό**, μην το δώσεις πουθενά αλλού)
 
-Τους πίνακες τους φτιάχνει μόνο του το Βήμα 5· τον φάκελο φωτογραφιών επίσης (ή το πρώτο ανέβασμα φωτογραφίας).
+Δεν φτιάχνεις τίποτα μέσα στη Supabase: οι πίνακες, οι βασικές σελίδες, οι αποστολές και ο admin
+δημιουργούνται μόνα τους με το πρώτο άνοιγμα του site (Βήμα 5), ο φάκελος φωτογραφιών με το πρώτο ανέβασμα.
 
 ## Βήμα 3. Resend (email)
 
@@ -88,31 +87,23 @@
     - Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`
     - Signing secret (`whsec_…`) → `STRIPE_WEBHOOK_SECRET=`
 
-## Βήμα 5. Αρχική ρύθμιση καταστήματος (μία εντολή)
-
-- Στον φάκελο του repository τρέξε:
-  ```bash
-  DOTENV_CONFIG_PATH=.env.margarita npm run configure -- clients/margarita.json
-  ```
-- Θα δεις ✔ για: πίνακες, φάκελο φωτογραφιών, ρυθμίσεις, admin, αποστολές, σελίδες.
-- Αν κάτι βγάλει σφάλμα, διόρθωσέ το στο `.env.margarita` ή στο JSON και ξανατρέξ' το. Είναι ασφαλές να τρέξει πολλές φορές.
-
-## Βήμα 6. Vercel (το site)
+## Βήμα 5. Vercel (το site)
 
 - Πήγαινε στο https://vercel.com (ο **δικός σου** λογαριασμός) → **Add New → Project**.
 - Διάλεξε το repository `online-shop` και δώσε όνομα project `shop-margarita`.
 - Άνοιξε **Environment Variables**. Αντέγραψε **όλο** το περιεχόμενο του `.env.margarita` και κάνε paste στο πρώτο πεδίο «Key». Το Vercel τα χωρίζει μόνο του.
-- Πάτα **Deploy** και περίμενε ~1 λεπτό.
+- Πάτα **Deploy** και περίμενε ~1 λεπτό. Άνοιξε το site μία φορά: έτσι στήνεται η βάση και ο admin.
 - Πήγαινε **Settings → Domains → Add** και πρόσθεσε `margarita.gr` και `www.margarita.gr`.
   - Το Vercel σου δείχνει τι εγγραφές DNS να βάλεις. Βάλε τες στο DNS του domain.
   - Όταν γίνουν ✓, το site ανοίγει στο `https://margarita.gr` (το HTTPS γίνεται αυτόματα).
 
-## Βήμα 7. Τελευταίες ρυθμίσεις στο admin
+## Βήμα 6. Ρυθμίσεις στο admin
 
-- Άνοιξε `https://margarita.gr/admin` και συνδέσου με το email/κωδικό admin του JSON.
+- Άνοιξε `https://margarita.gr/admin` και συνδέσου με το `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+- **Στοιχεία καταστήματος**: όνομα καταστήματος και email επικοινωνίας.
 - **Σελίδες → Βοήθεια → Όροι χρήσης**: συμπλήρωσε επωνυμία, ΑΦΜ, διεύθυνση από το ερωτηματολόγιο.
 
-## Βήμα 8. Δοκιμή
+## Βήμα 7. Δοκιμή
 
 - Βάλε ένα δοκιμαστικό προϊόν: **Προϊόντα → Νέο προϊόν**.
 - Κάνε μια παραγγελία από κινητό με κάρτα δοκιμής `4242 4242 4242 4242` (οποιαδήποτε μελλοντική ημερομηνία, οποιοδήποτε CVC).
@@ -121,7 +112,7 @@
   - ήρθε email στον πελάτη (δικό σου email) και στο email παραγγελιών (κοίτα και τα spam)
 - Σβήσε το δοκιμαστικό προϊόν και τις δοκιμαστικές παραγγελίες (ακύρωση).
 
-## Βήμα 9. Ενεργοποίηση πραγματικών πληρωμών + backup
+## Βήμα 8. Ενεργοποίηση πραγματικών πληρωμών + backup
 
 - Stripe: όταν ο πελάτης έχει ολοκληρώσει την ενεργοποίηση (Βήμα 4), κλείσε το **Test mode** και ξανακάνε για **live**:
   - Developers → API keys → `sk_live_…`
@@ -131,7 +122,7 @@
 - Backup: GitHub → repository → **Settings → Secrets and variables → Actions → `BACKUP_DATABASE_URLS`** → Update:
   - πρόσθεσε μια γραμμή: `margarita <Session pooler string του Βήματος 2>`
 
-## Βήμα 10. Παράδοση στον πελάτη
+## Βήμα 9. Παράδοση στον πελάτη
 
 Στείλε του:
 - το link του καταστήματος: `https://margarita.gr`
@@ -167,8 +158,8 @@
   - **APIs & Services → OAuth consent screen**: όνομα καταστήματος, email, λογότυπο → **Publish**
   - **Credentials → Create credentials → OAuth client ID** → Web application → Authorized redirect URI: το Callback URL της Supabase
   - αντέγραψε **Client ID** και **Client secret** στη Supabase (Google provider) → Save
-- Στο `clients/margarita.json`, μέσα στο `settings`, πρόσθεσε `"login": { "google": true }` και ξανατρέξε
-  το `npm run configure` (Βήμα 5). Ο διακόπτης δεν υπάρχει στο admin, για να μην τον αλλάξει κατά λάθος ο πελάτης.
+- Vercel → project → **Settings → Environment Variables**: `LOGIN_PROVIDERS=google` → **Redeploy**.
+  Δεν υπάρχει διακόπτης στο admin, για να μην το κλείσει κατά λάθος ο πελάτης.
 
 ## Προαιρετικό: σύνδεση πελατών με Facebook
 
@@ -192,8 +183,7 @@
 - Supabase → **Providers → Facebook**: Facebook client ID = App ID, Facebook secret = App Secret → Save
 - Facebook → πάνω στη σελίδα **App Mode: Development → Live** (ή **Publish**). Αν σου ζητήσει
   **Business verification**, ακολούθησε τα βήματα με τα στοιχεία της επιχείρησης του πελάτη.
-- Στο `clients/margarita.json`, μέσα στο `settings`, πρόσθεσε (κράτα το `google` αν το έχεις) `"login": { "google": true, "facebook": true }` και ξανατρέξε
-  το `npm run configure` (Βήμα 5). Ο διακόπτης δεν υπάρχει στο admin, για να μην τον αλλάξει κατά λάθος ο πελάτης.
+- Vercel → **Environment Variables**: `LOGIN_PROVIDERS=google,facebook` (ή μόνο `facebook`) → **Redeploy**.
 - Αν κάποιος λογαριασμός Facebook δεν δώσει email, το κατάστημα του ζητά να συνδεθεί με email
   (χωρίς email δεν μπορούν να σταλούν οι επιβεβαιώσεις παραγγελιών).
 
@@ -201,7 +191,7 @@
 
 - Στο `.env` βάλε `SUPABASE_URL` και `SUPABASE_ANON_KEY` ενός δοκιμαστικού Supabase project.
 - Supabase → **Authentication → URL Configuration → Redirect URLs**: πρόσθεσε `http://localhost:5173/**`.
-- Άνοιξε Google/Facebook όπως παραπάνω (`"login"` στο JSON + `npm run configure`) → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
+- Στο `.env` βάλε `LOGIN_PROVIDERS=google,facebook` και ξεκίνα ξανά το `npm run dev` → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
 
 ---
 
@@ -214,6 +204,9 @@
 # --- Κατάστημα ---------------------------------------------------------------
 PUBLIC_URL=https://
 JWT_SECRET=
+# Ο πρώτος admin (φτιάχνεται μόνο αν δεν υπάρχει ήδη admin)
+ADMIN_EMAIL=
+ADMIN_PASSWORD=
 
 # --- Supabase (Βήμα 2) ---------------------------------------------------------
 # Connect → Transaction pooler (port 6543), με τον κωδικό της βάσης
@@ -227,32 +220,20 @@ SUPABASE_SERVICE_ROLE_KEY=
 RESEND_API_KEY=
 MAIL_FROM="Όνομα Καταστήματος <orders@domain.gr>"
 
-# --- Stripe (Βήμα 4: πρώτα test, στο Βήμα 9 live) ---------------------------------
+# --- Stripe (Βήμα 4: πρώτα test, στο Βήμα 8 live) ---------------------------------
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+
+# --- Προαιρετικά -------------------------------------------------------------------
+# Σύνδεση με Google/Facebook (βλ. παραπάνω), π.χ. google,facebook
+LOGIN_PROVIDERS=
 ```
 
-<a id="template-json"></a>
-## Template: `clients/<πελάτης>.json`
+## Πού μπαίνει κάθε στοιχείο του πελάτη
 
-Οι αποστολές (Courier ενεργό, παραλαβή ανενεργή) και οι πληρωμές (κάρτα) μπαίνουν με τις
-προεπιλογές· τις αλλάζει ο πελάτης από το admin.
-
-```json
-{
-  "settings": {
-    "storeName": "Όνομα καταστήματος",
-    "contact": { "email": "email@του-πελάτη.gr" }
-  },
-  "admin": { "email": "email@του-πελάτη.gr", "password": "" }
-}
-```
-
-| Ερωτηματολόγιο | Πού μπαίνει |
+| Στοιχείο | Πού μπαίνει |
 |---|---|
-| Όνομα καταστήματος | JSON `settings.storeName` |
+| Όνομα καταστήματος | admin → Στοιχεία καταστήματος (Βήμα 6) |
 | Domain | Βήμα 1, `PUBLIC_URL` |
-| Email καταστήματος | JSON `settings.contact.email` και `admin.email`· ο πελάτης ανοίγει με αυτό το Stripe |
-| Επωνυμία, ΑΦΜ, διεύθυνση | Βήμα 7, σελίδα «Όροι χρήσης» |
-
-Αν θέλεις να τα στήσεις όλα εσύ από πριν (χρώματα, αποστολές, αντικαταβολή, κατηγορίες κ.λπ.), δες όλες τις επιλογές στο `clients/example.json`.
+| Email καταστήματος | `ADMIN_EMAIL`, admin → Στοιχεία καταστήματος· ο πελάτης ανοίγει με αυτό το Stripe |
+| Επωνυμία, ΑΦΜ, διεύθυνση | admin → Σελίδες → Βοήθεια → Όροι χρήσης (Βήμα 6) |

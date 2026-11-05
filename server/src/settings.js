@@ -52,11 +52,6 @@ export const DEFAULT_SETTINGS = {
     card: { enabled: true },
     cod: { enabled: false, fee: 0 },
   },
-  login: {
-    // Needs the provider enabled in the shop's Supabase project (see docs/NEW_CLIENT.md).
-    google: false,
-    facebook: false,
-  },
   checkout: {
     requirePhone: true,
     allowGuest: true,

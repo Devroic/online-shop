@@ -40,11 +40,7 @@
     "notifications": {
       "orderEmail": ""
     },
-    "orderPrefix": "DF-",
-    "login": {
-      "google": true,
-      "facebook": false
-    }
+    "orderPrefix": "DF-"
   },
   "shipping": [
     {

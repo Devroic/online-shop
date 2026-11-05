@@ -42,8 +42,10 @@ To try real services locally, fill in the optional keys in `.env` (copy `.env.ex
 
 1. Send the client the fillable [questionnaire](docs/client-questionnaire.pdf).
 2. Follow the step-by-step [new client guide](docs/NEW_CLIENT.md) (in Greek):
-   Supabase → Resend → Stripe → `npm run configure` → Vercel → domain → checks → backup.
-   It includes copy-paste templates for the client's `.env` and `clients/<client>.json`.
+   Supabase → Resend → Stripe → Vercel (environment variables) → admin settings → checks → backup.
+   It includes a copy-paste template for the client's environment variables. The database tables
+   and the first admin (`ADMIN_EMAIL` / `ADMIN_PASSWORD`) are created on the first request.
+   Optional: `npm run configure -- clients/<client>.json` pre-fills a shop from a JSON file (see `clients/example.json`).
 
 Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain emails, keys and passwords.
 
