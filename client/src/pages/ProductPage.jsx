@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Check, Truck, ShieldCheck, RotateCcw, ShoppingBag } from 'lucide-react';
+import { Check, Truck, ShieldCheck, RotateCcw, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
 import { useCart } from '../context/CartContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
@@ -23,22 +23,45 @@ function Gallery({ images, name }) {
     const el = track.current;
     if (el) el.scrollTo({ left: el.clientWidth * i, behavior: 'smooth' });
   };
+  // Arrows wrap around: after the last photo comes the first, and the other way round.
+  const step = (d) => go((active + d + images.length) % images.length);
 
   if (!images.length) return <div className="gallery-main img-placeholder" />;
   return (
     <div className="gallery">
-      {/* Swipeable on touch screens thanks to CSS scroll-snap. */}
       <div
-        className="gallery-main"
-        ref={track}
-        onScroll={(e) => {
-          const i = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth);
-          if (i !== active) setActive(i);
+        className="gallery-stage"
+        tabIndex={images.length > 1 ? 0 : undefined}
+        aria-label={t('Photos')}
+        onKeyDown={(e) => {
+          if (images.length < 2) return;
+          if (e.key === 'ArrowLeft') step(-1);
+          if (e.key === 'ArrowRight') step(1);
         }}
       >
-        {images.map((src, i) => (
-          <img key={src} src={src} alt={i === 0 ? name : ''} loading={i === 0 ? 'eager' : 'lazy'} />
-        ))}
+        {/* Swipeable on touch screens thanks to CSS scroll-snap. */}
+        <div
+          className="gallery-main"
+          ref={track}
+          onScroll={(e) => {
+            const i = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth);
+            if (i !== active) setActive(i);
+          }}
+        >
+          {images.map((src, i) => (
+            <img key={src} src={src} alt={i === 0 ? name : ''} loading={i === 0 ? 'eager' : 'lazy'} />
+          ))}
+        </div>
+        {images.length > 1 && (
+          <>
+            <button type="button" className="gallery-arrow prev" onClick={() => step(-1)} aria-label={t('Previous photo')}>
+              <ChevronLeft size={22} />
+            </button>
+            <button type="button" className="gallery-arrow next" onClick={() => step(1)} aria-label={t('Next photo')}>
+              <ChevronRight size={22} />
+            </button>
+          </>
+        )}
       </div>
       {images.length > 1 && (
         <>

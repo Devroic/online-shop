@@ -270,6 +270,21 @@ export function sendStatusUpdate(order, before) {
   });
 }
 
+/** The money for an order went back to the customer (payment set to "refunded" on its own). */
+export function sendRefundNotice(order) {
+  return sendOrderEmail(order, ({ t, total }) => ({
+    subject: t('We refunded your order #{number}', { number: order.number }),
+    title: t('Your money is on its way back'),
+    body:
+      p(
+        order.paymentMethod === 'card'
+          ? t('The amount of {total} has been refunded to your card. Depending on your bank, it may take a few business days to show.', { total: `<strong>${total}</strong>` })
+          : t('We have refunded {total} for your order.', { total: `<strong>${total}</strong>` }),
+      ) + p(t('If you have any questions, just reply to this email.')),
+    details: false,
+  }));
+}
+
 /** Sent to the shop owner; always in the shop's language. Replying writes to the customer. */
 export async function sendAdminNewOrder(order) {
   const s = await getSettings();

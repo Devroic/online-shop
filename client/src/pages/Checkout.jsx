@@ -22,9 +22,25 @@ const COUPON_ERRORS = {
 
 function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
   const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState('');
   const [open, setOpen] = useState(false);
   const total = quote?.total ?? 0;
-  const apply = () => code.trim() && setCoupon(code.trim().toUpperCase());
+  const apply = () => {
+    setCodeError('');
+    if (code.trim()) setCoupon(code.trim().toUpperCase());
+  };
+
+  // A code the server refuses (unknown, expired, too small an order…) is not kept:
+  // it goes back into the field, in red with the reason, and is not sent with the order.
+  useEffect(() => {
+    if (coupon && quote?.couponError) {
+      setCodeError(quote.couponError);
+      setCode(coupon);
+      setCoupon('');
+    }
+  }, [coupon, quote?.couponError, setCoupon]);
+  // Shown as applied only once the server has confirmed it.
+  const applied = coupon && quote?.coupon?.code === coupon;
 
   return (
     <aside className="card summary sticky checkout-summary">
@@ -55,7 +71,7 @@ function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
           })}
         </div>
 
-        {coupon ? (
+        {applied ? (
           <div className="coupon-applied">
             <Tag size={16} />
             <span>{coupon}</span>
@@ -68,7 +84,10 @@ function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
           <div className="coupon-form">
             <input
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => {
+                setCode(e.target.value);
+                setCodeError('');
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -77,14 +96,14 @@ function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
               }}
               placeholder={t('Discount code')}
               aria-label={t('Discount code')}
-              aria-invalid={!!quote?.couponError}
+              aria-invalid={!!codeError}
             />
-            <button type="button" className="btn btn-outline" onClick={apply}>
-              {t('Apply')}
+            <button type="button" className="btn btn-outline" onClick={apply} disabled={!!coupon}>
+              {coupon && <Spinner />} {t('Apply')}
             </button>
           </div>
         )}
-        {quote?.couponError && <p className="field-error">{t(COUPON_ERRORS[quote.couponError])}</p>}
+        {codeError && <p className="field-error">{t(COUPON_ERRORS[codeError] || COUPON_ERRORS.coupon_invalid)}</p>}
 
         <div className={`summary-rows ${loading ? 'is-loading' : ''}`}>
           <div className="summary-row">

@@ -408,7 +408,9 @@
 .table tbody tr:hover {
   background: var(--table-head);
 }
-.table tr.dim td {
+/* On the row, not on each cell: a faded cell becomes its own layer and would cover
+   the link that opens the row, so clicks there did nothing. */
+.table tr.dim {
   opacity: 0.55;
 }
 /* Every admin list: click anywhere on a row to open it. The first cell holds the

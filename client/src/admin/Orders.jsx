@@ -143,7 +143,11 @@ export function OrderDetail({ onChange }) {
   if (!order || !form) return <PageLoader />;
   const dirty = EDITABLE.some((k) => form[k] !== (order[k] ?? ''));
   const added = (k) => form[k] && form[k] !== order[k];
-  const customerWillBeNotified = form.status !== order.status || added('trackingNumber') || added('trackingUrl');
+  const customerWillBeNotified =
+    form.status !== order.status ||
+    (form.paymentStatus === 'refunded' && order.paymentStatus !== 'refunded') ||
+    added('trackingNumber') ||
+    added('trackingUrl');
 
   const save = async (patch = form) => {
     const ok = v.validate(patch, {

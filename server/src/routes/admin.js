@@ -10,7 +10,7 @@ import { getProduct, listProducts, productSearchText, serializeCategory } from '
 import { ORDER_STATUSES, PAYMENT_STATUSES, getOrder, paymentStepAllowed, serializeOrder, statusPairAllowed, updateOrder } from '../services/orders.js';
 import { stripeReady } from '../services/payments.js';
 import { deleteFile, saveFile, storageMode, upload } from '../storage.js';
-import { background, emailConfigured, sendStatusUpdate } from '../email.js';
+import { background, emailConfigured, sendRefundNotice, sendStatusUpdate } from '../email.js';
 
 const router = Router();
 router.use(requireAdmin);
@@ -463,9 +463,15 @@ router.put('/orders/:id', async (req, res) => {
     throw badRequest('Validation failed', { paymentStatus: 'status_combination' });
   }
   const order = await updateOrder(id, patch);
+  // At most one email per save. A status change says it all (the cancelled/returned
+  // emails already mention the refund); a refund made later gets its own email.
   const trackingAdded = (key) => patch[key] && patch[key] !== before[key];
-  const changed = order.status !== before.status || trackingAdded('trackingNumber') || trackingAdded('trackingUrl');
-  if (notifyCustomer && changed) background(sendStatusUpdate(order, before));
+  const refunded = order.paymentStatus === 'refunded' && before.paymentStatus !== 'refunded';
+  if (notifyCustomer) {
+    if (order.status !== before.status) background(sendStatusUpdate(order, before));
+    else if (refunded) background(sendRefundNotice(order));
+    else if (trackingAdded('trackingNumber') || trackingAdded('trackingUrl')) background(sendStatusUpdate(order, before));
+  }
   res.json(order);
 });
 
