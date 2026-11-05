@@ -319,9 +319,10 @@ export default function Checkout() {
             {shipping?.requiresAddress && (
               <div className="address-fields">
                 <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={errors.street} />
-                <div className="grid-2">
+                <div className="grid-3">
                   <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={errors.city} />
                   <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={errors.postalCode} />
+                  <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={errors.region} />
                 </div>
                 {user && <Checkbox label={t('Save this address to my account')} checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />}
               </div>

@@ -112,9 +112,10 @@ function Profile() {
         <Field label={t('Email')} value={user.email} disabled />
         <h3>{t('Default address')}</h3>
         <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={v.errors.street} />
-        <div className="grid-2">
+        <div className="grid-3">
           <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={v.errors.city} />
           <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={v.errors.postalCode} />
+          <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={v.errors.region} />
         </div>
         <FormAlert message={v.errors._} />
         <button className="btn btn-primary" disabled={busy}>

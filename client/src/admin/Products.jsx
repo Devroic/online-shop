@@ -452,7 +452,7 @@ export function ProductEdit() {
           <section className="card">
             <h3>{t('Status')}</h3>
             <Toggle checked={form.active} onChange={(on) => set('active', on)} label={t('Visible in shop')} />
-            <Toggle checked={form.featured} onChange={(on) => set('featured', on)} label={t('Featured on home page')} />
+            <Toggle checked={form.featured} onChange={(on) => set('featured', on)} label={t('Featured')} hint={t('Shown in the Featured section of the home page.')} />
           </section>
           <section className="card">
             <h3>{t('Organisation')}</h3>
