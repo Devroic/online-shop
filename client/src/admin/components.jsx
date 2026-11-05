@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Upload, X, GripVertical, ImagePlus } from 'lucide-react';
 import { api } from '../lib/api.js';
-import { centsToInput, parseMoney } from '../lib/format.js';
+import { CURRENCY_SYMBOL, centsToInput, parseMoney } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
-import { Spinner } from '../components/ui.jsx';
+import { FieldWrap, Spinner } from '../components/ui.jsx';
+import { countryName, sortedCountries } from '../lib/countries.js';
 
 export function PageHeader({ title, subtitle, actions }) {
   return (
@@ -28,6 +29,28 @@ export function Toggle({ checked, onChange, label, hint }) {
         {hint && <small className="muted">{hint}</small>}
       </span>
     </label>
+  );
+}
+
+/** Ticks the countries a shipping method delivers to; at least one stays ticked. */
+export function CountryPicker({ value = [], onChange, label, hint, error }) {
+  const selected = value.length ? value : ['CY'];
+  const toggle = (code) => {
+    if (selected.includes(code)) {
+      if (selected.length > 1) onChange(selected.filter((x) => x !== code));
+    } else onChange([...selected, code]);
+  };
+  return (
+    <FieldWrap label={label} hint={hint} error={error}>
+      <div className="country-grid">
+        {sortedCountries().map((code) => (
+          <label key={code} className="checkbox">
+            <input type="checkbox" checked={selected.includes(code)} onChange={() => toggle(code)} disabled={selected.length === 1 && selected[0] === code} />
+            <span>{countryName(code)}</span>
+          </label>
+        ))}
+      </div>
+    </FieldWrap>
   );
 }
 
@@ -56,7 +79,7 @@ export function MoneyInput({ value, onChange, allowEmpty, ...props }) {
         }}
         {...props}
       />
-      <span>{settings.currency === 'EUR' ? '€' : settings.currency}</span>
+      <span>{CURRENCY_SYMBOL[settings.currency] || settings.currency}</span>
     </div>
   );
 }

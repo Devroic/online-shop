@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, Printer, ShoppingCart, Mail, Phone, X } from 'lucide-react';
 import { api, qs } from '../lib/api.js';
 import { pairAllowed, paymentOptions, statusOptions } from './orderRules.js';
+import { countryName } from '../lib/countries.js';
 import { useFetch } from '../lib/useFetch.js';
 import { money, dateTime } from '../lib/format.js';
 import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
@@ -257,6 +258,12 @@ export function OrderDetail({ onChange }) {
                   <br />
                   {a.postalCode} {a.city}
                   {a.region && `, ${a.region}`}
+                  {a.country && (
+                    <>
+                      <br />
+                      {countryName(a.country)}
+                    </>
+                  )}
                 </>
               )}
             </p>

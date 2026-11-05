@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { COUNTRY_CODES } from '../countries.js';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { createClient } from '@supabase/supabase-js';
@@ -25,7 +26,8 @@ export const addressSchema = z.object({
   city: z.string().trim().min(1).max(100),
   postalCode: z.string().trim().min(1).max(20),
   region: z.string().trim().max(100).optional().default(''),
-  country: z.string().trim().max(100).optional().default(''),
+  // ISO code (e.g. 'CY'); empty for addresses saved before countries existed.
+  country: z.union([z.literal(''), z.enum(COUNTRY_CODES)]).optional().default(''),
 });
 
 const password = z.string().min(8, 'Password must be at least 8 characters').max(200);

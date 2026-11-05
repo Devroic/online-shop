@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { api } from '../lib/api.js';
 import { money } from '../lib/format.js';
+import { countryName, shippingCountries } from '../lib/countries.js';
 import { t, PAYMENT_METHOD } from '../lib/i18n.js';
 import { Checkbox, EmptyState, Field, FormAlert, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
@@ -123,6 +124,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   useTitle(t('Checkout'));
+  const countries = shippingCountries(settings);
 
   const [form, setForm] = useState({
     email: '',
@@ -132,6 +134,7 @@ export default function Checkout() {
     city: '',
     postalCode: '',
     region: '',
+    country: countries[0],
     notes: '',
   });
   const [coupon, setCoupon] = useState('');
@@ -147,20 +150,30 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!user) return;
-    setForm((f) => ({
-      ...f,
-      email: f.email || user.email,
-      name: f.name || user.name,
-      phone: f.phone || user.phone,
-      ...(user.address && !f.street ? user.address : {}),
-    }));
+    setForm((f) => {
+      const next = {
+        ...f,
+        email: f.email || user.email,
+        name: f.name || user.name,
+        phone: f.phone || user.phone,
+        ...(user.address && !f.street ? user.address : {}),
+      };
+      // A saved address in a country the shop does not deliver to starts on the shop's first country.
+      return countries.includes(next.country) ? next : { ...next, country: countries[0] };
+    });
   }, [user]);
 
+  // Only the methods for the chosen country (store pickup has no country and always shows).
+  const methodsHere = useMemo(
+    () => (quote?.shippingOptions || []).filter((m) => !m.requiresAddress || m.countries?.includes(form.country)),
+    [quote, form.country],
+  );
+
   useEffect(() => {
-    if (quote && !quote.shippingOptions.some((m) => m.id === shippingMethodId)) {
-      setShippingMethodId(quote.shippingOptions[0]?.id ?? null);
+    if (quote && !methodsHere.some((m) => m.id === shippingMethodId)) {
+      setShippingMethodId(methodsHere[0]?.id ?? null);
     }
-  }, [quote, shippingMethodId]);
+  }, [quote, methodsHere, shippingMethodId]);
 
   const shipping = useMemo(() => quote?.shippingOptions.find((m) => m.id === shippingMethodId), [quote, shippingMethodId]);
   const termsPage = pages.find((p) => p.slug === settings.checkout.termsPage);
@@ -243,7 +256,7 @@ export default function Checkout() {
         name: form.name.trim(),
         phone: form.phone.trim(),
         address: shipping?.requiresAddress
-          ? { street: form.street, city: form.city, postalCode: form.postalCode, region: form.region }
+          ? { street: form.street, city: form.city, postalCode: form.postalCode, region: form.region, country: form.country }
           : null,
         shippingMethodId,
         paymentMethod,
@@ -302,8 +315,19 @@ export default function Checkout() {
             <h2>
               <span className="step-num">2</span> {t('Delivery')}
             </h2>
+            {/* Hidden when the shop only offers store pickup. */}
+            {settings.deliveryCountries?.length > 0 && (
+              <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={errors.country} disabled={countries.length === 1}>
+                {countries.map((c) => (
+                  <option key={c} value={c}>
+                    {countryName(c)}
+                  </option>
+                ))}
+              </Field>
+            )}
             <div className="options">
-              {quote?.shippingOptions.map((m) => (
+              {quote && !methodsHere.length && <p className="muted">{t('No delivery to this country is set up yet.')}</p>}
+              {methodsHere.map((m) => (
                 <label key={m.id} className={`option ${m.id === shippingMethodId ? 'active' : ''}`}>
                   <input type="radio" name="shipping" checked={m.id === shippingMethodId} onChange={() => setShippingMethodId(m.id)} />
                   <div className="grow">

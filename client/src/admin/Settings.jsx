@@ -3,6 +3,8 @@ import { Info } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
+import { CURRENCY_SYMBOL } from '../lib/format.js';
+import { countryName, sortedCountries } from '../lib/countries.js';
 import { FONT_OPTIONS, applyTheme, useShop } from '../context/ShopContext.jsx';
 import { darkPalette } from '../lib/theme.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -57,6 +59,12 @@ function Brand({ s, set }) {
   );
 }
 
+/** "1.234,50 €" or "€1.234,50" for the hint under the symbol setting. */
+const sampleAmount = (currency, before) => {
+  const symbol = CURRENCY_SYMBOL[currency] || CURRENCY_SYMBOL.EUR;
+  return before ? `${symbol}1.234,50` : `1.234,50 ${symbol}`;
+};
+
 /** Admin → Store details: name, contact, emails, region, stock, SEO. */
 export function StoreDetails(props) {
   const { s, set, errors } = props;
@@ -71,31 +79,29 @@ export function StoreDetails(props) {
       </section>
       <section className="card">
         <h3>{t('Region')}</h3>
-        <div className="grid-3">
+        <div className="grid-2">
           <Field as="select" label={t('Default language')} value={s.language} onChange={(e) => set('language', e.target.value)} error={errors['language']}>
             <option value="el">{t('Greek')}</option>
             <option value="en">{t('English')}</option>
           </Field>
           <Field as="select" label={t('Currency')} value={s.currency} onChange={(e) => set('currency', e.target.value)} error={errors['currency']}>
-            {['EUR', 'USD', 'GBP', 'CHF', 'RON', 'BGN', 'PLN', 'CZK', 'SEK', 'DKK', 'NOK'].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </Field>
-          <Field as="select" label={t('Number & date format')} value={s.locale} onChange={(e) => set('locale', e.target.value)} error={errors['locale']}>
             {[
-              ['el-GR', `${t('Greece')} (1.234,50 €)`],
-              ['el-CY', `${t('Cyprus')} (1.234,50 €)`],
-              ['en-IE', `${t('Ireland')} (€1,234.50)`],
-              ['en-GB', `${t('United Kingdom')} (£1,234.50)`],
-              ['en-US', `${t('United States')} ($1,234.50)`],
-              ['de-DE', `${t('Germany')} (1.234,50 €)`],
-            ].map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
+              ['EUR', t('Euro (€)')],
+              ['USD', t('US dollar ($)')],
+              ['GBP', t('British pound (£)')],
+            ].map(([code, label]) => (
+              <option key={code} value={code}>
+                {label}
               </option>
             ))}
           </Field>
         </div>
+        <Toggle
+          checked={s.currencySymbolBefore}
+          onChange={(v) => set('currencySymbolBefore', v)}
+          label={t('Currency symbol before the amount')}
+          hint={t('Prices look like {example}', { example: sampleAmount(s.currency, s.currencySymbolBefore) })}
+        />
         <Toggle
           checked={s.languageSwitch}
           onChange={(v) => set('languageSwitch', v)}
@@ -112,8 +118,15 @@ export function StoreDetails(props) {
         </div>
         <div className="grid-2">
           <Field label={t('Address')} value={s.contact.address} onChange={(e) => set('contact.address', e.target.value)} error={errors['contact.address']} />
-          <Field label={t('Opening hours')} value={s.contact.hours} onChange={(e) => set('contact.hours', e.target.value)} error={errors['contact.hours']} />
+          <Field as="select" label={t('Country')} value={s.contact.country} onChange={(e) => set('contact.country', e.target.value)} error={errors['contact.country']}>
+            {sortedCountries().map((c) => (
+              <option key={c} value={c}>
+                {countryName(c)}
+              </option>
+            ))}
+          </Field>
         </div>
+        <Field label={t('Opening hours')} value={s.contact.hours} onChange={(e) => set('contact.hours', e.target.value)} error={errors['contact.hours']} />
         <h3 className="mt">{t('Social media')}</h3>
         <div className="grid-3">
           <Field label="Facebook" value={s.social.facebook} onChange={(e) => set('social.facebook', e.target.value)} placeholder="https://facebook.com/…" error={errors['social.facebook']} />

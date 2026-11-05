@@ -28,6 +28,8 @@ export function errorMessage(code) {
       return t('Must be {n} or less', { n: arg });
     case 'positive':
       return t('Must be greater than 0');
+    case 'country':
+      return t('We do not deliver to this country');
     case 'status_combination':
       return t('This payment status does not fit the order status');
     case 'integer':

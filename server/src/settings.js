@@ -12,8 +12,9 @@ export const DEFAULT_SETTINGS = {
   // Greek/English switch for visitors (UI texts only; products stay as written).
   // Off by default: turn it on in Store details for shops that want it.
   languageSwitch: false,
+  // Only EUR, USD or GBP. Amounts are always written 1.234,50; this moves the symbol: "€1.234,50" vs "1.234,50 €".
   currency: 'EUR',
-  locale: 'el-GR',
+  currencySymbolBefore: false,
   theme: {
     primary: '#111827',
     accent: '#2563eb',
@@ -40,6 +41,8 @@ export const DEFAULT_SETTINGS = {
     email: '',
     phone: '',
     address: '',
+    // The shop's country (ISO code), shown with its address.
+    country: 'CY',
     hours: '',
   },
   social: {

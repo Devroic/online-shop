@@ -207,6 +207,8 @@ const migrations = [
   `ALTER TABLE messages ADD COLUMN subject TEXT NOT NULL DEFAULT '';`,
   // 5: a link where the customer can follow the parcel (the courier's tracking page).
   `ALTER TABLE orders ADD COLUMN tracking_url TEXT NOT NULL DEFAULT '';`,
+  // 6: countries each shipping method delivers to (ISO codes); existing methods serve Cyprus.
+  `ALTER TABLE shipping_methods ADD COLUMN countries JSONB NOT NULL DEFAULT '["CY"]';`,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

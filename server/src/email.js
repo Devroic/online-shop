@@ -4,6 +4,7 @@ import { waitUntil } from '@vercel/functions';
 import { getSettings } from './settings.js';
 import { formatMoney } from './utils.js';
 import { translator } from './i18n.js';
+import { countryName } from './countries.js';
 
 let transport;
 function smtpTransport() {
@@ -122,10 +123,11 @@ function orderTable(order, settings, t) {
 }
 
 /** Where the order goes: the delivery address, or the shop's address for store pickup. */
-function deliveryBlock(order, settings, t) {
+function deliveryBlock(order, settings, t, lang = settings.language) {
   const a = order.address;
   if (a) {
-    return `<p style="margin-top:20px"><strong>${t('Delivery address')}</strong><br>${esc(order.customerName)}<br>${esc(a.street)}<br>${esc(a.postalCode)} ${esc(a.city)}${a.region ? `, ${esc(a.region)}` : ''}</p>`;
+    const country = a.country ? `<br>${esc(countryName(a.country, lang))}` : '';
+    return `<p style="margin-top:20px"><strong>${t('Delivery address')}</strong><br>${esc(order.customerName)}<br>${esc(a.street)}<br>${esc(a.postalCode)} ${esc(a.city)}${a.region ? `, ${esc(a.region)}` : ''}${country}</p>`;
   }
   const c = settings.contact;
   return `<p style="margin-top:20px"><strong>${t('Pickup from the store')}</strong>${c.address ? `<br>${esc(c.address)}` : ''}${c.hours ? `<br>${esc(c.hours)}` : ''}</p>`;
@@ -155,7 +157,7 @@ async function sendOrderEmail(order, build) {
   const html = `${heading(title)}
     ${p(t('Hi {name},', { name: esc(firstName(order.customerName)) }))}
     ${body}
-    ${details ? orderTable(order, s, t) + deliveryBlock(order, s, t) : ''}
+    ${details ? orderTable(order, s, t) + deliveryBlock(order, s, t, order.language || s.language) : ''}
     <p style="margin-top:24px">${button(orderLink(order), t('View order'), s.theme.primary)}</p>`;
   return sendMail({ to: order.email, subject, html: layout(s, html), replyTo: s.contact.email || undefined });
 }

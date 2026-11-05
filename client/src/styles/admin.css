@@ -923,6 +923,15 @@ input[type='range'] {
   }
 }
 
+.country-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px 16px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 8px 2px;
+}
+
 .filter-chip {
   display: inline-flex;
   align-items: center;

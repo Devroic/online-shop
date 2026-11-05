@@ -1,3 +1,4 @@
+import { COUNTRY_CODES } from '../countries.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { db, tx } from '../db.js';
@@ -368,7 +369,7 @@ router.get('/orders.csv', async (req, res) => {
     const a = o.shipping_address;
     return [
       o.number, new Date(o.created_at).toISOString(), o.customer_name, o.email, o.phone,
-      a ? `${a.street}, ${a.postalCode} ${a.city}` : '', o.shipping_name, o.payment_method, o.payment_status, o.status,
+      a ? [a.street, `${a.postalCode} ${a.city}`, a.country].filter(Boolean).join(', ') : '', o.shipping_name, o.payment_method, o.payment_status, o.status,
       (o.subtotal / 100).toFixed(2), (o.discount / 100).toFixed(2), (o.shipping_cost / 100).toFixed(2), (o.total / 100).toFixed(2),
     ].map(cell).join(',');
   });
@@ -503,13 +504,15 @@ const shippingSchema = z.object({
   price: money,
   freeOver: optMoney,
   requiresAddress: z.boolean().default(true),
+  // Where this method delivers. Store pickup (no address) ignores it.
+  countries: z.array(z.enum(COUNTRY_CODES)).min(1, 'required').default(['CY']),
   active: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
 });
 
 const serializeShipping = (m) => ({
   id: m.id, name: m.name, description: m.description, price: m.price, freeOver: m.free_over,
-  requiresAddress: m.requires_address, active: m.active, sortOrder: m.sort_order,
+  requiresAddress: m.requires_address, countries: m.countries, active: m.active, sortOrder: m.sort_order,
 });
 
 router.get('/shipping', async (_req, res) => {
@@ -517,14 +520,14 @@ router.get('/shipping', async (_req, res) => {
 });
 
 async function saveShipping(id, d) {
-  const vals = [d.name, d.description, d.price, d.freeOver ?? null, d.requiresAddress, d.active, d.sortOrder];
+  const vals = [d.name, d.description, d.price, d.freeOver ?? null, d.requiresAddress, d.active, d.sortOrder, JSON.stringify([...new Set(d.countries)])];
   const row = id
     ? await db().one(
-        'UPDATE shipping_methods SET name=$1, description=$2, price=$3, free_over=$4, requires_address=$5, active=$6, sort_order=$7 WHERE id=$8 RETURNING *',
+        'UPDATE shipping_methods SET name=$1, description=$2, price=$3, free_over=$4, requires_address=$5, active=$6, sort_order=$7, countries=$8 WHERE id=$9 RETURNING *',
         [...vals, id],
       )
     : await db().one(
-        'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, active, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+        'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, active, sort_order, countries) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
         vals,
       );
   if (!row) throw notFound();
@@ -629,8 +632,8 @@ const settingsSchema = z
     faviconUrl: z.string().max(1000),
     language: z.enum(['el', 'en']),
     languageSwitch: z.boolean(),
-    currency: z.string().length(3),
-    locale: z.string().max(20),
+    currency: z.enum(['EUR', 'USD', 'GBP']),
+    currencySymbolBefore: z.boolean(),
     theme: z
       .object({
         primary: hex, accent: hex, background: hex, surface: hex, text: hex,
@@ -642,7 +645,7 @@ const settingsSchema = z
       .partial(),
     announcement: z.string().max(300),
     hero: z.object({ title: z.string().max(200), subtitle: z.string().max(400), imageUrl: z.string().max(1000), ctaText: z.string().max(60), ctaLink: z.string().max(300) }).partial(),
-    contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), hours: z.string().max(300) }).partial(),
+    contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), country: z.enum(COUNTRY_CODES), hours: z.string().max(300) }).partial(),
     social: z.object({ facebook: optUrl, instagram: optUrl, tiktok: optUrl }).partial(),
     payments: z
       .object({
@@ -650,7 +653,14 @@ const settingsSchema = z
         card: z.object({ enabled: z.boolean() }).partial(),
       })
       .partial(),
-    checkout: z.object({ requirePhone: z.boolean(), allowGuest: z.boolean(), pricesIncludeTax: z.boolean(), termsPage: z.string().max(80) }).partial(),
+    checkout: z
+      .object({
+        requirePhone: z.boolean(),
+        allowGuest: z.boolean(),
+        pricesIncludeTax: z.boolean(),
+        termsPage: z.string().max(80),
+      })
+      .partial(),
     inventory: z.object({ lowStockThreshold: z.number().int().min(0), hideOutOfStock: z.boolean() }).partial(),
     notifications: z.object({ orderEmail: optEmail }).partial(),
     seo: z.object({ title: z.string().max(200), description: z.string().max(500) }).partial(),

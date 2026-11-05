@@ -6,6 +6,8 @@ import { useToast } from '../context/ToastContext.jsx';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { date, money } from '../lib/format.js';
+import { countryName, shippingCountries } from '../lib/countries.js';
+import { useShop } from '../context/ShopContext.jsx';
 import { t, ORDER_STATUS, providerName } from '../lib/i18n.js';
 import { EmptyState, Field, FormAlert, PageLoader, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
@@ -48,6 +50,8 @@ function Orders() {
 
 function Profile() {
   const { user, setUser } = useAuth();
+  const { settings } = useShop();
+  const countries = shippingCountries(settings);
   const toast = useToast();
   const [form, setForm] = useState({
     name: user.name,
@@ -56,6 +60,7 @@ function Profile() {
     city: user.address?.city || '',
     postalCode: user.address?.postalCode || '',
     region: user.address?.region || '',
+    country: countries.includes(user.address?.country) ? user.address.country : countries[0],
   });
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '' });
   const v = useValidation();
@@ -89,7 +94,7 @@ function Profile() {
       const r = await api.put('/auth/me', {
         name: form.name,
         phone: form.phone,
-        address: hasAddress ? { street: form.street, city: form.city, postalCode: form.postalCode, region: form.region } : null,
+        address: hasAddress ? { street: form.street, city: form.city, postalCode: form.postalCode, region: form.region, country: form.country } : null,
       });
       setUser(r.user);
       v.reset();
@@ -117,6 +122,13 @@ function Profile() {
           <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={v.errors.postalCode} />
           <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={v.errors.region} />
         </div>
+        <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={v.errors.country} disabled={countries.length === 1}>
+          {countries.map((c) => (
+            <option key={c} value={c}>
+              {countryName(c)}
+            </option>
+          ))}
+        </Field>
         <FormAlert message={v.errors._} />
         <button className="btn btn-primary" disabled={busy}>
           {busy && <Spinner />} {t('Save')}

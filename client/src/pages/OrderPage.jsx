@@ -3,6 +3,7 @@ import { CircleCheck, Package, Truck, Clock, XCircle } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { countryName } from '../lib/countries.js';
 import { takePaidCardOrder, useCart } from '../context/CartContext.jsx';
 import { money, dateTime } from '../lib/format.js';
 import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
@@ -191,6 +192,12 @@ export default function OrderPage() {
                   {a.postalCode} {a.city}
                   {a.region && `, ${a.region}`}
                   <br />
+                  {a.country && (
+                    <>
+                      {countryName(a.country)}
+                      <br />
+                    </>
+                  )}
                 </>
               )}
               {order.phone && (

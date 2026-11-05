@@ -8,11 +8,12 @@ import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { Modal, MoneyInput, PageHeader, Toggle } from './components.jsx';
+import { CountryPicker, Modal, MoneyInput, PageHeader, Toggle } from './components.jsx';
+import { countryName } from '../lib/countries.js';
 import { Payments, SETTINGS_RULES, SettingsForm } from './Settings.jsx';
 
 function ShippingModal({ method, onClose, onSaved }) {
-  const [form, setForm] = useState(method || { name: '', description: '', price: 0, freeOver: null, requiresAddress: true, active: true, sortOrder: 0 });
+  const [form, setForm] = useState(method || { name: '', description: '', price: 0, freeOver: null, requiresAddress: true, countries: ['CY'], active: true, sortOrder: 0 });
   const v = useValidation();
   const { errors } = v;
   const [busy, setBusy] = useState(false);
@@ -80,6 +81,15 @@ function ShippingModal({ method, onClose, onSaved }) {
       </div>
       <Field label={t('Sort order')} inputMode="numeric" value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} error={errors.sortOrder} />
       <Toggle checked={form.requiresAddress} onChange={(on) => set('requiresAddress', on)} label={t('Requires a delivery address')} hint={t('Turn off for store pickup')} />
+      {form.requiresAddress && (
+        <CountryPicker
+          label={t('Delivers to')}
+          hint={t('Customers in these countries see this method at checkout.')}
+          value={form.countries}
+          onChange={(list) => set('countries', list)}
+          error={errors.countries}
+        />
+      )}
       <Toggle checked={form.active} onChange={(on) => set('active', on)} label={t('Active')} />
       <FormAlert message={errors._} />
     </Modal>
@@ -115,7 +125,7 @@ function ShippingMethods() {
                 <div className="muted small">
                   {m.description}
                   {m.freeOver != null && ` · ${t('Free over {amount}', { amount: money(m.freeOver) })}`}
-                  {!m.requiresAddress && ` · ${t('No address needed')}`}
+                  {m.requiresAddress ? ` · ${(m.countries || []).map(countryName).join(', ')}` : ` · ${t('No address needed')}`}
                 </div>
               </div>
               <strong>{m.price ? money(m.price) : t('Free')}</strong>

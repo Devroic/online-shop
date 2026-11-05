@@ -22,11 +22,10 @@ function resolveLanguage(settings, pref = storedLanguage()) {
   return settings.languageSwitch && LANGUAGES.includes(pref) ? pref : settings.language;
 }
 
-/** Money keeps the shop's currency; dates and number style follow the chosen language. */
+/** Money keeps the shop's currency and symbol position; dates follow the chosen language. */
 function applyLanguage(settings, lang) {
   setLanguage(lang);
-  const greekShop = settings.locale.startsWith('el');
-  configureFormat({ currency: settings.currency, locale: lang === 'en' && greekShop ? 'en-IE' : lang === 'el' && !greekShop ? 'el-GR' : settings.locale });
+  configureFormat({ lang, currency: settings.currency, symbolBefore: settings.currencySymbolBefore });
 }
 
 export function ShopProvider({ children }) {

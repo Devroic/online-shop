@@ -154,6 +154,10 @@ test('coupons apply and respect limits', async () => {
   assert.equal(res.body.order.discount, 100);
   const used = await request(app).post('/api/orders').send(checkout({ items: [{ productId, quantity: 1 }], couponCode: 'save10' })).expect(409);
   assert.equal(used.body.details.coupon, 'coupon_used_up');
+
+  // Cancelling the order gives the use back, so the code works again.
+  await admin.put(`/api/admin/orders/${res.body.order.id}`).send({ status: 'cancelled' }).expect(200);
+  await request(app).post('/api/orders').send(checkout({ items: [{ productId, quantity: 1 }], couponCode: 'save10' })).expect(201);
 });
 
 test('checkout validation', async () => {
@@ -284,6 +288,27 @@ test('orders remember the visitor language; store pickup starts disabled', async
   assert.equal(def.body.order.language, 'el'); // unknown → shop default
   const pickup = await db().one('SELECT active FROM shipping_methods WHERE NOT requires_address');
   assert.equal(pickup.active, false);
+});
+
+test('delivery country: each shipping method lists the countries it serves', async () => {
+  const p = await admin.post('/api/admin/products').send({ name: 'Country test', price: 100, stock: 5 }).expect(201);
+  const items = [{ productId: p.body.id, quantity: 1 }];
+  // Existing methods serve Cyprus; an address without a country gets it.
+  const plain = await request(app).post('/api/orders').send(checkout({ items })).expect(201);
+  assert.equal(plain.body.order.address.country, 'CY');
+  const gr = await request(app).post('/api/orders').send(checkout({ items, address: { ...address, country: 'GR' } })).expect(400);
+  assert.equal(gr.body.details['address.country'], 'country');
+  // A Greek courier: Greece is now a delivery country, but only with that method.
+  const greek = await admin.post('/api/admin/shipping').send({ name: 'Courier GR', price: 800, countries: ['GR'] }).expect(201);
+  assert.deepEqual(greek.body.countries, ['GR']);
+  const pub = await request(app).get('/api/settings').expect(200);
+  assert.ok(pub.body.settings.deliveryCountries.includes('GR'));
+  await request(app).post('/api/orders').send(checkout({ items, address: { ...address, country: 'GR' } })).expect(400);
+  const ok = await request(app).post('/api/orders').send(checkout({ items, shippingMethodId: greek.body.id, address: { ...address, country: 'GR' } })).expect(201);
+  assert.equal(ok.body.order.address.country, 'GR');
+  assert.equal(ok.body.order.shippingCost, 800);
+  await admin.post('/api/admin/shipping').send({ name: 'Nowhere', price: 0, countries: [] }).expect(400);
+  await admin.delete('/api/admin/shipping/' + greek.body.id).expect(200);
 });
 
 test('language switch is off by default', async () => {

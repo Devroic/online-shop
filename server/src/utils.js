@@ -111,11 +111,16 @@ export function params() {
   return { list, p };
 }
 
+export const CURRENCY_SYMBOL = { EUR: '€', USD: '$', GBP: '£' };
+const amountFmt = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** 123450 → "1.234,50 €" (or "€1.234,50"): decimal comma always; same rules as money() in the client. */
 export function formatMoney(cents, settings) {
-  return new Intl.NumberFormat(settings.locale || 'el-GR', {
-    style: 'currency',
-    currency: settings.currency || 'EUR',
-  }).format(cents / 100);
+  const value = (cents || 0) / 100;
+  const symbol = CURRENCY_SYMBOL[settings.currency] || CURRENCY_SYMBOL.EUR;
+  const amount = amountFmt.format(Math.abs(value));
+  const sign = value < 0 ? '-' : '';
+  return settings.currencySymbolBefore ? `${sign}${symbol}${amount}` : `${sign}${amount} ${symbol}`;
 }
 
 export function paginate(query, { defaultLimit = 24, maxLimit = 100 } = {}) {

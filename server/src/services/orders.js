@@ -144,6 +144,7 @@ export async function quoteCart({ items = [], couponCode, shippingMethodId, paym
     name: m.name,
     description: m.description,
     requiresAddress: m.requires_address,
+    countries: m.requires_address ? m.countries : [],
     freeOver: m.free_over,
     cost: coupon?.type === 'free_shipping' || (m.free_over != null && afterDiscount >= m.free_over) ? 0 : m.price,
   }));
@@ -209,6 +210,13 @@ export async function createOrder(input, { user, stripeReady }) {
     if (input.couponCode && quote.couponError) throw new HttpError(409, 'Coupon cannot be used', { coupon: quote.couponError });
     if (!quote.shipping) throw badRequest('Choose a shipping method', { shippingMethodId: 'required' });
     if (quote.shipping.requiresAddress && !input.address) throw badRequest('Address is required', { address: 'required' });
+    if (quote.shipping.requiresAddress) {
+      // The chosen method must deliver to the country; an older page that sends none gets the method's first.
+      const countries = quote.shipping.countries?.length ? quote.shipping.countries : ['CY'];
+      const country = input.address.country || countries[0];
+      if (!countries.includes(country)) throw badRequest('We do not deliver to this country', { 'address.country': 'country' });
+      input = { ...input, address: { ...input.address, country } };
+    }
 
     const token = randomToken();
     const { id } = await t.one(
@@ -327,7 +335,8 @@ export async function getOrder({ id, number }, conn = db()) {
 
 /**
  * Applies admin (or payment-provider) changes to an order, restoring stock
- * when an order is cancelled and taking it again if it is re-opened.
+ * and the coupon use when an order is cancelled, and taking them again if it
+ * is re-opened.
  */
 export async function updateOrder(id, patch, { actor = 'admin' } = {}) {
   const found = await tx(async (t) => {
@@ -345,6 +354,12 @@ export async function updateOrder(id, patch, { actor = 'admin' } = {}) {
       // Re-opening a cancelled order takes the stock again (never below zero).
       if (patch.status === 'cancelled') await adjustStock(t, items, +1);
       else if (o.status === 'cancelled') await adjustStock(t, items, -1, { guarded: false });
+      // Same for the coupon: a cancelled order gives its use back (e.g. an abandoned card payment).
+      // Re-opening takes it again even past the limit, like stock: the order already had it.
+      if (o.coupon_code && (patch.status === 'cancelled' || o.status === 'cancelled')) {
+        const delta = patch.status === 'cancelled' ? -1 : 1;
+        await t.query('UPDATE coupons SET used_count = GREATEST(used_count + $1, 0) WHERE code = $2', [delta, o.coupon_code]);
+      }
       set('status', patch.status);
       await addEvent(t, id, 'status', `${o.status} → ${patch.status}${by}`);
     }

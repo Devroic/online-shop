@@ -17,8 +17,12 @@ export async function publicSettings() {
   const s = await getSettings();
   const { notifications, ...rest } = s;
   const oauthReady = !!(config.supabase.url && config.supabase.anonKey);
+  // Every country an active delivery method serves, in method order (the first is preselected).
+  const methods = await db().all('SELECT countries FROM shipping_methods WHERE active AND requires_address ORDER BY sort_order, id');
+  const deliveryCountries = [...new Set(methods.flatMap((m) => m.countries || []))];
   return {
     ...rest,
+    deliveryCountries,
     login: { google: oauthReady && config.loginProviders.includes('google'), facebook: oauthReady && config.loginProviders.includes('facebook') },
     // Public by design (Supabase "anon" key); used only for Google/Facebook sign-in.
     supabase: oauthReady ? { url: config.supabase.url, anonKey: config.supabase.anonKey } : null,
