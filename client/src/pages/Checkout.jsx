@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CreditCard, Banknote, Lock, Tag, X, ChevronDown, ShoppingBag, Info } from 'lucide-react';
-import { useCart } from '../context/CartContext.jsx';
+import { rememberCardOrder, useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { api } from '../lib/api.js';
@@ -253,6 +253,9 @@ export default function Checkout() {
         acceptTerms: true,
       });
       if (res.redirectUrl) {
+        // The cart is kept in case the customer cancels on Stripe; the order page
+        // empties it once this order comes back paid.
+        rememberCardOrder(res.order.number);
         window.location.assign(res.redirectUrl);
         return;
       }

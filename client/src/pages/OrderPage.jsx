@@ -1,7 +1,9 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CircleCheck, Package, Truck, Clock, XCircle } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
+import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { takePaidCardOrder, useCart } from '../context/CartContext.jsx';
 import { money, dateTime } from '../lib/format.js';
 import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
 import { EmptyState, PageLoader, useTitle } from '../components/ui.jsx';
@@ -107,6 +109,11 @@ export default function OrderPage() {
   const { user } = useAuth();
   const { data, loading, error } = useFetch(`/orders/${encodeURIComponent(number)}${token ? `?token=${encodeURIComponent(token)}` : ''}`);
   useTitle(t('Order #{n}', { n: number }));
+  const { clear } = useCart();
+  const paidNumber = data?.order?.paymentStatus === 'paid' ? data.order.number : null;
+  useEffect(() => {
+    if (paidNumber && takePaidCardOrder(paidNumber)) clear();
+  }, [paidNumber, clear]);
 
   if (loading && !data) return <PageLoader />;
   if (error || !data) {

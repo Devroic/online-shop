@@ -14,6 +14,29 @@ function read() {
 
 export const lineKey = (productId, variantId) => `${productId}:${variantId ?? ''}`;
 
+// Card orders leave the site for Stripe before the cart can be emptied. The order
+// number is kept for this tab so the order page can empty the cart on return.
+const CARD_ORDER_KEY = 'shop.cardOrder';
+
+export function rememberCardOrder(number) {
+  try {
+    sessionStorage.setItem(CARD_ORDER_KEY, String(number));
+  } catch {
+    /* storage blocked: the cart simply stays */
+  }
+}
+
+/** True once per remembered card order, when it comes back paid. */
+export function takePaidCardOrder(number) {
+  try {
+    if (sessionStorage.getItem(CARD_ORDER_KEY) !== String(number)) return false;
+    sessionStorage.removeItem(CARD_ORDER_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The cart lives in localStorage so it survives reloads and works for guests.
  * Lines keep a snapshot (name, price, image) for instant rendering; real
