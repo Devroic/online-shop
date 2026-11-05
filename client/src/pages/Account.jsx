@@ -82,10 +82,10 @@ function Profile() {
     const addressRule = hasAddress ? [rules.required()] : [];
     const ok = v.validate(form, {
       name: [rules.required(), rules.maxLength(100)],
-      phone: [rules.maxLength(40)],
+      phone: [rules.phone()],
       street: [...addressRule, rules.maxLength(200)],
       city: [...addressRule, rules.maxLength(100)],
-      postalCode: [...addressRule, rules.maxLength(20)],
+      postalCode: [...addressRule, rules.postalCode()],
       region: [rules.maxLength(100)],
     });
     if (!ok) return;

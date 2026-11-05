@@ -70,7 +70,10 @@ function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
             );
           })}
         </div>
+      </div>
 
+      {/* Outside the folding part: on phones the code field is always in sight. */}
+      <div className="summary-coupon">
         {applied ? (
           <div className="coupon-applied">
             <Tag size={16} />
@@ -104,7 +107,9 @@ function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
           </div>
         )}
         {codeError && <p className="field-error">{t(COUPON_ERRORS[codeError] || COUPON_ERRORS.coupon_invalid)}</p>}
+      </div>
 
+      <div className={`summary-body ${open ? 'open' : ''}`}>
         <div className={`summary-rows ${loading ? 'is-loading' : ''}`}>
           <div className="summary-row">
             <span>{t('Subtotal')}</span>
@@ -266,11 +271,11 @@ export default function Checkout() {
       { ...form, acceptTerms },
       {
         email: [rules.required(), rules.email()],
-        phone: [settings.checkout.requirePhone && rules.required(), rules.maxLength(40)],
+        phone: [settings.checkout.requirePhone && rules.required(), rules.phone()],
         name: [rules.required(), rules.minLength(2), rules.maxLength(100)],
         street: [...address, rules.maxLength(200)],
         city: [...address, rules.maxLength(100)],
-        postalCode: [...address, rules.maxLength(20)],
+        postalCode: [...address, rules.postalCode()],
         region: [rules.maxLength(100)],
         notes: [rules.maxLength(1000)],
         acceptTerms: [rules.acceptTerms()],

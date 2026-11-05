@@ -103,7 +103,7 @@ export default function AdminApp() {
         </header>
         <div className="a-content">
           {settings.paymentMethods.length === 0 && (
-            <Link to="/admin/shipping/payments" className="a-alert a-alert-danger">
+            <Link to="/admin/shipping" className="a-alert a-alert-danger">
               <ShoppingCart size={18} />{' '}
               {t('Customers cannot place orders: no payment method is available. Add the Stripe keys or enable cash on delivery.')} →
             </Link>

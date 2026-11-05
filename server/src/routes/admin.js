@@ -110,6 +110,7 @@ const productSchema = z.object({
   featured: z.boolean().default(false),
   active: z.boolean().default(true),
   images: z.array(z.string().max(1000)).max(20).default([]),
+  optionName: z.string().trim().max(40).optional().default(''),
   variants: z.array(variantSchema).max(100).default([]),
 });
 
@@ -147,17 +148,18 @@ export async function saveProduct(id, data) {
       data.featured,
       data.active,
       productSearchText(data),
+      data.optionName ?? '',
     ];
     if (id) {
       await t.query(
         `UPDATE products SET name=$1, slug=$2, description=$3, price=$4, compare_at_price=$5, discount_percent=$6, sku=$7,
-           stock=$8, track_stock=$9, category_id=$10, featured=$11, active=$12, search_text=$13, updated_at=now() WHERE id=$14`,
+           stock=$8, track_stock=$9, category_id=$10, featured=$11, active=$12, search_text=$13, option_name=$14, updated_at=now() WHERE id=$15`,
         [...row, id],
       );
     } else {
       ({ id } = await t.one(
         `INSERT INTO products (name, slug, description, price, compare_at_price, discount_percent, sku, stock, track_stock,
-           category_id, featured, active, search_text) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+           category_id, featured, active, search_text, option_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
         row,
       ));
     }
@@ -477,7 +479,37 @@ router.put('/orders/:id', async (req, res) => {
 
 /* ------------------------------------------------------------- customers */
 
+/** Guests: people who ordered without an account, one row per email (latest name and phone). */
+async function listGuests(req, res) {
+  const { limit, page, offset } = paginate(req.query, { defaultLimit: 50 });
+  const { list, p } = params();
+  const where = ['o.user_id IS NULL'];
+  if (req.query.q) {
+    const like = p(`%${String(req.query.q).toLowerCase()}%`);
+    where.push(`(lower(o.email) LIKE ${like} OR lower(o.customer_name) LIKE ${like} OR o.phone LIKE ${like})`);
+  }
+  const sql = `WHERE ${where.join(' AND ')}`;
+  const { n: total } = await db().one(`SELECT COUNT(DISTINCT lower(o.email))::int AS n FROM orders o ${sql}`, list);
+  const rows = await db().all(
+    `SELECT lower(o.email) AS email,
+       (array_agg(o.customer_name ORDER BY o.created_at DESC))[1] AS name,
+       (array_agg(o.phone ORDER BY o.created_at DESC))[1] AS phone,
+       COUNT(*)::int AS order_count,
+       COALESCE(SUM(o.total) FILTER (WHERE o.status NOT IN ('cancelled', 'returned')), 0)::int AS spent,
+       MIN(o.created_at) AS first_order, MAX(o.created_at) AS last_order
+     FROM orders o ${sql} GROUP BY lower(o.email) ORDER BY MAX(o.created_at) DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
+    list,
+  );
+  res.json({
+    items: rows.map((g) => ({ guest: true, email: g.email, name: g.name, phone: g.phone, orderCount: g.order_count, spent: g.spent, createdAt: g.first_order })),
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+  });
+}
+
 router.get('/customers', async (req, res) => {
+  if (req.query.role === 'guest') return listGuests(req, res);
   const { limit, page, offset } = paginate(req.query, { defaultLimit: 50 });
   const where = [];
   const { list, p } = params();

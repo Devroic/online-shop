@@ -92,6 +92,7 @@ const strings = {
   'Cash on delivery – collect {total}': 'Αντικαταβολή – προς είσπραξη {total}',
   'Open in admin': 'Άνοιγμα στη διαχείριση',
   'New message from the contact form': 'Νέο μήνυμα από τη φόρμα επικοινωνίας',
+  'New message': 'Νέο μήνυμα',
   'Reply to this email to answer {name} directly.': 'Απαντήστε σε αυτό το email και η απάντησή σας θα πάει απευθείας στον αποστολέα ({name}).',
 
   // Emails: account

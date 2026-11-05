@@ -74,6 +74,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -832,7 +833,7 @@ input[type='number'] {
 }
 .tabs .active .tab-count {
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-contrast);
 }
 
 @media (max-width: 899px) {

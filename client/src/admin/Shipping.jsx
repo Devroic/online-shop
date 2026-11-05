@@ -110,6 +110,7 @@ function MethodCard({ form, onChange, errors }) {
 
 function ShippingMethods() {
   const { data, setData } = useFetch('/admin/shipping');
+  const { reload: reloadShop } = useShop();
   const [forms, setForms] = useState(null);
   const [busy, setBusy] = useState(false);
   const v = useValidation();
@@ -126,6 +127,7 @@ function ShippingMethods() {
         id, name, description, active, cod, codFee, rates: kind === 'courier' ? rates : undefined,
       }));
       setData(await api.put('/admin/shipping', { methods }));
+      reloadShop();
       v.reset();
       toast.success(t('Saved'));
     } catch (err) {

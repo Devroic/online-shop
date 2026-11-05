@@ -996,6 +996,24 @@ input[type='range'] {
     left: calc(50% + 124px);
   }
 }
+@media (max-width: 640px) {
+  .save-bar {
+    left: 12px;
+    right: 12px;
+    transform: none;
+    padding-left: 14px;
+  }
+  .save-bar > span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+/* Room for the bar under the last field, so it never covers it. */
+.a-content:has(.save-bar) {
+  padding-bottom: 140px;
+}
 
 .perk-edit {
   display: grid;
@@ -1227,4 +1245,55 @@ input[type='range'] {
 .a-side-foot .lang-switch button.active,
 .a-side-foot .lang-switch button.active:hover {
   background: var(--text);
+}
+
+/* Orders: date filters with a visible label. */
+.date-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Orders on phones: each order is a small card, so status and total are visible
+   without scrolling sideways. Order + total on top, customer + status, then payment. */
+@media (max-width: 640px) {
+  .orders-table thead {
+    display: none;
+  }
+  .orders-table,
+  .orders-table tbody {
+    display: block;
+  }
+  .orders-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .orders-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .orders-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .orders-table td:nth-child(1) { grid-area: 1 / 1; }
+  .orders-table td:nth-child(5) { grid-area: 1 / 2; text-align: right; }
+  .orders-table td:nth-child(2) { grid-area: 2 / 1; }
+  .orders-table td:nth-child(4) { grid-area: 2 / 2; text-align: right; }
+  .orders-table td:nth-child(3) { grid-area: 3 / 1 / 4 / 3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .orders-table td:nth-child(3) .small { color: var(--muted); }
+  .date-filter {
+    flex: 1;
+  }
+  .date-filter .input {
+    flex: 1;
+    min-width: 0;
+  }
 }

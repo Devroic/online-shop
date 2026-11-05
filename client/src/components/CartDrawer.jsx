@@ -8,11 +8,11 @@ import { EmptyState, QuantityStepper } from './ui.jsx';
 import { problemText, useQuote } from './useQuote.js';
 
 /** Progress towards the cheapest free-shipping threshold, if any. */
-export function FreeShippingBar({ quote }) {
+export function FreeShippingBar({ quote, subtotal }) {
   const thresholds = quote?.shippingOptions.filter((m) => m.freeOver != null && m.requiresAddress).map((m) => m.freeOver) ?? [];
   if (!thresholds.length) return null;
   const target = Math.min(...thresholds);
-  const current = quote.subtotal - quote.discount;
+  const current = (subtotal ?? quote.subtotal) - quote.discount;
   const left = target - current;
   return (
     <div className="free-ship">
@@ -40,14 +40,14 @@ export function CartLine({ line, problem, onQuantity, onRemove }) {
         {line.variantName && <div className="muted small">{line.variantName}</div>}
         <div className="cart-line-price">{money(line.price)}</div>
         {problem && <div className="line-problem">{problemText(problem, t)}</div>}
-        <div className="cart-line-actions">
-          <QuantityStepper size="sm" value={line.quantity} onChange={onQuantity} max={problem?.available ?? undefined} />
-          <button className="link-btn muted" onClick={onRemove} aria-label={t('Remove')}>
-            <Trash2 size={16} />
-          </button>
-        </div>
       </div>
       <div className="cart-line-total">{money(line.price * line.quantity)}</div>
+      <div className="cart-line-actions">
+        <QuantityStepper size="sm" value={line.quantity} onChange={onQuantity} max={problem?.available ?? line.max ?? undefined} />
+        <button className="link-btn muted" onClick={onRemove} aria-label={t('Remove')}>
+          <Trash2 size={16} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -96,7 +96,7 @@ export default function CartDrawer() {
           </div>
         ) : (
           <>
-            <FreeShippingBar quote={quote} />
+            <FreeShippingBar quote={quote} subtotal={subtotal} />
             <div className="sheet-body">
               {items.map((l) => (
                 <CartLine key={l.key} line={l} problem={problemFor(l.key)} onQuantity={(q) => setQuantity(l.key, q)} onRemove={() => remove(l.key)} />
@@ -105,7 +105,7 @@ export default function CartDrawer() {
             <div className="sheet-foot">
               <div className="summary-row total">
                 <span>{t('Subtotal')}</span>
-                <span>{money(quote?.subtotal ?? subtotal)}</span>
+                <span>{money(subtotal)}</span>
               </div>
               <p className="muted small">{t('Shipping and discounts are calculated at checkout.')}</p>
               <Link to="/checkout" className={`btn btn-primary btn-lg btn-block ${hasProblems ? 'disabled' : ''}`} aria-disabled={hasProblems}>

@@ -129,7 +129,7 @@ export default function Coupons() {
   return (
     <>
       <PageHeader
-        title={t('Discount codes')}
+        title={t('Coupons')}
         subtitle={t('Codes customers can enter at checkout. Codes are not shown in the shop by themselves: if you mention one in the announcement bar, update it in Pages → Home page.')}
         actions={
           <button className="btn btn-primary" onClick={() => setEditing({})}>

@@ -253,6 +253,8 @@ const migrations = [
   ALTER TABLE orders ADD CONSTRAINT orders_status_check
     CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'));
   `,
+  // 11: what a product's options are called ("Size", "Colour"); empty shows "Option".
+  `ALTER TABLE products ADD COLUMN option_name TEXT NOT NULL DEFAULT '';`,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

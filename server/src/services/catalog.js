@@ -72,6 +72,7 @@ function serializeProduct(p, images, variants) {
     categoryId: p.category_id,
     category: p.category_slug ? { name: p.category_name, slug: p.category_slug } : null,
     images: images.map((i) => i.url),
+    optionName: p.option_name || '',
     variants: vs,
     createdAt: p.created_at,
     updatedAt: p.updated_at,
@@ -89,6 +90,28 @@ const SORTS = {
   featured: 'p.featured DESC, p.created_at DESC, p.id DESC',
 };
 
+/*
+ * Greeklish search. Greek text (lowercase, no accents) and a Latin query are both
+ * turned into the same rough spelling: "κουπα" and "koupa" / "kupa" → "kupa",
+ * "θαλασσα" and "thalassa" / "8alassa" → "8alassa", "νησι" and "nhsi" / "nisi" → "nisi".
+ */
+const GREEK_PAIRS = [['ου', 'u'], ['αυ', 'av'], ['ευ', 'ev'], ['θ', '8'], ['χ', 'x'], ['ψ', 'ps'], ['ξ', 'ks']];
+const sqlFoldGreek = (col) =>
+  `translate(${GREEK_PAIRS.reduce((e, [a, b]) => `replace(${e}, '${a}', '${b}')`, col)}, 'αβγδεζηικλμνοπρστυφω', 'avgdeziiklmnoprstifo')`;
+const isLatin = (w) => /[a-z]/.test(w) && !/[Ͱ-Ͽ]/.test(w);
+export const foldGreeklish = (w) =>
+  w
+    .replace(/au/g, 'av')
+    .replace(/eu/g, 'ev')
+    .replace(/ou/g, 'u')
+    .replace(/th/g, '8')
+    .replace(/ch/g, 'x')
+    .replace(/ph/g, 'f')
+    .replace(/3/g, 'ks')
+    .replace(/[hy]/g, 'i')
+    .replace(/w/g, 'o')
+    .replace(/b/g, 'v');
+
 /**
  * Product listing with filtering. `admin` includes inactive products and
  * skips the out-of-stock filter.
@@ -103,8 +126,15 @@ export async function listProducts(
   if (q) {
     // Accent/case-insensitive: search_text is stored normalised. Each word must match.
     for (const word of normalizeSearch(q).trim().split(/\s+/).slice(0, 6)) {
-      const like = p(`%${word.replace(/[%_\\]/g, '')}%`);
-      where.push(`(p.search_text LIKE ${like} OR c.search_name LIKE ${like})`);
+      const clean = word.replace(/[%_\\]/g, '');
+      const like = p(`%${clean}%`);
+      const match = [`p.search_text LIKE ${like}`, `c.search_name LIKE ${like}`];
+      // Greek typed in Latin letters ("koupa" finds "Κούπα"): both sides are folded the same way.
+      if (isLatin(clean)) {
+        const folded = p(`%${foldGreeklish(clean)}%`);
+        match.push(`${sqlFoldGreek('p.search_text')} LIKE ${folded}`, `${sqlFoldGreek("COALESCE(c.search_name, '')")} LIKE ${folded}`);
+      }
+      where.push(`(${match.join(' OR ')})`);
     }
   }
   if (category) {

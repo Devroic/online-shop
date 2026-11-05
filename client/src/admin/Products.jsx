@@ -13,10 +13,10 @@ import { ImageUploader, Modal, MoneyInput, PageHeader, SaveBar, SaveButton, Sear
 import ProductImport from './ProductImport.jsx';
 
 function StockCell({ product, onSaved }) {
-  const [value, setValue] = useState(product.stock);
+  const [value, setValue] = useState(String(product.stock));
   const toast = useToast();
   useEffect(() => {
-    setValue(product.stock);
+    setValue(String(product.stock));
   }, [product.stock]);
   if (!product.trackStock) return <span className="muted">∞</span>;
   if (product.variants.length) {
@@ -27,9 +27,15 @@ function StockCell({ product, onSaved }) {
     );
   }
   const save = async () => {
-    if (value === product.stock) return;
+    const n = Number(value.trim());
+    if (value.trim() === String(product.stock)) return;
+    if (value.trim() === '' || !Number.isInteger(n) || n < 0) {
+      toast.error(t('Stock must be a whole number, 0 or more'));
+      setValue(String(product.stock));
+      return;
+    }
     try {
-      onSaved(await api.patch(`/admin/products/${product.id}`, { stock: value }));
+      onSaved(await api.patch(`/admin/products/${product.id}`, { stock: n }));
       toast.success(t('Stock updated'));
     } catch {
       toast.error(t('Could not save'));
@@ -41,7 +47,7 @@ function StockCell({ product, onSaved }) {
       type="number"
       min="0"
       value={value}
-      onChange={(e) => setValue(Math.max(0, parseInt(e.target.value, 10) || 0))}
+      onChange={(e) => setValue(e.target.value)}
       onBlur={save}
       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       aria-label={t('Stock')}
@@ -307,6 +313,7 @@ const EMPTY = {
   featured: false,
   active: true,
   images: [],
+  optionName: '',
   variants: [],
 };
 
@@ -376,6 +383,7 @@ export function ProductEdit() {
     featured: form.featured,
     active: form.active,
     images: form.images,
+    optionName: form.optionName,
     variants: form.variants,
   });
 
@@ -443,7 +451,7 @@ export function ProductEdit() {
                 </button>
               </>
             )}
-            <SaveButton dirty={dirty} saving={saving} submit />
+            <SaveButton dirty={dirty} saving={saving} submit createLabel={isNew ? t('Create product') : null} />
           </>
         }
       />
@@ -530,6 +538,16 @@ export function ProductEdit() {
                 <p className="muted small">{t('Sizes, colours, scents… Each option can have its own stock and price.')}</p>
               </div>
             </div>
+            {form.variants.length > 0 && (
+              <Field
+                label={t('What are the options called? (optional)')}
+                value={form.optionName}
+                onChange={(e) => set('optionName', e.target.value)}
+                placeholder={t('e.g. Size, Colour')}
+                hint={t('Customers see “{label}: M”. Empty: “{option}”.', { label: form.optionName || t('Size'), option: t('Option') })}
+                maxLength={40}
+              />
+            )}
             {form.variants.length > 0 && (
               <div className="variants-table">
                 <div className="variants-row head">
@@ -626,6 +644,7 @@ export function ProductEdit() {
         dirty={dirty}
         saving={saving}
         submit
+        saveLabel={isNew ? t('Create product') : null}
         onDiscard={() => {
           v.reset();
           setForm(initial);

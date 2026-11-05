@@ -99,7 +99,7 @@ export function Register() {
             const ok = v.validate(form, {
               name: [rules.required(), rules.maxLength(100)],
               email: [rules.required(), rules.email()],
-              phone: [rules.maxLength(40)],
+              phone: [rules.phone()],
               password: [rules.required(), rules.minLength(8)],
               passwordConfirm: [rules.required()],
             });

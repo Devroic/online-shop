@@ -313,8 +313,9 @@
 
 .cart-line {
   display: grid;
-  grid-template-columns: 76px 1fr auto;
-  gap: 14px;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  gap: 0 14px;
   padding: 16px 0;
   border-bottom: 1px solid var(--border);
 }
@@ -322,6 +323,7 @@
   border-bottom: 0;
 }
 .cart-line-img {
+  grid-row: span 2;
   width: 76px;
   height: 76px;
   border-radius: var(--radius-sm);
@@ -343,6 +345,7 @@
   color: var(--muted);
 }
 .cart-line-actions {
+  grid-column: 2 / 4;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -350,6 +353,7 @@
 }
 .cart-line-total {
   font-weight: 600;
+  white-space: nowrap;
 }
 .cart-line.has-problem .cart-line-img {
   outline: 2px solid var(--danger);
@@ -986,11 +990,18 @@
   background: var(--primary);
   color: var(--primary-contrast);
 }
+/* Sold out: still readable, clearly struck through, with a dashed border. */
 .variant.soldout {
   color: var(--muted);
   text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  border-style: dashed;
   background: var(--surface);
+  opacity: 1;
   cursor: not-allowed;
+}
+.variant.soldout:hover {
+  border-color: var(--border-strong);
 }
 .variant-picker.need .variant:not(.soldout) {
   border-color: var(--danger);
@@ -1301,6 +1312,13 @@
   }
   .checkout-summary .summary-body.open {
     display: block;
+  }
+  .checkout-summary .summary-coupon {
+    margin-top: 12px;
+  }
+  .checkout-summary .summary-coupon .coupon-form {
+    border-top: 0;
+    padding-top: 0;
   }
 }
 

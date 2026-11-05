@@ -11,7 +11,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { Checkbox, EmptyState, Field, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 import { OrderItems, OrderTotals } from '../pages/OrderPage.jsx';
-import { PageHeader, SearchInput, useConfirm } from './components.jsx';
+import { Modal, PageHeader, SearchInput, useConfirm, useUnsavedGuard } from './components.jsx';
 
 const STATUS_TABS = ['', 'pending', 'processing', 'shipped', 'delivered', 'returned', 'cancelled'];
 
@@ -55,8 +55,14 @@ export function OrderList() {
       </nav>
       <div className="a-filters">
         <SearchInput value={q} onChange={(v) => update({ q: v })} placeholder={t('Order number, name, email or phone…')} />
-        <input className="input" type="date" value={filters.from} onChange={(e) => update({ from: e.target.value })} aria-label={t('From')} />
-        <input className="input" type="date" value={filters.to} onChange={(e) => update({ to: e.target.value })} aria-label={t('To')} />
+        <label className="date-filter">
+          <span>{t('From')}</span>
+          <input className="input" type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => update({ from: e.target.value })} />
+        </label>
+        <label className="date-filter">
+          <span>{t('To')}</span>
+          <input className="input" type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => update({ to: e.target.value })} />
+        </label>
       </div>
       {filters.customer && (
         <p className="filter-chip">
@@ -73,7 +79,7 @@ export function OrderList() {
       ) : (
         <div className={`card table-card ${loading ? 'is-loading' : ''}`}>
           <div className="table-wrap">
-            <table className="table clickable">
+            <table className="table clickable orders-table">
               <thead>
                 <tr>
                   <th>{t('Order')}</th>
@@ -130,11 +136,17 @@ export function OrderDetail({ onChange }) {
   const [form, setForm] = useState(null);
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [shipping, setShipping] = useState(null); // the "mark as shipped" window: { trackingNumber, trackingUrl }
   const v = useValidation();
+  useUnsavedGuard(!!order && !!form && EDITABLE.some((k) => form[k] !== (order[k] ?? '')));
   const set = (k) => (e) => {
     v.clear(k);
-    setForm({ ...form, [k]: e.target.value });
+    setForm(withCodPaid({ ...form, [k]: e.target.value }));
   };
+  // Cash on delivery / at the store: once delivered, the money was collected, so it shows as paid
+  // (still changeable before saving).
+  const withCodPaid = (f) =>
+    order.paymentMethod === 'cod' && f.status === 'delivered' && order.status !== 'delivered' && f.paymentStatus === 'pending' ? { ...f, paymentStatus: 'paid' } : f;
 
   useEffect(() => {
     if (order) setForm(Object.fromEntries(EDITABLE.map((k) => [k, order[k] ?? ''])));
@@ -176,8 +188,24 @@ export function OrderDetail({ onChange }) {
     }
   };
 
+  // "Mark as shipped" for a courier order asks for the tracking number first, so the
+  // customer's email can include it (both fields stay optional).
+  const startQuick = (status) => {
+    if (status === 'shipped' && order.address && !order.trackingNumber && !order.trackingUrl) {
+      setShipping({ trackingNumber: form.trackingNumber, trackingUrl: form.trackingUrl });
+      return;
+    }
+    save(withCodPaid({ ...form, status }));
+  };
+  const confirmShipped = async () => {
+    const ok = v.validate(shipping, { trackingNumber: [rules.maxLength(200)], trackingUrl: [rules.url(), rules.maxLength(1000)] });
+    if (!ok) return;
+    setShipping(null);
+    await save({ ...form, ...shipping, status: 'shipped' });
+  };
+
   const a = order.address;
-  const next = { pending: 'processing', processing: 'shipped', shipped: 'delivered' }[order.status];
+  const next ={ pending: 'processing', processing: 'shipped', shipped: 'delivered' }[order.status];
   // No quick "next step" that does not fit the payment, e.g. preparing an unpaid card order.
   const quick = next && pairAllowed(order.paymentMethod, next, order.paymentStatus) ? next : null;
   const statusChoices = statusOptions(order.paymentMethod, Object.keys(ORDER_STATUS), form.paymentStatus, order.status);
@@ -197,7 +225,7 @@ export function OrderDetail({ onChange }) {
               <Printer size={16} /> {t('Print')}
             </button>
             {quick && (
-              <button className="btn btn-primary no-print" disabled={saving} onClick={() => save({ ...form, status: quick })}>
+              <button className="btn btn-primary no-print" disabled={saving} onClick={() => startQuick(quick)}>
                 {t('Mark as {status}', { status: statusName(quick, order).toLowerCase() })}
               </button>
             )}
@@ -317,6 +345,47 @@ export function OrderDetail({ onChange }) {
           </section>
         </div>
       </div>
+      {shipping && (
+        <Modal
+          title={t('Mark as {status}', { status: statusName('shipped', order).toLowerCase() })}
+          onClose={() => setShipping(null)}
+          footer={
+            <>
+              <button type="button" className="btn btn-ghost" onClick={() => setShipping(null)}>
+                {t('Cancel')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmShipped} disabled={saving}>
+                {saving && <Spinner />} {shipping.trackingNumber || shipping.trackingUrl ? t('Mark as {status}', { status: statusName('shipped', order).toLowerCase() }) : t('Ship without tracking')}
+              </button>
+            </>
+          }
+        >
+          <p className="muted">{t('Add the tracking number so the customer can follow the parcel. It goes in the email about the shipment.')}</p>
+          <Field
+            label={t('Tracking number')}
+            value={shipping.trackingNumber}
+            autoFocus
+            onChange={(e) => {
+              v.clear('trackingNumber');
+              setShipping({ ...shipping, trackingNumber: e.target.value });
+            }}
+            error={v.errors.trackingNumber}
+          />
+          <Field
+            label={t('Tracking link (optional)')}
+            type="url"
+            inputMode="url"
+            placeholder="https://"
+            value={shipping.trackingUrl}
+            onChange={(e) => {
+              v.clear('trackingUrl');
+              setShipping({ ...shipping, trackingUrl: e.target.value });
+            }}
+            error={v.errors.trackingUrl}
+          />
+          {notify && <p className="muted small">{t('The customer gets an email about the shipment.')}</p>}
+        </Modal>
+      )}
     </div>
   );
 }

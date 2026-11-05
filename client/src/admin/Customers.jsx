@@ -14,6 +14,7 @@ export default function Customers() {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') || '';
   const role = params.get('role') || '';
+  const guests = role === 'guest';
   const page = Number(params.get('page') || 1);
   const { data, reload } = useFetch(`/admin/customers${qs({ q, role, page })}`);
   const { user } = useAuth();
@@ -38,16 +39,17 @@ export default function Customers() {
 
   return (
     <>
-      <PageHeader title={t('Customers')} subtitle={data && t('{n} accounts', { n: data.total })} />
+      <PageHeader title={t('Customers')} subtitle={data && (guests ? t('{n} guests', { n: data.total }) : t('{n} accounts', { n: data.total }))} />
       <div className="a-filters">
         <SearchInput value={q} onChange={(v) => update({ q: v })} placeholder={t('Name, email or phone…')} />
         <select className="input" value={role} onChange={(e) => update({ role: e.target.value })}>
           <option value="">{t('All accounts')}</option>
           <option value="customer">{t('Customers')}</option>
           <option value="admin">{t('Admins')}</option>
+          <option value="guest">{t('Guests (no account)')}</option>
         </select>
       </div>
-      <p className="muted small">{t('Guests who order without an account are listed in Orders.')}</p>
+      {guests && <p className="muted small">{t('People who ordered without an account, one line per email.')}</p>}
       {!data ? (
         <PageLoader />
       ) : !data.items.length ? (
@@ -62,15 +64,15 @@ export default function Customers() {
                   <th>{t('Phone')}</th>
                   <th>{t('Orders')}</th>
                   <th className="num">{t('Spent')}</th>
-                  <th>{t('Joined')}</th>
+                  <th>{guests ? t('First order') : t('Joined')}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {data.items.map((c) => (
-                  <tr key={c.id}>
+                  <tr key={c.id ?? c.email}>
                     <td>
-                      <Link to={`/admin/orders?customer=${c.id}`} className="strong-link row-link">
+                      <Link to={c.guest ? `/admin/orders?q=${encodeURIComponent(c.email)}` : `/admin/orders?customer=${c.id}`} className="strong-link row-link">
                         {c.name || '—'}
                       </Link>{' '}
                       {c.role === 'admin' && <span className="status status-shipped">Admin</span>}
@@ -81,7 +83,7 @@ export default function Customers() {
                     <td className="num">{money(c.spent)}</td>
                     <td className="nowrap">{date(c.createdAt)}</td>
                     <td className="num">
-                      {c.id !== user.id && (
+                      {!c.guest && c.id !== user.id && (
                         <button className="btn btn-ghost btn-sm" onClick={() => setRole(c, c.role === 'admin' ? 'customer' : 'admin')}>
                           {c.role === 'admin' ? t('Remove admin') : t('Make admin')}
                         </button>

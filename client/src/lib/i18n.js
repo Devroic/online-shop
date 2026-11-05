@@ -60,6 +60,12 @@ export const PAYMENT_STATUS = {
   refunded: 'Refunded',
 };
 
+/** For the customer: an unpaid cash order is not late, it is paid on delivery / at the store. */
+export const paymentStatusName = (order) =>
+  order.paymentMethod === 'cod' && order.paymentStatus === 'pending' && order.status !== 'cancelled'
+    ? t(order.address ? 'Pay on delivery' : 'Pay at the store')
+    : t(PAYMENT_STATUS[order.paymentStatus]);
+
 export const PAYMENT_METHOD = {
   card: 'Credit / debit card',
   cod: 'Cash on delivery',

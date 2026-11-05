@@ -8,7 +8,7 @@ import { CartLine, FreeShippingBar } from '../components/CartDrawer.jsx';
 import { useQuote } from '../components/useQuote.js';
 
 export default function CartPage() {
-  const { items, setQuantity, remove } = useCart();
+  const { items, setQuantity, remove, subtotal } = useCart();
   const { quote, problemFor } = useQuote();
   useTitle(t('Cart'));
 
@@ -43,10 +43,10 @@ export default function CartPage() {
           </Link>
         </div>
         <aside className="card summary sticky">
-          <FreeShippingBar quote={quote} />
+          <FreeShippingBar quote={quote} subtotal={subtotal} />
           <div className="summary-row">
             <span>{t('Subtotal')}</span>
-            <span>{money(quote?.subtotal ?? 0)}</span>
+            <span>{money(subtotal)}</span>
           </div>
           <div className="summary-row muted">
             <span>{t('Shipping')}</span>
@@ -54,7 +54,7 @@ export default function CartPage() {
           </div>
           <div className="summary-row total">
             <span>{t('Total')}</span>
-            <span>{money(quote?.subtotal ?? 0)}</span>
+            <span>{money(subtotal)}</span>
           </div>
           {hasProblems && <p className="line-problem">{t('Please fix the items marked above to continue.')}</p>}
           <Link to="/checkout" className={`btn btn-primary btn-lg btn-block ${hasProblems ? 'disabled' : ''}`} aria-disabled={hasProblems}>

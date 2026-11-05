@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { createClient } from '@supabase/supabase-js';
 import { db } from '../db.js';
 import { checkPassword, clearSession, hashPassword, normEmail, publicUser, requireUser, setSession } from '../auth.js';
-import { HttpError, badRequest, randomToken, sha256, validate } from '../utils.js';
+import { HttpError, badRequest, isPhone, isPostalCode, randomToken, sha256, validate } from '../utils.js';
 import { background, sendEmailConfirmation, sendPasswordReset, sendWelcome } from '../email.js';
 import { getSettings } from '../settings.js';
 import { config } from '../config.js';
@@ -21,10 +21,13 @@ const limiter = rateLimit({
   message: { error: 'Too many attempts, please try again later' },
 });
 
+/** Optional phone: empty, or a number that looks like one. */
+export const phoneSchema = z.string().trim().max(40).refine((s) => !s || isPhone(s), { message: 'phone' }).optional().default('');
+
 export const addressSchema = z.object({
   street: z.string().trim().min(1).max(200),
   city: z.string().trim().min(1).max(100),
-  postalCode: z.string().trim().min(1).max(20),
+  postalCode: z.string().trim().min(1).max(20).refine(isPostalCode, { message: 'postal_code' }),
   region: z.string().trim().max(100).optional().default(''),
   // ISO code (e.g. 'CY'); empty for addresses saved before countries existed.
   country: z.union([z.literal(''), z.enum(COUNTRY_CODES)]).optional().default(''),
@@ -36,7 +39,7 @@ const registerSchema = z.object({
   email: z.email().max(200),
   password,
   name: z.string().trim().min(1).max(100),
-  phone: z.string().trim().max(40).optional().default(''),
+  phone: phoneSchema,
 });
 
 /**
@@ -145,7 +148,7 @@ router.get('/me', (req, res) => {
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(100),
-  phone: z.string().trim().max(40).optional().default(''),
+  phone: phoneSchema,
   address: addressSchema.nullish(),
 });
 

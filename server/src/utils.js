@@ -9,6 +9,14 @@ export class HttpError extends Error {
   }
 }
 
+// Phone: digits with optional +, spaces, dashes, dots or brackets, 6 to 15 digits.
+export const isPhone = (s) => {
+  const digits = (s.match(/\d/g) || []).length;
+  return /^\+?[\d\s().-]+$/.test(s) && digits >= 6 && digits <= 15;
+};
+// Postal code: letters, digits, spaces or dashes, with at least one digit (works for GR, CY, UK, NL…).
+export const isPostalCode = (s) => /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/.test(s) && /\d/.test(s);
+
 export const badRequest = (msg, details) => new HttpError(400, msg, details);
 export const notFound = (msg = 'Not found') => new HttpError(404, msg);
 

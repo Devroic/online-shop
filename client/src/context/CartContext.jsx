@@ -62,11 +62,13 @@ export function CartProvider({ children }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const add = useCallback((product, variant, quantity = 1) => {
+  /** `max`: the stock when known; the line never goes above it (the server checks again). */
+  const add = useCallback((product, variant, quantity = 1, max = null) => {
     const key = lineKey(product.id, variant?.id);
+    const cap = (n) => (max == null ? n : Math.min(n, max));
     setItems((list) => {
       const existing = list.find((l) => l.key === key);
-      if (existing) return list.map((l) => (l.key === key ? { ...l, quantity: l.quantity + quantity } : l));
+      if (existing) return list.map((l) => (l.key === key ? { ...l, quantity: cap(l.quantity + quantity), max } : l));
       return [
         ...list,
         {
@@ -78,7 +80,8 @@ export function CartProvider({ children }) {
           variantName: variant?.name ?? '',
           price: variant?.price ?? product.price,
           image: product.images?.[0] ?? null,
-          quantity,
+          quantity: cap(quantity),
+          max,
         },
       ];
     });

@@ -408,6 +408,29 @@ test('returned: only after delivery, puts stock back, not counted as revenue', a
   assert.equal(await stockOf(p.id), 3);
 });
 
+test('phone and postal code must look real', async () => {
+  const p = (await admin.post('/api/admin/products').send({ name: 'Phone test', price: 1000, stock: 5 }).expect(201)).body;
+  const items = [{ productId: p.id, quantity: 1 }];
+  const bad = await request(app).post('/api/orders').send(checkout({ items, phone: 'abc', address: { ...address, postalCode: 'xyz' } })).expect(400);
+  assert.equal(bad.body.details.phone, 'phone');
+  assert.equal(bad.body.details['address.postalCode'], 'postal_code');
+  await request(app).post('/api/orders').send(checkout({ items, phone: '+357 99 123456', address: { ...address, postalCode: 'SW1A 1AA' } })).expect(201);
+});
+
+test('greeklish search, option name, guests in customers', async () => {
+  const p = (await admin.post('/api/admin/products').send({ name: 'Κούπα θάλασσας', price: 900, stock: 3, optionName: 'Μέγεθος', variants: [{ name: 'M', stock: 3 }] }).expect(201)).body;
+  assert.equal(p.optionName, 'Μέγεθος');
+  for (const q of ['koupa', 'kupa', 'thalassas', '8alassas']) {
+    const found = (await request(app).get(`/api/products?q=${q}`).expect(200)).body.items.map((x) => x.id);
+    assert.ok(found.includes(p.id), q);
+  }
+  await request(app).post('/api/orders').send(checkout({ email: 'guest-list@test.dev', items: [{ productId: p.id, variantId: p.variants[0].id, quantity: 1 }] })).expect(201);
+  const guests = (await admin.get('/api/admin/customers?role=guest&q=guest-list').expect(200)).body;
+  assert.equal(guests.items.length, 1);
+  assert.equal(guests.items[0].guest, true);
+  assert.equal(guests.items[0].orderCount, 1);
+});
+
 test('language switch is off by default', async () => {
   const { DEFAULT_SETTINGS } = await import('../src/settings.js');
   assert.equal(DEFAULT_SETTINGS.languageSwitch, false);

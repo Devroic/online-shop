@@ -8,7 +8,7 @@ import { HttpError, notFound, validate } from '../utils.js';
 import { createOrder, getOrder, serializeOrder, updateOrder } from '../services/orders.js';
 import { createCheckoutSession, refreshCardPayment, stripeReady } from '../services/payments.js';
 import { background, sendAdminNewOrder, sendOrderConfirmation } from '../email.js';
-import { addressSchema } from './auth.js';
+import { addressSchema, phoneSchema } from './auth.js';
 import { config } from '../config.js';
 import { requestLanguage } from '../i18n.js';
 
@@ -29,7 +29,7 @@ const checkoutSchema = z.object({
     .max(100),
   email: z.email().max(200),
   name: z.string().trim().min(2).max(100),
-  phone: z.string().trim().max(40).optional().default(''),
+  phone: phoneSchema,
   address: addressSchema.nullish(),
   shippingMethodId: z.number().int().positive(),
   paymentMethod: z.enum(['card', 'cod']),

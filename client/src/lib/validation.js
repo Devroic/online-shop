@@ -38,6 +38,10 @@ export function errorMessage(code) {
       return t('Only a delivered order can be marked as returned');
     case 'status_combination':
       return t('This payment status does not fit the order status');
+    case 'phone':
+      return t('Enter a valid phone number');
+    case 'postal_code':
+      return t('Enter a valid postal code');
     case 'integer':
       return t('Enter a whole number');
     case 'number':
@@ -71,6 +75,14 @@ export const rules = {
   url: () => (v) => (!empty(v) && !/^https?:\/\/[^\s.]+\.\S+$/.test(String(v).trim()) ? 'url' : null),
   colour: () => (v) => (!empty(v) && !/^#[0-9a-fA-F]{6}$/.test(v) ? 'colour' : null),
   acceptTerms: () => (v) => (v ? null : 'accept_terms'),
+  // Same checks as the server (server/src/utils.js).
+  phone: () => (v) => {
+    if (empty(v)) return null;
+    const s = String(v).trim();
+    const digits = (s.match(/\d/g) || []).length;
+    return /^\+?[\d\s().-]+$/.test(s) && digits >= 6 && digits <= 15 ? null : 'phone';
+  },
+  postalCode: () => (v) => (!empty(v) && !(/^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/.test(String(v).trim()) && /\d/.test(v)) ? 'postal_code' : null),
 };
 
 const get = (obj, path) => path.split('.').reduce((o, k) => o?.[k], obj);

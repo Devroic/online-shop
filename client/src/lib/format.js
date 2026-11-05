@@ -18,7 +18,7 @@ export function money(cents) {
   const value = (cents || 0) / 100;
   const amount = amountFmt.format(Math.abs(value));
   const sign = value < 0 ? '-' : '';
-  return current.symbolBefore ? `${sign}${currencySymbol()}${amount}` : `${sign}${amount} ${currencySymbol()}`;
+  return current.symbolBefore ? `${sign}${currencySymbol()}${amount}` : `${sign}${amount}\u00a0${currencySymbol()}`; // non-breaking space
 }
 
 /** "12,50" or "12.5" → 1250; returns null for empty input. */

@@ -93,11 +93,14 @@ export default function Catalog() {
           onSubmit={(e) => {
             e.preventDefault();
             const f = new FormData(e.currentTarget);
-            update({ min: f.get('min'), max: f.get('max') });
+            let lo = String(f.get('min') || '').trim();
+            let hi = String(f.get('max') || '').trim();
+            if (lo && hi && parseMoney(lo) > parseMoney(hi)) [lo, hi] = [hi, lo];
+            update({ min: lo, max: hi });
           }}
         >
           <Checkbox label={t('In stock only')} checked={inStock} onChange={(e) => update({ inStock: e.target.checked ? '1' : '' })} />
-          <div className="price-range">
+          <div className="price-range" key={`${min}-${max}`}>
             <input name="min" defaultValue={min} inputMode="decimal" placeholder={t('Min €')} aria-label={t('Min price')} />
             <span>–</span>
             <input name="max" defaultValue={max} inputMode="decimal" placeholder={t('Max €')} aria-label={t('Max price')} />

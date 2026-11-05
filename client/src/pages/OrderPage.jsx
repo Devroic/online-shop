@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { countryName } from '../lib/countries.js';
 import { takePaidCardOrder, useCart } from '../context/CartContext.jsx';
 import { money, dateTime } from '../lib/format.js';
-import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, paymentName, statusName } from '../lib/i18n.js';
+import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, paymentName, paymentStatusName, statusName } from '../lib/i18n.js';
 import { EmptyState, PageLoader, useTitle } from '../components/ui.jsx';
 
 const STEPS = ['pending', 'processing', 'shipped', 'delivered'];
@@ -167,7 +167,7 @@ export default function OrderPage() {
               <div>
                 <div className="muted small">{t('Payment')}</div>
                 <strong>{paymentName(order.paymentMethod, order)}</strong>
-                <span className={`status status-${order.paymentStatus}`}>{t(PAYMENT_STATUS[order.paymentStatus])}</span>
+                <span className={`status status-${order.paymentStatus}`}>{paymentStatusName(order)}</span>
               </div>
             </div>
             <StatusTimeline status={order.status} order={order} />

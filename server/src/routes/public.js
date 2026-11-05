@@ -5,6 +5,7 @@ import { db } from '../db.js';
 import { config } from '../config.js';
 import { getSettings } from '../settings.js';
 import { notFound, paginate, validate } from '../utils.js';
+import { phoneSchema } from './auth.js';
 import { getProduct, listProducts, relatedProducts, serializeCategory } from '../services/catalog.js';
 import { availablePaymentMethods, quoteCart } from '../services/orders.js';
 import { stripeReady } from '../services/payments.js';
@@ -110,8 +111,8 @@ const contactLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: config.isTes
 const contactSchema = z.object({
   name: z.string().trim().min(1).max(100),
   email: z.email().max(200),
-  phone: z.string().trim().max(40).optional().default(''),
-  subject: z.string().trim().min(1).max(150),
+  phone: phoneSchema,
+  subject: z.string().trim().max(150).optional().default(''),
   message: z.string().trim().min(5).max(5000),
 });
 

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Upload, X, GripVertical, ImagePlus } from 'lucide-react';
+import { useBlocker } from 'react-router-dom';
+import { Upload, X, GripVertical, ImagePlus, Check } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { CURRENCY_SYMBOL, centsToInput, parseMoney } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
@@ -36,15 +37,32 @@ export function Toggle({ checked, onChange, label, hint }) {
  * ("Save changes" / "Saved") and, while there are changes, the bar at the bottom
  * with Discard. With `submit`, both submit the surrounding form instead of calling onSave.
  */
-export function SaveButton({ dirty, saving, onSave, submit }) {
+export function SaveButton({ dirty, saving, onSave, submit, createLabel }) {
+  // "Saved ✓" only for a moment after a save that worked (saving ended and nothing is left
+  // to save); otherwise the button says "Save changes", greyed out while there is nothing to save.
+  const [justSaved, setJustSaved] = useState(false);
+  const wasSaving = useRef(false);
+  useEffect(() => {
+    if (wasSaving.current && !saving && !dirty) setJustSaved(true);
+    wasSaving.current = saving;
+  }, [saving, dirty]);
+  useEffect(() => {
+    if (dirty) setJustSaved(false);
+    if (!justSaved) return;
+    const id = setTimeout(() => setJustSaved(false), 2500);
+    return () => clearTimeout(id);
+  }, [justSaved, dirty]);
+
+  // `createLabel`: a new item that is not saved yet ("Create product"), always clickable.
   return (
-    <button type={submit ? 'submit' : 'button'} className="btn btn-primary" onClick={submit ? undefined : onSave} disabled={saving || !dirty}>
-      {saving && <Spinner />} {dirty ? t('Save changes') : t('Saved')}
+    <button type={submit ? 'submit' : 'button'} className="btn btn-primary" onClick={submit ? undefined : onSave} disabled={saving || (!dirty && !createLabel)}>
+      {saving ? <Spinner /> : justSaved && !dirty && <Check size={16} />} {createLabel || (justSaved && !dirty ? t('Saved') : t('Save changes'))}
     </button>
   );
 }
 
-export function SaveBar({ dirty, saving, onSave, onDiscard, submit }) {
+export function SaveBar({ dirty, saving, onSave, onDiscard, submit, saveLabel }) {
+  useUnsavedGuard(dirty);
   if (!dirty) return null;
   return (
     <div className="save-bar">
@@ -53,10 +71,42 @@ export function SaveBar({ dirty, saving, onSave, onDiscard, submit }) {
         {t('Discard')}
       </button>
       <button type={submit ? 'submit' : 'button'} className="btn btn-primary btn-sm" onClick={submit ? undefined : onSave} disabled={saving}>
-        {saving && <Spinner />} {t('Save changes')}
+        {saving && <Spinner />} {saveLabel || t('Save changes')}
       </button>
     </div>
   );
+}
+
+/**
+ * While a page has unsaved changes: leaving it through a link asks first (our own
+ * dialog), and closing or reloading the tab gets the browser's warning. Navigations
+ * that replace the page (after saving a new item, after deleting) are not stopped.
+ */
+export function useUnsavedGuard(dirty) {
+  const confirm = useConfirm();
+  const blocker = useBlocker(({ currentLocation, nextLocation, historyAction }) => dirty && historyAction !== 'REPLACE' && currentLocation.pathname !== nextLocation.pathname);
+  const latest = useRef(blocker);
+  latest.current = blocker;
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    const blocked = latest.current;
+    confirm({
+      title: t('Leave without saving?'),
+      message: t('Your changes on this page will be lost.'),
+      confirmLabel: t('Leave'),
+      cancelLabel: t('Stay'),
+      danger: true,
+    }).then((leave) => (leave ? blocked.proceed() : blocked.reset()));
+  }, [blocker.state, confirm]);
+  useEffect(() => {
+    if (!dirty) return;
+    const onUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onUnload);
+    return () => window.removeEventListener('beforeunload', onUnload);
+  }, [dirty]);
 }
 
 /** Money input that shows euros but reports integer cents. */

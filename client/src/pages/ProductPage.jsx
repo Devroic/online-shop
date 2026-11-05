@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Check, Truck, ShieldCheck, RotateCcw, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
-import { useCart } from '../context/CartContext.jsx';
+import { lineKey, useCart } from '../context/CartContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { discountPercent } from '../lib/format.js';
 import { renderMarkdown } from '../lib/markdown.js';
@@ -86,7 +86,7 @@ function Gallery({ images, name }) {
 export default function ProductPage() {
   const { slug } = useParams();
   const { data, loading, error } = useFetch(`/products/${slug}`, { keepPrevious: false });
-  const { add } = useCart();
+  const { add, items } = useCart();
   const { settings } = useShop();
   const [variantId, setVariantId] = useState(null);
   const [qty, setQty] = useState(1);
@@ -112,13 +112,19 @@ export default function ProductPage() {
   const canBuy = hasVariants ? (variant ? variant.inStock : product.inStock) : product.inStock;
   const off = discountPercent(price, product.compareAtPrice);
   const lowStock = available != null && available > 0 && available <= (settings.inventory.lowStockThreshold || 0);
+  // What is already in the cart counts: 5 in stock and 3 in the cart leaves 2 to add.
+  const inCart = items.find((l) => l.key === lineKey(product.id, variant?.id))?.quantity || 0;
+  const addable = available == null ? null : Math.max(0, available - inCart);
+  const allInCart = canBuy && addable === 0;
 
   const onAdd = () => {
     if (hasVariants && !variant) {
       setNeedVariant(true);
       return;
     }
-    add(product, variant, qty);
+    if (allInCart) return;
+    add(product, variant, addable == null ? qty : Math.min(qty, addable), available);
+    setQty(1);
   };
 
   return (
@@ -143,7 +149,12 @@ export default function ProductPage() {
           {hasVariants && (
             <div className={`variant-picker ${needVariant ? 'need' : ''}`}>
               <div className="variant-label">
-                {t('Option')}: <strong>{variant?.name || '—'}</strong>
+                {product.optionName || t('Option')}
+                {variant && (
+                  <>
+                    : <strong>{variant.name}</strong>
+                  </>
+                )}
               </div>
               <div className="variant-options" role="radiogroup">
                 {product.variants.map((v) => (
@@ -152,8 +163,11 @@ export default function ProductPage() {
                     role="radio"
                     aria-checked={v.id === variantId}
                     className={`variant ${v.id === variantId ? 'active' : ''} ${v.inStock ? '' : 'soldout'}`}
-                    disabled={!v.inStock}
+                    aria-disabled={!v.inStock}
+                    title={v.inStock ? undefined : t('Sold out')}
+                    aria-label={v.inStock ? undefined : `${v.name} – ${t('Sold out')}`}
                     onClick={() => {
+                      if (!v.inStock) return; // not `disabled`, so the "Sold out" tooltip still shows
                       setVariantId(v.id);
                       setNeedVariant(false);
                       setQty(1);
@@ -180,11 +194,13 @@ export default function ProductPage() {
           </div>
 
           <div className="buy-row">
-            <QuantityStepper value={qty} onChange={setQty} max={available ?? undefined} />
-            <button className="btn btn-primary btn-lg grow" disabled={!canBuy} onClick={onAdd}>
+            <QuantityStepper value={qty} onChange={setQty} max={addable ? addable : undefined} />
+            <button className="btn btn-primary btn-lg grow" disabled={!canBuy || allInCart} onClick={onAdd}>
               <ShoppingBag size={18} /> {canBuy ? t('Add to cart') : t('Sold out')}
             </button>
           </div>
+
+          {allInCart && <p className="muted small">{t('All available pieces are already in your cart.')}</p>}
 
           <ul className="product-perks">
             <li>
@@ -212,7 +228,7 @@ export default function ProductPage() {
       {/* Sticky buy bar on phones, so the button is always reachable. */}
       <div className="sticky-buy only-mobile">
         <Price price={price} compareAt={product.compareAtPrice} />
-        <button className="btn btn-primary" disabled={!canBuy} onClick={onAdd}>
+        <button className="btn btn-primary" disabled={!canBuy || allInCart} onClick={onAdd}>
           {canBuy ? t('Add to cart') : t('Sold out')}
         </button>
       </div>
