@@ -368,6 +368,29 @@ test('pages keep the order set in the admin, also after a rename', async () => {
   await admin.delete('/api/admin/pages/renamed').expect(200);
 });
 
+test('percentage discount: shown and charged reduced, regular price kept, bulk by category', async () => {
+  const cat = (await admin.post('/api/admin/categories').send({ name: 'Sale cat' }).expect(201)).body;
+  const mk = async (name, price) => (await admin.post('/api/admin/products').send({ name, price, stock: 10, categoryId: cat.id }).expect(201)).body;
+  const a = await mk('Sale A', 1000);
+  const b = await mk('Sale B', 2550);
+  // One product, from its form.
+  await admin.put(`/api/admin/products/${a.id}`).send({ ...a, categoryId: cat.id, discountPercent: 20, variants: [] }).expect(200);
+  const shown = (await request(app).get(`/api/products/${a.slug}`).expect(200)).body;
+  const pa = shown.product || shown;
+  assert.deepEqual([pa.price, pa.compareAtPrice, pa.discountPercent, pa.regularPrice], [800, 1000, 20, 1000]);
+  const quote = await request(app).post('/api/cart/quote').send({ items: [{ productId: a.id, quantity: 2 }] }).expect(200);
+  assert.equal(quote.body.subtotal, 1600);
+  // A whole category at once, then removed with 0.
+  const bulk = await admin.post('/api/admin/products/discount').send({ categoryId: cat.id, percent: 10 }).expect(200);
+  assert.equal(bulk.body.updated, 2);
+  const pb = (await admin.get(`/api/admin/products/${b.id}`).expect(200)).body;
+  assert.deepEqual([pb.price, pb.regularPrice], [2295, 2550]); // 2550 − 10%, rounded to the cent
+  await admin.post('/api/admin/products/discount').send({ ids: [a.id, b.id], percent: 0 }).expect(200);
+  const back = (await admin.get(`/api/admin/products/${a.id}`).expect(200)).body;
+  assert.deepEqual([back.price, back.compareAtPrice, back.discountPercent], [1000, null, 0]);
+  await admin.post('/api/admin/products/discount').send({ percent: 10 }).expect(400);
+});
+
 test('language switch is off by default', async () => {
   const { DEFAULT_SETTINGS } = await import('../src/settings.js');
   assert.equal(DEFAULT_SETTINGS.languageSwitch, false);

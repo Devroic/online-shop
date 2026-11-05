@@ -102,6 +102,7 @@ const productSchema = z.object({
   description: z.string().max(20000).optional().default(''),
   price: money,
   compareAtPrice: optMoney,
+  discountPercent: z.number().int().min(0).max(90).default(0),
   sku: z.string().trim().max(100).optional().default(''),
   stock: z.number().int().min(0).max(1_000_000).default(0),
   trackStock: z.boolean().default(true),
@@ -138,6 +139,7 @@ export async function saveProduct(id, data) {
       data.description,
       data.price,
       data.compareAtPrice ?? null,
+      data.discountPercent ?? 0,
       data.sku,
       data.stock,
       data.trackStock,
@@ -148,14 +150,14 @@ export async function saveProduct(id, data) {
     ];
     if (id) {
       await t.query(
-        `UPDATE products SET name=$1, slug=$2, description=$3, price=$4, compare_at_price=$5, sku=$6, stock=$7,
-           track_stock=$8, category_id=$9, featured=$10, active=$11, search_text=$12, updated_at=now() WHERE id=$13`,
+        `UPDATE products SET name=$1, slug=$2, description=$3, price=$4, compare_at_price=$5, discount_percent=$6, sku=$7,
+           stock=$8, track_stock=$9, category_id=$10, featured=$11, active=$12, search_text=$13, updated_at=now() WHERE id=$14`,
         [...row, id],
       );
     } else {
       ({ id } = await t.one(
-        `INSERT INTO products (name, slug, description, price, compare_at_price, sku, stock, track_stock, category_id,
-           featured, active, search_text) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+        `INSERT INTO products (name, slug, description, price, compare_at_price, discount_percent, sku, stock, track_stock,
+           category_id, featured, active, search_text) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
         row,
       ));
     }
@@ -195,6 +197,7 @@ const importSchema = z.object({
         categoryName: z.string().trim().max(100).optional().default(''),
         featured: z.boolean().optional(),
         active: z.boolean().optional(),
+        discountPercent: z.number().int().min(0).max(90).optional(),
       }),
     )
     .min(1)
@@ -238,6 +241,7 @@ router.post('/products/import', async (req, res) => {
         images: data.images.length ? data.images : current?.images ?? [],
         featured: data.featured ?? current?.featured ?? false,
         active: data.active ?? current?.active ?? true,
+        discountPercent: data.discountPercent ?? current?.discountPercent ?? 0,
         variants: data.variants.map((v) => ({ ...v, id: current?.variants.find((cv) => cv.name.toLowerCase() === v.name.toLowerCase())?.id })),
       });
       result[id ? 'updated' : 'created']++;
@@ -262,15 +266,39 @@ router.put('/products/:id', async (req, res) => {
 router.patch('/products/:id', async (req, res) => {
   const id = Number(req.params.id);
   const data = validate(
-    z.object({ stock: z.number().int().min(0).optional(), price: money.optional(), active: z.boolean().optional(), featured: z.boolean().optional() }),
+    z.object({
+      stock: z.number().int().min(0).optional(),
+      price: money.optional(),
+      active: z.boolean().optional(),
+      featured: z.boolean().optional(),
+      discountPercent: z.number().int().min(0).max(90).optional(),
+    }),
     req.body,
   );
   const { list, p } = params();
-  const sets = Object.entries(data).map(([k, v]) => `${k} = ${p(v)}`);
+  const column = { discountPercent: 'discount_percent' };
+  const sets = Object.entries(data).map(([k, v]) => `${column[k] || k} = ${p(v)}`);
   if (sets.length) await db().query(`UPDATE products SET ${sets.join(', ')}, updated_at = now() WHERE id = ${p(id)}`, list);
   const product = await getProduct({ id }, { admin: true });
   if (!product) throw notFound();
   res.json(product);
+});
+
+/** Sets (or, with 0, removes) a percentage discount on several products or a whole category. */
+router.post('/products/discount', async (req, res) => {
+  const { ids, categoryId, percent } = validate(
+    z.object({
+      ids: z.array(z.number().int().positive()).max(1000).optional(),
+      categoryId: z.number().int().positive().optional(),
+      percent: z.number().int().min(0).max(90),
+    }),
+    req.body,
+  );
+  if (!ids?.length && !categoryId) throw badRequest('Choose products or a category', { ids: 'required' });
+  const r = ids?.length
+    ? await db().query('UPDATE products SET discount_percent = $1, updated_at = now() WHERE id = ANY($2)', [percent, ids])
+    : await db().query('UPDATE products SET discount_percent = $1, updated_at = now() WHERE category_id = $2', [percent, categoryId]);
+  res.json({ updated: r.rowCount });
 });
 
 router.delete('/products/:id', async (req, res) => {

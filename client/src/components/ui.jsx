@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, Eye, EyeOff, Minus, Plus, LoaderCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { money } from '../lib/format.js';
@@ -78,11 +78,13 @@ export function FieldWrap({ label, error, hint, htmlFor, className = '', childre
 }
 
 /** Labelled input with inline error. Pass `as="textarea"` or `as="select"`. */
-export function Field({ label, error, hint, as: Tag = 'input', className = '', children, ...props }) {
+export function Field({ label, error, hint, as: Tag = 'input', className = '', autoGrow, children, ...props }) {
   const id = useId();
   return (
     <FieldWrap label={label} error={error} hint={hint} htmlFor={id} className={className}>
-      {Tag === 'input' && props.type === 'password' ? (
+      {Tag === 'textarea' && autoGrow ? (
+        <AutoGrowTextarea id={id} aria-invalid={!!error} {...props} />
+      ) : Tag === 'input' && props.type === 'password' ? (
         <PasswordInput id={id} aria-invalid={!!error} {...props} />
       ) : (
         <Tag id={id} aria-invalid={!!error} {...props}>
@@ -91,6 +93,18 @@ export function Field({ label, error, hint, as: Tag = 'input', className = '', c
       )}
     </FieldWrap>
   );
+}
+
+/** A textarea that starts small (its `rows`) and grows with what is typed. */
+function AutoGrowTextarea(props) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, [props.value]);
+  return <textarea ref={ref} {...props} style={{ overflow: 'hidden', resize: 'none', ...props.style }} />;
 }
 
 /** Password input with an eye button to show what was typed. */

@@ -1,6 +1,7 @@
 import { db, tx } from '../db.js';
 import { getSettings } from '../settings.js';
 import { translator } from '../i18n.js';
+import { salePrice } from './catalog.js';
 import { HttpError, badRequest, randomToken } from '../utils.js';
 
 export const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -125,8 +126,8 @@ export async function quoteCart({ items = [], couponCode, shippingMethodId, paym
       variantName: variant?.name ?? '',
       sku: variant?.sku || p.sku,
       image: images.find((i) => i.product_id === p.id)?.url ?? null,
-      price: variant?.price ?? p.price,
-      compareAtPrice: p.compare_at_price,
+      price: salePrice(variant?.price ?? p.price, p.discount_percent),
+      compareAtPrice: p.discount_percent ? (variant?.price ?? p.price) : p.compare_at_price,
       quantity,
       available,
       trackStock: p.track_stock,

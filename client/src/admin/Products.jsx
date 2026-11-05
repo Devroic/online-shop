@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Plus, Trash2, Copy, ExternalLink, Package, ArrowLeft, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Copy, ExternalLink, Package, ArrowLeft, FileSpreadsheet, Percent } from 'lucide-react';
 import { api, qs } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { money } from '../lib/format.js';
@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { ImageUploader, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle } from './components.jsx';
+import { ImageUploader, Modal, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle } from './components.jsx';
 import ProductImport from './ProductImport.jsx';
 
 function StockCell({ product, onSaved }) {
@@ -59,6 +59,12 @@ export function ProductList() {
   const toast = useToast();
   const { reload: reloadShop } = useShop();
   const [importing, setImporting] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [discounting, setDiscounting] = useState(false);
+  const currentCategory = categories.find((c) => String(c.id) === category) || null;
+  const pageIds = data?.items.map((p) => p.id) || [];
+  const allTicked = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
+  const tick = (id) => setSelected((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
 
   const update = (patch) => {
     const next = new URLSearchParams(params);
@@ -110,7 +116,27 @@ export function ProductList() {
             </option>
           ))}
         </select>
+        <button className="btn btn-outline" onClick={() => setDiscounting(true)} disabled={!selected.length && !currentCategory}>
+          <Percent size={16} /> {t('Discount %')}
+          {selected.length > 0 && <span className="tab-count">{selected.length}</span>}
+        </button>
       </div>
+      {!selected.length && !currentCategory && data?.items.length > 0 && (
+        <p className="muted small">{t('Tick products, or choose a category, to give them a discount.')}</p>
+      )}
+      {discounting && (
+        <DiscountModal
+          ids={selected}
+          category={currentCategory}
+          onClose={() => setDiscounting(false)}
+          onDone={() => {
+            setDiscounting(false);
+            setSelected([]);
+            reload();
+            reloadShop();
+          }}
+        />
+      )}
       {!data ? (
         <PageLoader />
       ) : !data.items.length ? (
@@ -137,6 +163,14 @@ export function ProductList() {
             <table className="table clickable">
               <thead>
                 <tr>
+                  <th className="check-col">
+                    <input
+                      type="checkbox"
+                      checked={allTicked}
+                      onChange={() => setSelected(allTicked ? selected.filter((id) => !pageIds.includes(id)) : [...new Set([...selected, ...pageIds])])}
+                      aria-label={t('Select all on this page')}
+                    />
+                  </th>
                   <th>{t('Product')}</th>
                   <th>{t('Price')}</th>
                   <th>{t('Stock')}</th>
@@ -147,6 +181,9 @@ export function ProductList() {
               <tbody>
                 {data.items.map((p) => (
                   <tr key={p.id} className={p.active ? '' : 'dim'}>
+                    <td className="check-col">
+                      <input type="checkbox" checked={selected.includes(p.id)} onChange={() => tick(p.id)} aria-label={t('Select {name}', { name: p.name })} />
+                    </td>
                     <td>
                       <Link to={`/admin/products/${p.id}`} className="prod-cell row-link">
                         {p.images[0] ? <img src={p.images[0]} alt="" /> : <span className="thumb-empty" />}
@@ -162,6 +199,7 @@ export function ProductList() {
                     <td className="nowrap">
                       {money(p.minPrice)}
                       {p.maxPrice !== p.minPrice && ` – ${money(p.maxPrice)}`}
+                      {p.discountPercent > 0 && <span className="badge badge-sale badge-inline">-{p.discountPercent}%</span>}
                     </td>
                     <td>
                       <StockCell product={p} onSaved={replace} />
@@ -184,12 +222,84 @@ export function ProductList() {
   );
 }
 
+/** Sets or removes a percentage discount on the ticked products, or on a whole category. */
+function DiscountModal({ ids, category, onClose, onDone }) {
+  const [target, setTarget] = useState(ids.length ? 'selected' : 'category');
+  const [percent, setPercent] = useState('');
+  const [busy, setBusy] = useState(false);
+  const v = useValidation();
+  const toast = useToast();
+  const apply = async (value) => {
+    if (value !== 0 && !v.validate({ percent }, { percent: [rules.required(), rules.integer(), rules.min(1), rules.max(90)] })) return;
+    setBusy(true);
+    try {
+      const body = target === 'selected' ? { ids, percent: value } : { categoryId: Number(category.id), percent: value };
+      const r = await api.post('/admin/products/discount', body);
+      toast.success(value ? t('Discount set on {n} products', { n: r.updated }) : t('Discount removed from {n} products', { n: r.updated }));
+      onDone();
+    } catch (err) {
+      v.fail(err);
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal
+      title={t('Discount %')}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn btn-ghost mr-auto" onClick={() => apply(0)} disabled={busy}>
+            {t('Remove discount')}
+          </button>
+          <button className="btn btn-ghost" onClick={onClose}>
+            {t('Cancel')}
+          </button>
+          <button className="btn btn-primary" onClick={() => apply(Number(percent))} disabled={busy}>
+            {busy && <Spinner />} {t('Apply discount')}
+          </button>
+        </>
+      }
+    >
+      <div className="stack-sm">
+        {ids.length > 0 && (
+          <label className="checkbox">
+            <input type="radio" name="target" checked={target === 'selected'} onChange={() => setTarget('selected')} />
+            <span>{t('The {n} ticked products', { n: ids.length })}</span>
+          </label>
+        )}
+        {category && (
+          <label className="checkbox">
+            <input type="radio" name="target" checked={target === 'category'} onChange={() => setTarget('category')} />
+            <span>{t('All products in “{name}”', { name: category.name })}</span>
+          </label>
+        )}
+      </div>
+      <Field
+        className="mt"
+        label={t('Discount %')}
+        inputMode="numeric"
+        value={percent}
+        placeholder="20"
+        onChange={(e) => {
+          v.clear('percent');
+          setPercent(e.target.value.replace(/\D/g, '').slice(0, 2));
+        }}
+        error={v.errors.percent}
+        hint={t('Prices stay as they are; the shop shows and charges them reduced, with the regular price crossed out.')}
+        autoFocus
+      />
+      <FormAlert message={v.errors._} />
+    </Modal>
+  );
+}
+
 const EMPTY = {
   name: '',
   slug: '',
   description: '',
   price: 0,
   compareAtPrice: null,
+  discountPercent: 0,
   sku: '',
   stock: 0,
   trackStock: true,
@@ -222,6 +332,9 @@ export function ProductEdit() {
       next = {
         ...EMPTY,
         ...p,
+        price: p.regularPrice ?? p.price,
+        compareAtPrice: p.regularCompareAtPrice ?? null,
+        discountPercent: p.discountPercent || 0,
         variants: p.variants.map((v) => ({ id: v.id, name: v.name, sku: v.sku, price: v.priceOverride, stock: v.stock })),
       };
     }
@@ -254,6 +367,7 @@ export function ProductEdit() {
     description: form.description,
     price: form.price,
     compareAtPrice: form.compareAtPrice || null,
+    discountPercent: Number(form.discountPercent) || 0,
     sku: form.sku,
     stock: form.stock,
     trackStock: form.trackStock,
@@ -270,7 +384,8 @@ export function ProductEdit() {
       name: [rules.required(), rules.maxLength(200)],
       description: [rules.maxLength(20000)],
       price: [rules.positive()],
-      compareAtPrice: [(value) => (value != null && value <= form.price ? 'above_price' : null)],
+      compareAtPrice: [(value) => (!form.discountPercent && value != null && value <= form.price ? 'above_price' : null)],
+      discountPercent: [rules.integer(), rules.min(0), rules.max(90)],
       sku: [rules.maxLength(100)],
       slug: [rules.maxLength(100)],
     };
@@ -338,7 +453,8 @@ export function ProductEdit() {
             <Field label={t('Name')} value={form.name} onChange={(e) => set('name', e.target.value)} error={errors.name} autoFocus={isNew} />
             <Field
               as="textarea"
-              rows={8}
+              rows={3}
+              autoGrow
               label={t('Description')}
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
@@ -361,9 +477,31 @@ export function ProductEdit() {
               <FieldWrap label={t('Price')} error={errors.price}>
                 <MoneyInput value={form.price} onChange={(cents) => set('price', cents)} aria-invalid={!!errors.price} />
               </FieldWrap>
-              <FieldWrap label={t('Compare-at price (optional)')} error={errors.compareAtPrice} hint={t('Shown crossed out, to display a sale.')}>
-                <MoneyInput value={form.compareAtPrice} onChange={(cents) => set('compareAtPrice', cents)} allowEmpty aria-invalid={!!errors.compareAtPrice} />
+              <FieldWrap
+                label={t('Compare-at price (optional)')}
+                error={errors.compareAtPrice}
+                hint={form.discountPercent > 0 ? t('Not used while there is a discount: the regular price is shown crossed out.') : t('Shown crossed out, to display a sale.')}
+              >
+                <MoneyInput value={form.compareAtPrice} onChange={(cents) => set('compareAtPrice', cents)} allowEmpty disabled={form.discountPercent > 0} aria-invalid={!!errors.compareAtPrice} />
               </FieldWrap>
+            </div>
+            <div className="grid-2">
+              <Field
+                label={t('Discount %')}
+                inputMode="numeric"
+                value={form.discountPercent || ''}
+                placeholder="0"
+                onChange={(e) => set('discountPercent', e.target.value.replace(/\D/g, '').slice(0, 2))}
+                error={errors.discountPercent}
+                hint={
+                  form.discountPercent > 0
+                    ? t('Customers pay {price} instead of {regular}.', {
+                        price: money(Math.round((form.price * (100 - form.discountPercent)) / 100)),
+                        regular: money(form.price),
+                      })
+                    : t('The price stays as it is; the shop shows and charges it reduced. 0 removes the discount.')
+                }
+              />
             </div>
           </section>
 

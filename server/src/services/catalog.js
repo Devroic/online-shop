@@ -29,27 +29,40 @@ async function attachRelations(rows, conn = db()) {
   );
 }
 
+/** The price after the product's percentage discount (whole cents). */
+export const salePrice = (price, discountPercent) => (discountPercent ? Math.round((price * (100 - discountPercent)) / 100) : price);
+
+/**
+ * `price`, `minPrice`, `maxPrice` and variant prices are what customers pay. With a
+ * percentage discount the regular price becomes `compareAtPrice` (shown struck
+ * through, with the "-20%" badge). The admin edits `regularPrice` /
+ * `regularCompareAtPrice` / variant `priceOverride`, which are the stored values.
+ */
 function serializeProduct(p, images, variants) {
+  const d = p.discount_percent || 0;
   const vs = variants.map((v) => ({
     id: v.id,
     name: v.name,
     sku: v.sku,
-    price: v.price ?? p.price,
+    price: salePrice(v.price ?? p.price, d),
     priceOverride: v.price,
     stock: v.stock,
     inStock: !p.track_stock || v.stock > 0,
   }));
   const stock = vs.length ? vs.reduce((n, v) => n + v.stock, 0) : p.stock;
-  const prices = vs.length ? vs.map((v) => v.price) : [p.price];
+  const prices = vs.length ? vs.map((v) => v.price) : [salePrice(p.price, d)];
   return {
     id: p.id,
     name: p.name,
     slug: p.slug,
     description: p.description,
-    price: p.price,
+    price: salePrice(p.price, d),
     minPrice: Math.min(...prices),
     maxPrice: Math.max(...prices),
-    compareAtPrice: p.compare_at_price,
+    compareAtPrice: d ? p.price : p.compare_at_price,
+    discountPercent: d,
+    regularPrice: p.price,
+    regularCompareAtPrice: p.compare_at_price,
     sku: p.sku,
     stock,
     trackStock: p.track_stock,
@@ -70,8 +83,8 @@ const BASE = `SELECT p.*, c.name AS category_name, c.slug AS category_slug FROM 
 
 const SORTS = {
   newest: 'p.created_at DESC, p.id DESC',
-  price_asc: 'p.price ASC, p.id',
-  price_desc: 'p.price DESC, p.id',
+  price_asc: 'p.price * (100 - p.discount_percent) ASC, p.id',
+  price_desc: 'p.price * (100 - p.discount_percent) DESC, p.id',
   name: 'lower(p.name) ASC',
   featured: 'p.featured DESC, p.created_at DESC, p.id DESC',
 };
@@ -98,8 +111,9 @@ export async function listProducts(
     if (/^\d+$/.test(String(category))) where.push(`p.category_id = ${p(Number(category))}`);
     else where.push(`c.slug = ${p(category)}`);
   }
-  if (minPrice != null && minPrice !== '') where.push(`p.price >= ${p(Math.round(Number(minPrice)))}`);
-  if (maxPrice != null && maxPrice !== '') where.push(`p.price <= ${p(Math.round(Number(maxPrice)))}`);
+  // Compared with the price after discount (price × (100 − %) / 100, kept in whole numbers).
+  if (minPrice != null && minPrice !== '') where.push(`p.price * (100 - p.discount_percent) >= ${p(Math.round(Number(minPrice)) * 100)}`);
+  if (maxPrice != null && maxPrice !== '') where.push(`p.price * (100 - p.discount_percent) <= ${p(Math.round(Number(maxPrice)) * 100)}`);
   if (featured) where.push('p.featured');
   if (ids?.length) where.push(`p.id = ANY(${p(ids)})`);
   if (inStock || (hideOutOfStock && !admin)) {
