@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Ticket, Pencil } from 'lucide-react';
+import { Plus, Ticket } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { date, money } from '../lib/format.js';
@@ -143,7 +143,7 @@ export default function Coupons() {
       ) : (
         <div className="card table-card">
           <div className="table-wrap">
-            <table className="table">
+            <table className="table clickable">
               <thead>
                 <tr>
                   <th>{t('Code')}</th>
@@ -151,7 +151,6 @@ export default function Coupons() {
                   <th>{t('Used')}</th>
                   <th>{t('Expires')}</th>
                   <th>{t('Status')}</th>
-                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -160,7 +159,9 @@ export default function Coupons() {
                   return (
                     <tr key={c.id} className={c.active && !expired ? '' : 'dim'}>
                       <td>
-                        <code className="code">{c.code}</code>
+                        <button type="button" className="row-link plain-btn" onClick={() => setEditing(c)}>
+                          <code className="code">{c.code}</code>
+                        </button>
                       </td>
                       <td>
                         {describe(c)}
@@ -179,11 +180,6 @@ export default function Coupons() {
                         ) : (
                           <span className="status">{t('Inactive')}</span>
                         )}
-                      </td>
-                      <td className="num">
-                        <button className="icon-btn" onClick={() => setEditing(c)} aria-label={t('Edit')}>
-                          <Pencil size={16} />
-                        </button>
                       </td>
                     </tr>
                   );

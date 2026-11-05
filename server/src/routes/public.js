@@ -17,21 +17,22 @@ export async function publicSettings() {
   const s = await getSettings();
   const { notifications, ...rest } = s;
   const oauthReady = !!(config.supabase.url && config.supabase.anonKey);
-  // Every country an active delivery method serves, in method order (the first is preselected).
-  const methods = await db().all('SELECT countries FROM shipping_methods WHERE active AND requires_address ORDER BY sort_order, id');
-  const deliveryCountries = [...new Set(methods.flatMap((m) => m.countries || []))];
+  // The courier's countries (the first is preselected); none when only store pickup is on.
+  const methods = await db().all('SELECT kind, active, cod, rates FROM shipping_methods WHERE kind IS NOT NULL');
+  const courier = methods.find((m) => m.kind === 'courier' && m.active);
+  const deliveryCountries = courier ? courier.rates.map((r) => r.country) : [];
   return {
     ...rest,
     deliveryCountries,
     login: { google: oauthReady && config.loginProviders.includes('google'), facebook: oauthReady && config.loginProviders.includes('facebook') },
     // Public by design (Supabase "anon" key); used only for Google/Facebook sign-in.
     supabase: oauthReady ? { url: config.supabase.url, anonKey: config.supabase.anonKey } : null,
-    paymentMethods: availablePaymentMethods(s, stripeReady()),
+    paymentMethods: availablePaymentMethods(s, stripeReady(), methods),
   };
 }
 
 router.get('/settings', async (_req, res) => {
-  const pages = await db().all('SELECT slug, title, show_in_footer FROM pages ORDER BY title');
+  const pages = await db().all('SELECT slug, title, show_in_footer FROM pages ORDER BY sort_order, title');
   res.json({
     settings: await publicSettings(),
     pages: pages.map((p) => ({ slug: p.slug, title: p.title, showInFooter: p.show_in_footer })),
@@ -87,6 +88,7 @@ const cartSchema = z.object({
   couponCode: z.string().max(50).optional(),
   shippingMethodId: z.number().int().nullish(),
   paymentMethod: z.string().optional(),
+  country: z.string().max(2).optional(),
 });
 
 /** Re-prices a cart with live data. Used by the cart and checkout pages. */

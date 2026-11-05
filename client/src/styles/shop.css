@@ -53,7 +53,74 @@
   display: flex;
   gap: 4px;
   margin-left: 16px;
-  overflow: hidden;
+  /* Takes the free space between logo and actions; CategoryNav fits the links into it. */
+  flex: 1;
+  min-width: 0;
+}
+.main-nav {
+  position: relative;
+}
+/* Same text and padding as the links, out of sight: only measured. */
+.main-nav-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+.main-nav-measure span {
+  padding: 8px 12px;
+  font-size: 0.93rem;
+  font-weight: 500;
+}
+.nav-more {
+  position: relative;
+}
+.nav-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.93rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.nav-more-btn:hover,
+.nav-more-btn.active {
+  color: var(--text);
+  background: var(--hover);
+}
+.nav-more-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+}
+.nav-more-list a {
+  padding: 9px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.nav-more-list a:hover,
+.nav-more-list a.active {
+  background: var(--hover);
 }
 .main-nav a {
   padding: 8px 12px;
@@ -392,6 +459,17 @@
 .category-tiles::-webkit-scrollbar {
   display: none;
 }
+/* On a computer: rows of four instead of a sideways scroll nobody notices. */
+@media (min-width: 900px) {
+  .category-tiles {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+}
+.mt-sm {
+  margin-top: 12px;
+}
 .category-tile {
   position: relative;
   aspect-ratio: 4 / 3;
@@ -615,6 +693,13 @@
 }
 .chips::-webkit-scrollbar {
   display: none;
+}
+/* On a computer the chips wrap onto more lines, so every category is visible without scrolling. */
+@media (min-width: 900px) {
+  .chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }
 .chip {
   padding: 8px 16px;
@@ -1414,11 +1499,6 @@
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 0.85rem;
-}
-.payment-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 /* ------------------------------------------------------------ social login */

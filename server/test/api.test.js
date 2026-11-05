@@ -43,9 +43,12 @@ before(async () => {
   app = createApp();
   admin = request.agent(app);
   await admin.post('/api/auth/login').send({ email: 'admin@test.dev', password: 'password123' }).expect(200);
-  // Tests pay offline (no Stripe keys here).
-  await admin.put('/api/admin/settings').send({ payments: { cod: { enabled: true } } }).expect(200);
-  courierId = (await db().one('SELECT id FROM shipping_methods WHERE requires_address LIMIT 1')).id;
+  // Tests pay offline (no Stripe keys here): the courier takes cash on delivery.
+  courierId = (await db().one("SELECT id FROM shipping_methods WHERE kind = 'courier'")).id;
+  await admin
+    .put('/api/admin/shipping')
+    .send({ methods: [{ id: courierId, name: 'Courier', active: true, cod: true, rates: [{ country: 'CY', price: 350, freeOver: 5000 }] }] })
+    .expect(200);
 });
 
 const address = { street: 'Ermou 1', city: 'Athens', postalCode: '10563' };
@@ -201,10 +204,10 @@ test('guest orders join an account only after the email is confirmed', async () 
   await user.get('/api/admin/stats').expect(403);
 });
 
-test('default payment settings: card on, cash on delivery off, no bank transfer', async () => {
+test('default payment settings: card on; cash is set per shipping method', async () => {
   const { DEFAULT_SETTINGS } = await import('../src/settings.js');
-  assert.deepEqual(Object.keys(DEFAULT_SETTINGS.payments).sort(), ['card', 'cod']);
-  assert.deepEqual([DEFAULT_SETTINGS.payments.card.enabled, DEFAULT_SETTINGS.payments.cod.enabled], [true, false]);
+  assert.deepEqual(Object.keys(DEFAULT_SETTINGS.payments), ['card']);
+  assert.equal(DEFAULT_SETTINGS.payments.card.enabled, true);
 });
 
 test('settings are public except notification email', async () => {
@@ -286,29 +289,83 @@ test('orders remember the visitor language; store pickup starts disabled', async
   assert.equal(en.body.order.language, 'en');
   const def = await request(app).post('/api/orders').set('X-Shop-Lang', 'xx').send(checkout({ items: [{ productId: p.body.id, quantity: 1 }] })).expect(201);
   assert.equal(def.body.order.language, 'el'); // unknown → shop default
-  const pickup = await db().one('SELECT active FROM shipping_methods WHERE NOT requires_address');
-  assert.equal(pickup.active, false);
+  // A new shop: empty names (customers see the defaults), default descriptions, pickup off.
+  const pickup = await db().one("SELECT name, description, active FROM shipping_methods WHERE kind = 'pickup'");
+  assert.deepEqual(pickup, { name: '', description: 'Χωρίς χρέωση', active: false });
+  const courier = await db().one("SELECT name, description FROM shipping_methods WHERE kind = 'courier'");
+  assert.equal(courier.description, '2-7 εργάσιμες μέρες');
 });
 
-test('delivery country: each shipping method lists the countries it serves', async () => {
-  const p = await admin.post('/api/admin/products').send({ name: 'Country test', price: 100, stock: 5 }).expect(201);
+test('two shipping methods: courier priced per country, pickup; the shop stays sellable', async () => {
+  const p = await admin.post('/api/admin/products').send({ name: 'Country test', price: 100, stock: 9 }).expect(201);
   const items = [{ productId: p.body.id, quantity: 1 }];
-  // Existing methods serve Cyprus; an address without a country gets it.
+  const list = (await admin.get('/api/admin/shipping').expect(200)).body;
+  assert.deepEqual(list.map((m) => m.kind), ['courier', 'pickup']);
+  const pickupId = list[1].id;
+  await admin.post('/api/admin/shipping').send({ name: 'Extra' }).expect(404);
+
+  // Courier: an address without a country gets Cyprus; Greece only once it has a rate.
   const plain = await request(app).post('/api/orders').send(checkout({ items })).expect(201);
   assert.equal(plain.body.order.address.country, 'CY');
   const gr = await request(app).post('/api/orders').send(checkout({ items, address: { ...address, country: 'GR' } })).expect(400);
   assert.equal(gr.body.details['address.country'], 'country');
-  // A Greek courier: Greece is now a delivery country, but only with that method.
-  const greek = await admin.post('/api/admin/shipping').send({ name: 'Courier GR', price: 800, countries: ['GR'] }).expect(201);
-  assert.deepEqual(greek.body.countries, ['GR']);
+  const rates = [{ country: 'CY', price: 350, freeOver: 5000 }, { country: 'GR', price: 800, freeOver: null }];
+  // An empty name shows the default one.
+  await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, name: '', cod: true, rates }] }).expect(200);
   const pub = await request(app).get('/api/settings').expect(200);
-  assert.ok(pub.body.settings.deliveryCountries.includes('GR'));
-  await request(app).post('/api/orders').send(checkout({ items, address: { ...address, country: 'GR' } })).expect(400);
-  const ok = await request(app).post('/api/orders').send(checkout({ items, shippingMethodId: greek.body.id, address: { ...address, country: 'GR' } })).expect(201);
-  assert.equal(ok.body.order.address.country, 'GR');
+  assert.deepEqual(pub.body.settings.deliveryCountries, ['CY', 'GR']);
+  const quote = await request(app).post('/api/cart/quote').send({ items, shippingMethodId: courierId, country: 'GR' }).expect(200);
+  assert.equal(quote.body.shippingCost, 800);
+  assert.equal(quote.body.shipping.name, 'Courier');
+  const ok = await request(app).post('/api/orders').send(checkout({ items, address: { ...address, country: 'GR' } })).expect(201);
   assert.equal(ok.body.order.shippingCost, 800);
-  await admin.post('/api/admin/shipping').send({ name: 'Nowhere', price: 0, countries: [] }).expect(400);
-  await admin.delete('/api/admin/shipping/' + greek.body.id).expect(200);
+  await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, name: 'Courier', cod: true, rates: [] }] }).expect(400);
+
+  // Pickup: no address; cash only if the pickup allows paying at the store.
+  await admin.put('/api/admin/shipping').send({ methods: [{ id: pickupId, name: 'Pickup', active: true, cod: false }] }).expect(200);
+  const cash = await request(app).post('/api/orders').send(checkout({ items, shippingMethodId: pickupId, address: null })).expect(400);
+  assert.equal(cash.body.details.paymentMethod, 'invalid');
+  await admin.put('/api/admin/shipping').send({ methods: [{ id: pickupId, name: 'Pickup', active: true, cod: true }] }).expect(200);
+  const picked = await request(app).post('/api/orders').send(checkout({ items, shippingMethodId: pickupId, address: null })).expect(201);
+  assert.equal(picked.body.order.address, null);
+  assert.equal(picked.body.order.shippingCost, 0);
+
+  // Never all shipping off, and never no way to pay (with card payments off, some method must take cash).
+  await admin.put('/api/admin/shipping').send({ methods: [{ id: pickupId, name: 'Pickup', active: false }] }).expect(200);
+  const last = await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, name: 'Courier', active: false, cod: true, rates }] }).expect(400);
+  assert.equal(last.body.details.active, 'last_shipping');
+  await admin.put('/api/admin/settings').send({ payments: { card: { enabled: false } } }).expect(200); // courier still takes cash
+  const nopay = await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, name: 'Courier', cod: false, rates }] }).expect(400);
+  assert.equal(nopay.body.details.cod, 'last_payment');
+  await admin.put('/api/admin/settings').send({ payments: { card: { enabled: true } } }).expect(200);
+});
+
+test('categories keep distinct places: new ones go last, the order is saved as a list', async () => {
+  const a = (await admin.post('/api/admin/categories').send({ name: 'Order A' }).expect(201)).body;
+  const b = (await admin.post('/api/admin/categories').send({ name: 'Order B' }).expect(201)).body;
+  assert.ok(b.sortOrder > a.sortOrder);
+  await admin.put('/api/admin/categories/order').send({ ids: [b.id, a.id] }).expect(200);
+  const list = (await admin.get('/api/admin/categories').expect(200)).body.filter((c) => [a.id, b.id].includes(c.id));
+  assert.deepEqual(list.map((c) => c.id), [b.id, a.id]);
+  // Editing keeps the place.
+  await admin.put(`/api/admin/categories/${a.id}`).send({ name: 'Order A2' }).expect(200);
+  assert.equal((await db().one('SELECT sort_order FROM categories WHERE id = $1', [a.id])).sort_order, 1);
+  // Visible on/off from the list.
+  const hidden = await admin.patch(`/api/admin/categories/${a.id}`).send({ active: false }).expect(200);
+  assert.equal(hidden.body.active, false);
+});
+
+test('pages keep the order set in the admin, also after a rename', async () => {
+  const slugsOf = async () => (await request(app).get('/api/settings').expect(200)).body.pages.map((p) => p.slug);
+  const before = await slugsOf();
+  await admin.put('/api/admin/pages/zz-new').send({ title: 'AAA first by name', content: 'x' }).expect(200);
+  assert.equal((await slugsOf()).at(-1), 'zz-new'); // new pages go last, whatever the title
+  const order = ['zz-new', ...before];
+  await admin.put('/api/admin/pages-order').send({ slugs: order }).expect(200);
+  assert.deepEqual(await slugsOf(), order);
+  await admin.put('/api/admin/pages/zz-new').send({ slug: 'renamed', title: 'Renamed', content: 'x' }).expect(200);
+  assert.equal((await slugsOf())[0], 'renamed');
+  await admin.delete('/api/admin/pages/renamed').expect(200);
 });
 
 test('language switch is off by default', async () => {

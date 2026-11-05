@@ -8,6 +8,14 @@ export const COUNTRY_CODES = [
 
 const names = new Map();
 
+/** The shop's address on one line, e.g. "Ermou 10, Akaki, 2728 Nicosia, Κύπρος"; '' when it has none. */
+export function shopAddress(contact, lang = 'el') {
+  if (!contact) return '';
+  const town = [contact.postalCode, contact.city].filter(Boolean).join(' ');
+  const parts = [contact.address, contact.region, town].filter(Boolean);
+  return parts.length ? [...parts, countryName(contact.country, lang)].filter(Boolean).join(', ') : '';
+}
+
 /** "Κύπρος" for ('CY', 'el'); the code itself if unknown; '' for no code. */
 export function countryName(code, lang = 'el') {
   if (!code) return '';

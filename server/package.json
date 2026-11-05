@@ -10,6 +10,7 @@
     "seed": "node src/scripts/seed.js",
     "configure": "node src/scripts/configure.js",
     "create-admin": "node src/scripts/create-admin.js",
+    "reset-shop": "node src/scripts/reset-shop.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

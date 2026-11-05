@@ -1,17 +1,17 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { CircleCheck, Package, Truck, Clock, XCircle } from 'lucide-react';
+import { CircleCheck, Package, Truck, Store, Clock, XCircle } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { countryName } from '../lib/countries.js';
 import { takePaidCardOrder, useCart } from '../context/CartContext.jsx';
 import { money, dateTime } from '../lib/format.js';
-import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
+import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, paymentName, statusName } from '../lib/i18n.js';
 import { EmptyState, PageLoader, useTitle } from '../components/ui.jsx';
 
 const STEPS = ['pending', 'processing', 'shipped', 'delivered'];
 
-export function StatusTimeline({ status }) {
+export function StatusTimeline({ status, order }) {
   if (status === 'cancelled') {
     return (
       <div className="timeline cancelled">
@@ -20,7 +20,7 @@ export function StatusTimeline({ status }) {
     );
   }
   const idx = STEPS.indexOf(status);
-  const icons = [Clock, Package, Truck, CircleCheck];
+  const icons = [Clock, Package, order && !order.address ? Store : Truck, CircleCheck];
   return (
     <ol className="timeline">
       {STEPS.map((s, i) => {
@@ -30,7 +30,7 @@ export function StatusTimeline({ status }) {
             <span className="timeline-dot">
               <Icon size={16} />
             </span>
-            <span>{t(ORDER_STATUS[s])}</span>
+            <span>{statusName(s, order)}</span>
           </li>
         );
       })}
@@ -159,11 +159,11 @@ export default function OrderPage() {
               </div>
               <div>
                 <div className="muted small">{t('Payment')}</div>
-                <strong>{t(PAYMENT_METHOD[order.paymentMethod])}</strong>
+                <strong>{paymentName(order.paymentMethod, order)}</strong>
                 <span className={`status status-${order.paymentStatus}`}>{t(PAYMENT_STATUS[order.paymentStatus])}</span>
               </div>
             </div>
-            <StatusTimeline status={order.status} />
+            <StatusTimeline status={order.status} order={order} />
             {(order.trackingNumber || order.trackingUrl) && (
               <div className="tracking">
                 {order.trackingNumber && (

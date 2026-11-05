@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Folder, Pencil } from 'lucide-react';
+import { Plus, Folder, ArrowUp, ArrowDown } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
@@ -11,7 +11,7 @@ import { rules, useValidation } from '../lib/validation.js';
 import { ImageUploader, Modal, PageHeader, Toggle } from './components.jsx';
 
 function CategoryModal({ category, onClose, onSaved }) {
-  const [form, setForm] = useState(category || { name: '', slug: '', description: '', image: null, sortOrder: 0, active: true });
+  const [form, setForm] = useState(category || { name: '', slug: '', description: '', image: null, active: true });
   const v = useValidation();
   const { errors } = v;
   const [busy, setBusy] = useState(false);
@@ -26,12 +26,11 @@ function CategoryModal({ category, onClose, onSaved }) {
       name: [rules.required(), rules.maxLength(100)],
       slug: [rules.maxLength(100)],
       description: [rules.maxLength(2000)],
-      sortOrder: [rules.integer()],
     });
     if (!ok) return;
     setBusy(true);
     try {
-      const body = { name: form.name, slug: form.slug || undefined, description: form.description, image: form.image, sortOrder: Number(form.sortOrder) || 0, active: form.active };
+      const body = { name: form.name, slug: form.slug || undefined, description: form.description, image: form.image, active: form.active };
       if (category) await api.put(`/admin/categories/${category.id}`, body);
       else await api.post('/admin/categories', body);
       toast.success(t('Saved'));
@@ -74,7 +73,6 @@ function CategoryModal({ category, onClose, onSaved }) {
       </FieldWrap>
       <div className="grid-2">
         <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder={t('Generated from the name')} error={errors.slug} />
-        <Field label={t('Sort order')} inputMode="numeric" value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} hint={t('Lower numbers come first')} error={errors.sortOrder} />
       </div>
       <Toggle checked={form.active} onChange={(on) => set('active', on)} label={t('Visible in shop')} />
       <FormAlert message={errors._} />
@@ -83,9 +81,35 @@ function CategoryModal({ category, onClose, onSaved }) {
 }
 
 export default function Categories() {
-  const { data, reload } = useFetch('/admin/categories');
+  const { data, reload, setData } = useFetch('/admin/categories');
   const { reload: reloadShop } = useShop();
   const [editing, setEditing] = useState(null);
+  const toast = useToast();
+
+  const setVisible = async (c, active) => {
+    setData((list) => list.map((x) => (x.id === c.id ? { ...x, active } : x)));
+    try {
+      await api.patch(`/admin/categories/${c.id}`, { active });
+      reloadShop();
+    } catch {
+      toast.error(t('Could not save'));
+      reload();
+    }
+  };
+
+  /** Swaps a category with its neighbour and saves the whole order. */
+  const move = async (i, step) => {
+    const list = [...data];
+    [list[i], list[i + step]] = [list[i + step], list[i]];
+    setData(list);
+    try {
+      await api.put('/admin/categories/order', { ids: list.map((c) => c.id) });
+      reloadShop();
+    } catch {
+      toast.error(t('Something went wrong. Please try again.'));
+      reload();
+    }
+  };
 
   return (
     <>
@@ -105,36 +129,41 @@ export default function Categories() {
       ) : (
         <div className="card table-card">
           <div className="table-wrap">
-            <table className="table">
+            <table className="table clickable">
               <thead>
                 <tr>
                   <th>{t('Category')}</th>
                   <th>{t('Products')}</th>
-                  <th>{t('Status')}</th>
+                  <th>{t('Visible')}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {data.map((c) => (
+                {data.map((c, i) => (
                   <tr key={c.id} className={c.active ? '' : 'dim'}>
                     <td>
-                      <div className="prod-cell">
+                      <button type="button" className="prod-cell row-link" onClick={() => setEditing(c)}>
                         {c.image ? <img src={c.image} alt="" /> : <span className="thumb-empty" />}
                         <span>
                           <strong>{c.name}</strong>
                           <span className="muted small">/category/{c.slug}</span>
                         </span>
-                      </div>
+                      </button>
                     </td>
                     <td>
                       <Link to={`/admin/products?category=${c.id}`} className="link-btn">
                         {c.productCount}
                       </Link>
                     </td>
-                    <td>{c.active ? <span className="status status-delivered">{t('Visible')}</span> : <span className="status">{t('Hidden')}</span>}</td>
-                    <td className="num">
-                      <button className="icon-btn" onClick={() => setEditing(c)} aria-label={t('Edit')}>
-                        <Pencil size={16} />
+                    <td>
+                      <Toggle checked={c.active} onChange={() => setVisible(c, !c.active)} label="" />
+                    </td>
+                    <td className="num nowrap">
+                      <button className="icon-btn" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('Move up')}>
+                        <ArrowUp size={16} />
+                      </button>
+                      <button className="icon-btn" onClick={() => move(i, 1)} disabled={i === data.length - 1} aria-label={t('Move down')}>
+                        <ArrowDown size={16} />
                       </button>
                     </td>
                   </tr>

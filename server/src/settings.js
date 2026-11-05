@@ -40,9 +40,13 @@ export const DEFAULT_SETTINGS = {
   contact: {
     email: '',
     phone: '',
-    address: '',
-    // The shop's country (ISO code), shown with its address.
+    // The shop's address, in the same parts as a customer's: country (ISO code), city,
+    // area, postal code and street ("address", kept from when it was one field).
     country: 'CY',
+    city: '',
+    region: '',
+    postalCode: '',
+    address: '',
     hours: '',
   },
   social: {
@@ -50,10 +54,10 @@ export const DEFAULT_SETTINGS = {
     instagram: '',
     tiktok: '',
   },
-  // Card (Stripe) is on by default; cash on delivery is available but off.
+  // Card (Stripe) is on by default. Cash (on delivery / at the store) is set per
+  // shipping method, in Admin → Shipping.
   payments: {
     card: { enabled: true },
-    cod: { enabled: false, fee: 0 },
   },
   checkout: {
     requirePhone: true,

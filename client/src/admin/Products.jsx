@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { ImageUploader, MoneyInput, PageHeader, SearchInput, Toggle } from './components.jsx';
+import { ImageUploader, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle } from './components.jsx';
 import ProductImport from './ProductImport.jsx';
 
 function StockCell({ product, onSaved }) {
@@ -134,7 +134,7 @@ export function ProductList() {
       ) : (
         <div className={`card table-card ${loading ? 'is-loading' : ''}`}>
           <div className="table-wrap">
-            <table className="table">
+            <table className="table clickable">
               <thead>
                 <tr>
                   <th>{t('Product')}</th>
@@ -148,7 +148,7 @@ export function ProductList() {
                 {data.items.map((p) => (
                   <tr key={p.id} className={p.active ? '' : 'dim'}>
                     <td>
-                      <Link to={`/admin/products/${p.id}`} className="prod-cell">
+                      <Link to={`/admin/products/${p.id}`} className="prod-cell row-link">
                         {p.images[0] ? <img src={p.images[0]} alt="" /> : <span className="thumb-empty" />}
                         <span>
                           <strong>{p.name}</strong>
@@ -209,23 +209,30 @@ export function ProductEdit() {
   const categories = useFetch('/admin/categories').data || [];
   const existing = useFetch(isNew ? null : `/admin/products/${id}`, { keepPrevious: false });
   const [form, setForm] = useState(EMPTY);
+  const [initial, setInitial] = useState(EMPTY);
   const v = useValidation();
   const { errors } = v;
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (isNew) setForm(EMPTY);
+    let next = null;
+    if (isNew) next = EMPTY;
     else if (existing.data) {
       const p = existing.data;
-      setForm({
+      next = {
         ...EMPTY,
         ...p,
         variants: p.variants.map((v) => ({ id: v.id, name: v.name, sku: v.sku, price: v.priceOverride, stock: v.stock })),
-      });
+      };
+    }
+    if (next) {
+      setForm(next);
+      setInitial(next);
     }
   }, [isNew, existing.data]);
 
   if (!isNew && !existing.data) return <PageLoader />;
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
 
   const set = (k, value) => {
     v.clear(k);
@@ -320,9 +327,7 @@ export function ProductEdit() {
                 </button>
               </>
             )}
-            <button className="btn btn-primary" disabled={saving}>
-              {saving && <Spinner />} {t('Save')}
-            </button>
+            <SaveButton dirty={dirty} saving={saving} submit />
           </>
         }
       />
@@ -478,6 +483,15 @@ export function ProductEdit() {
           )}
         </div>
       </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        submit
+        onDiscard={() => {
+          v.reset();
+          setForm(initial);
+        }}
+      />
     </form>
   );
 }

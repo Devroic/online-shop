@@ -37,6 +37,7 @@ const strings = {
   'Thank you for your order!': 'Ευχαριστούμε για την παραγγελία σας!',
   'We received your order #{number}': 'Λάβαμε την παραγγελία σας #{number}',
   'We received your order {number}.': 'Λάβαμε την παραγγελία σας {number}.',
+  'You will pay {total} at the store when you pick it up.': 'Θα πληρώσετε {total} στο κατάστημα, όταν την παραλάβετε.',
   'You will pay {total} in cash when you receive it.': 'Θα πληρώσετε {total} με αντικαταβολή, όταν την παραλάβετε.',
   'Your order is confirmed': 'Η παραγγελία σας επιβεβαιώθηκε',
   'Your order #{number} is confirmed': 'Η παραγγελία σας #{number} επιβεβαιώθηκε',
@@ -79,6 +80,7 @@ const strings = {
   'Customer notes': 'Σχόλια πελάτη',
   'Card – paid': 'Κάρτα – πληρώθηκε',
   'Card – awaiting payment': 'Κάρτα – αναμένεται η πληρωμή',
+  'Pay at the store – collect {total}': 'Πληρωμή στο κατάστημα – προς είσπραξη {total}',
   'Cash on delivery – collect {total}': 'Αντικαταβολή – προς είσπραξη {total}',
   'Open in admin': 'Άνοιγμα στη διαχείριση',
   'New message from the contact form': 'Νέο μήνυμα από τη φόρμα επικοινωνίας',
@@ -120,6 +122,8 @@ const strings = {
 
   // Default shipping methods
   'Delivery in 1-3 business days': 'Παράδοση σε 1-3 εργάσιμες',
+  '2-7 business days': '2-7 εργάσιμες μέρες',
+  Courier: 'Courier',
   'Store pickup': 'Παραλαβή από το κατάστημα',
   Free: 'Χωρίς χρέωση',
 

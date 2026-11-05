@@ -37,14 +37,8 @@ if (conf.admin?.email && conf.admin?.password) {
 await ensureInitialData();
 
 if (conf.shipping) {
-  await db().query('DELETE FROM shipping_methods');
-  for (const [i, m] of conf.shipping.entries()) {
-    await db().query(
-      'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
-      [m.name, m.description || '', m.price, m.freeOver ?? null, m.requiresAddress !== false, i],
-    );
-  }
-  console.log(`✔ ${conf.shipping.length} shipping methods`);
+  // Shops now have two fixed methods (courier with a price per country, store pickup), set in Admin → Shipping.
+  console.log('• shipping: ignored, set the courier and store pickup in Admin → Shipping');
 }
 
 if (conf.categories) {

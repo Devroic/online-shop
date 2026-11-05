@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, ShoppingCart, Users, Package, AlertTriangle } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
 import { money, date, dateTime } from '../lib/format.js';
-import { t, ORDER_STATUS } from '../lib/i18n.js';
+import { t, ORDER_STATUS, statusName } from '../lib/i18n.js';
 import { PageLoader } from '../components/ui.jsx';
 import { PageHeader } from './components.jsx';
 
@@ -130,19 +130,19 @@ export default function Dashboard() {
           </div>
           {data.recentOrders.length ? (
             <div className="table-wrap">
-              <table className="table">
+              <table className="table clickable">
                 <tbody>
                   {data.recentOrders.map((o) => (
                     <tr key={o.id}>
                       <td>
-                        <Link to={`/admin/orders/${o.id}`} className="strong-link">
+                        <Link to={`/admin/orders/${o.id}`} className="strong-link row-link">
                           #{o.number}
                         </Link>
                         <div className="muted small">{dateTime(o.createdAt)}</div>
                       </td>
                       <td>{o.customerName}</td>
                       <td>
-                        <span className={`status status-${o.status}`}>{t(ORDER_STATUS[o.status])}</span>
+                        <span className={`status status-${o.status}`}>{statusName(o.status, o)}</span>
                       </td>
                       <td className="num">{money(o.total)}</td>
                     </tr>

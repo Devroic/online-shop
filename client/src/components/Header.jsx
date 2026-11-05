@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { LANGUAGES, t } from '../lib/i18n.js';
+import CategoryNav from './CategoryNav.jsx';
 
 export function Logo() {
   const { settings } = useShop();
@@ -115,8 +117,6 @@ export default function Header() {
     document.body.classList.toggle('no-scroll', menuOpen);
   }, [menuOpen]);
 
-  const navCats = categories.slice(0, 6);
-
   return (
     <header className="header">
       <div className="container header-inner">
@@ -124,16 +124,7 @@ export default function Header() {
           <Menu size={22} />
         </button>
         <Logo />
-        <nav className="main-nav only-desktop" aria-label={t('Categories')}>
-          <NavLink to="/products" end>
-            {t('All products')}
-          </NavLink>
-          {navCats.map((c) => (
-            <NavLink key={c.id} to={`/category/${c.slug}`}>
-              {c.name}
-            </NavLink>
-          ))}
-        </nav>
+        <CategoryNav categories={categories} />
         <div className="header-actions">
           <div className="only-desktop header-search">
             <SearchBox />
@@ -158,6 +149,10 @@ export default function Header() {
         </div>
       )}
 
+      {/* Rendered into <body>: the header's blur (backdrop-filter) would otherwise make this
+          full-height menu only as tall as the header. */}
+      {createPortal(
+        <>
       <div className={`sheet-backdrop ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)} />
       <aside className={`sheet sheet-left ${menuOpen ? 'open' : ''}`} aria-hidden={!menuOpen} aria-label={t('Menu')}>
         <div className="sheet-head">
@@ -185,6 +180,9 @@ export default function Header() {
           <NavLink to="/contact">{t('Contact')}</NavLink>
         </nav>
       </aside>
+        </>,
+        document.body,
+      )}
     </header>
   );
 }

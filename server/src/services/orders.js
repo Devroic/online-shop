@@ -1,5 +1,6 @@
 import { db, tx } from '../db.js';
 import { getSettings } from '../settings.js';
+import { translator } from '../i18n.js';
 import { HttpError, badRequest, randomToken } from '../utils.js';
 
 export const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -36,14 +37,24 @@ export const statusPairAllowed = (paymentMethod, status, paymentStatus) =>
 export const paymentStepAllowed = (paymentMethod, before, next) =>
   !(paymentMethod === 'card' && ['paid', 'refunded'].includes(before) && ['pending', 'failed'].includes(next));
 
-/** Which payment methods are currently offered, based on settings + env. */
-export function availablePaymentMethods(settings, stripeReady) {
-  const p = settings.payments;
+/**
+ * Payment methods for a shipping method: card (Stripe, shop-wide) and cash, which
+ * each shipping method allows or not (on delivery for the courier, at the store
+ * for pickup). Without a shipping method: every method offered by at least one.
+ */
+export function availablePaymentMethods(settings, stripeReady, shipping) {
   const out = [];
-  if (p.card.enabled && stripeReady) out.push('card');
-  if (p.cod.enabled) out.push('cod');
+  if (settings.payments.card.enabled && stripeReady) out.push('card');
+  const cash = Array.isArray(shipping) ? shipping.some((m) => m.active && m.cod) : shipping?.cod;
+  if (cash) out.push('cod');
   return out;
 }
+
+/** "Courier" / "Store pickup" (translated) when the shop left the name empty. */
+export const defaultShippingName = (kind, lang) => translator(lang)(kind === 'pickup' ? 'Store pickup' : 'Courier');
+
+/** The courier's rate for a country: its own, or the first one when the country is not listed. */
+export const courierRate = (method, country) => (method.rates || []).find((r) => r.country === country) || method.rates?.[0] || null;
 
 export function findCoupon(code, conn = db()) {
   if (!code) return null;
@@ -64,7 +75,7 @@ export function couponError(coupon, subtotal) {
  * Returns per-line problems instead of throwing, so the cart page can show
  * them; `createOrder` refuses to continue when any exist.
  */
-export async function quoteCart({ items = [], couponCode, shippingMethodId, paymentMethod }, conn = db()) {
+export async function quoteCart({ items = [], couponCode, shippingMethodId, paymentMethod, country }, conn = db()) {
   const settings = await getSettings();
   const lines = [];
   const problems = [];
@@ -137,20 +148,29 @@ export async function quoteCart({ items = [], couponCode, shippingMethodId, paym
     }
   }
 
-  const methods = await conn.all('SELECT * FROM shipping_methods WHERE active ORDER BY sort_order, id');
+  // Courier first, then store pickup. The courier's cost depends on the delivery country.
+  const methods = await conn.all("SELECT * FROM shipping_methods WHERE active AND kind IS NOT NULL ORDER BY kind = 'pickup', id");
   const afterDiscount = subtotal - discount;
-  const shippingOptions = methods.map((m) => ({
-    id: m.id,
-    name: m.name,
-    description: m.description,
-    requiresAddress: m.requires_address,
-    countries: m.requires_address ? m.countries : [],
-    freeOver: m.free_over,
-    cost: coupon?.type === 'free_shipping' || (m.free_over != null && afterDiscount >= m.free_over) ? 0 : m.price,
-  }));
+  const shippingOptions = methods.map((m) => {
+    const pickup = m.kind === 'pickup';
+    const rate = pickup ? { price: 0, freeOver: null } : courierRate(m, country) || { price: 0, freeOver: null };
+    return {
+      id: m.id,
+      kind: m.kind,
+      name: m.name || defaultShippingName(m.kind, settings.language),
+      description: m.description,
+      requiresAddress: !pickup,
+      countries: pickup ? [] : m.rates.map((r) => r.country),
+      country: pickup ? null : rate.country ?? null,
+      freeOver: rate.freeOver,
+      cost: coupon?.type === 'free_shipping' || (rate.freeOver != null && afterDiscount >= rate.freeOver) ? 0 : rate.price,
+      cod: m.cod,
+      codFee: m.cod ? m.cod_fee : 0,
+    };
+  });
   const shipping = shippingOptions.find((m) => m.id === Number(shippingMethodId)) || null;
   const shippingCost = shipping ? shipping.cost : 0;
-  const paymentFee = paymentMethod === 'cod' ? settings.payments.cod.fee || 0 : 0;
+  const paymentFee = paymentMethod === 'cod' && shipping?.cod ? shipping.codFee : 0;
 
   return {
     lines,
@@ -198,23 +218,23 @@ export function addEvent(conn, orderId, type, message = '') {
 /** Validates and stores an order atomically. Throws 409 on stock / price problems. */
 export async function createOrder(input, { user, stripeReady }) {
   const settings = await getSettings();
-  if (!availablePaymentMethods(settings, stripeReady).includes(input.paymentMethod)) {
-    throw badRequest('Payment method not available', { paymentMethod: 'invalid' });
-  }
   if (!user && !settings.checkout.allowGuest) throw new HttpError(401, 'Please sign in to checkout');
 
   const id = await tx(async (t) => {
-    const quote = await quoteCart(input, t);
+    // The courier's cost is the one for the address country.
+    const quote = await quoteCart({ ...input, country: input.address?.country }, t);
     if (!quote.lines.length) throw badRequest('Your cart is empty');
     if (quote.problems.length) throw new HttpError(409, 'Some items in your cart changed', { problems: quote.problems });
     if (input.couponCode && quote.couponError) throw new HttpError(409, 'Coupon cannot be used', { coupon: quote.couponError });
     if (!quote.shipping) throw badRequest('Choose a shipping method', { shippingMethodId: 'required' });
+    if (!availablePaymentMethods(settings, stripeReady, quote.shipping).includes(input.paymentMethod)) {
+      throw badRequest('Payment method not available', { paymentMethod: 'invalid' });
+    }
     if (quote.shipping.requiresAddress && !input.address) throw badRequest('Address is required', { address: 'required' });
     if (quote.shipping.requiresAddress) {
-      // The chosen method must deliver to the country; an older page that sends none gets the method's first.
-      const countries = quote.shipping.countries?.length ? quote.shipping.countries : ['CY'];
-      const country = input.address.country || countries[0];
-      if (!countries.includes(country)) throw badRequest('We do not deliver to this country', { 'address.country': 'country' });
+      // The courier must deliver to the country; an older page that sends none gets its first country.
+      const country = input.address.country || quote.shipping.countries[0];
+      if (!quote.shipping.countries.includes(country)) throw badRequest('We do not deliver to this country', { 'address.country': 'country' });
       input = { ...input, address: { ...input.address, country } };
     }
 

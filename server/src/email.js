@@ -4,7 +4,7 @@ import { waitUntil } from '@vercel/functions';
 import { getSettings } from './settings.js';
 import { formatMoney } from './utils.js';
 import { translator } from './i18n.js';
-import { countryName } from './countries.js';
+import { countryName, shopAddress } from './countries.js';
 
 let transport;
 function smtpTransport() {
@@ -130,7 +130,7 @@ function deliveryBlock(order, settings, t, lang = settings.language) {
     return `<p style="margin-top:20px"><strong>${t('Delivery address')}</strong><br>${esc(order.customerName)}<br>${esc(a.street)}<br>${esc(a.postalCode)} ${esc(a.city)}${a.region ? `, ${esc(a.region)}` : ''}${country}</p>`;
   }
   const c = settings.contact;
-  const address = c.address ? [c.address, countryName(c.country, lang)].filter(Boolean).join(', ') : '';
+  const address = shopAddress(c, lang);
   return `<p style="margin-top:20px"><strong>${t('Pickup from the store')}</strong>${address ? `<br>${esc(address)}` : ''}${c.hours ? `<br>${esc(c.hours)}` : ''}</p>`;
 }
 
@@ -176,7 +176,7 @@ export function sendOrderConfirmation(order) {
       subject: paid ? t('Your order #{number} is confirmed', { number: order.number }) : t('We received your order #{number}', { number: order.number }),
       title: paid ? t('Your order is confirmed') : t('Thank you for your order!'),
       body: `${p(paid ? t('We received your payment and your order {number} is confirmed.', { number: num(order) }) : t('We received your order {number}.', { number: num(order) }))}
-        ${cod ? p(t('You will pay {total} in cash when you receive it.', { total: `<strong>${total}</strong>` })) : ''}
+        ${cod ? p(t(pickup ? 'You will pay {total} at the store when you pick it up.' : 'You will pay {total} in cash when you receive it.', { total: `<strong>${total}</strong>` })) : ''}
         ${p(next)}`,
     };
   });
@@ -266,7 +266,7 @@ export async function sendAdminNewOrder(order) {
   const total = formatMoney(order.total, s);
   const payment =
     order.paymentMethod === 'cod'
-      ? t('Cash on delivery – collect {total}', { total })
+      ? t(order.address ? 'Cash on delivery – collect {total}' : 'Pay at the store – collect {total}', { total })
       : order.paymentStatus === 'paid'
         ? t('Card – paid')
         : t('Card – awaiting payment');

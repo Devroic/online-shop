@@ -10,7 +10,7 @@ import { darkPalette } from '../lib/theme.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { ImageUploader, MoneyInput, PageHeader, Toggle } from './components.jsx';
+import { ImageUploader, PageHeader, SaveBar, SaveButton, Toggle } from './components.jsx';
 
 const PRESETS = [
   ['Classic', { primary: '#111827', accent: '#2563eb', background: '#ffffff', surface: '#f6f7f9', text: '#111827' }],
@@ -117,7 +117,6 @@ export function StoreDetails(props) {
           <Field label={t('Phone')} value={s.contact.phone} onChange={(e) => set('contact.phone', e.target.value)} error={errors['contact.phone']} />
         </div>
         <div className="grid-2">
-          <Field label={t('Address')} value={s.contact.address} onChange={(e) => set('contact.address', e.target.value)} error={errors['contact.address']} />
           <Field as="select" label={t('Country')} value={s.contact.country} onChange={(e) => set('contact.country', e.target.value)} error={errors['contact.country']}>
             {sortedCountries().map((c) => (
               <option key={c} value={c}>
@@ -125,7 +124,13 @@ export function StoreDetails(props) {
               </option>
             ))}
           </Field>
+          <Field label={t('City')} value={s.contact.city} onChange={(e) => set('contact.city', e.target.value)} error={errors['contact.city']} />
         </div>
+        <div className="grid-2">
+          <Field label={t('Area (optional)')} value={s.contact.region} onChange={(e) => set('contact.region', e.target.value)} error={errors['contact.region']} />
+          <Field label={t('Postal code')} value={s.contact.postalCode} onChange={(e) => set('contact.postalCode', e.target.value)} error={errors['contact.postalCode']} />
+        </div>
+        <Field label={t('Street address')} value={s.contact.address} onChange={(e) => set('contact.address', e.target.value)} error={errors['contact.address']} />
         <Field label={t('Opening hours')} value={s.contact.hours} onChange={(e) => set('contact.hours', e.target.value)} error={errors['contact.hours']} />
         <h3 className="mt">{t('Social media')}</h3>
         <div className="grid-3">
@@ -286,14 +291,10 @@ export function Payments({ s, set, errors, meta, pages }) {
             </p>
           )}
         </div>
-        <div className="pay-block">
-          <Toggle checked={s.payments.cod.enabled} onChange={(v) => set('payments.cod.enabled', v)} label={t('Cash on delivery')} />
-          {s.payments.cod.enabled && (
-            <FieldWrap label={t('Extra fee')} className="indent" error={errors['payments.cod.fee']}>
-              <MoneyInput value={s.payments.cod.fee} onChange={(v) => set('payments.cod.fee', v)} aria-invalid={!!errors['payments.cod.fee']} />
-            </FieldWrap>
-          )}
-        </div>
+        {errors['cod'] && <p className="field-error">{errors['cod']}</p>}
+        <p className="muted small">
+          <Info size={14} /> {t('Cash on delivery and paying at the store are set on each shipping method, in the Shipping tab.')}
+        </p>
       </section>
       <section className="card">
         <h3>{t('Checkout')}</h3>
@@ -383,6 +384,9 @@ export const SETTINGS_RULES = {
     'contact.email': [r.email(), r.maxLength(200)],
     'contact.phone': [r.maxLength(60)],
     'contact.address': [r.maxLength(300)],
+    'contact.city': [r.maxLength(100)],
+    'contact.region': [r.maxLength(100)],
+    'contact.postalCode': [r.maxLength(20)],
     'contact.hours': [r.maxLength(300)],
     'social.facebook': [r.url(), r.maxLength(300)],
     'social.instagram': [r.url(), r.maxLength(300)],
@@ -400,7 +404,6 @@ export const SETTINGS_RULES = {
     'hero.ctaLink': [r.maxLength(300)],
   },
   payments: {
-    'payments.cod.fee': [r.min(0)],
     orderPrefix: [r.maxLength(10)],
   },
 };
@@ -461,11 +464,7 @@ export function SettingsForm({ title, subtitle, tabs, schema = {}, render }) {
       <PageHeader
         title={title}
         subtitle={subtitle}
-        actions={
-          <button className="btn btn-primary" onClick={save} disabled={saving || !dirty}>
-            {saving && <Spinner />} {dirty ? t('Save changes') : t('Saved')}
-          </button>
-        }
+        actions={<SaveButton dirty={dirty} saving={saving} onSave={save} />}
       />
       {tabs}
       <FormAlert message={v.errors._} />
@@ -474,23 +473,15 @@ export function SettingsForm({ title, subtitle, tabs, schema = {}, render }) {
       ) : (
         <div className="stack settings-body">{render({ s, set, meta: s._meta || {}, pages, errors: v.errors, preview, setPreview })}</div>
       )}
-      {dirty && (
-        <div className="save-bar">
-          <span>{t('You have unsaved changes')}</span>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              v.reset();
-              setS(data);
-            }}
-          >
-            {t('Discard')}
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>
-            {t('Save changes')}
-          </button>
-        </div>
-      )}
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={save}
+        onDiscard={() => {
+          v.reset();
+          setS(data);
+        }}
+      />
     </>
   );
 }

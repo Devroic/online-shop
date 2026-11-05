@@ -12,12 +12,12 @@ const PAGES = [
   ['privacy', 'Privacy Policy', '## Privacy Policy\n\nDescribe what personal data you collect, why, and how customers can exercise their rights (GDPR).'],
 ];
 
-// [name, description, price, freeOver, requiresAddress, active]
-// Store pickup is ready to switch on from the admin, but off by default.
-const SHIPPING = [
-  ['Courier', 'Delivery in 1-3 business days', 350, 5000, true, true],
-  ['Store pickup', 'Free', 0, null, false, false],
-];
+// The two shipping methods every shop has. Store pickup is ready to switch on
+// from the admin, but off by default; the courier starts with the shop's country.
+const SHIPPING = {
+  courier: { description: '2-7 business days', active: true, rates: (country) => [{ country, price: 350, freeOver: 5000 }] },
+  pickup: { description: 'Free', active: false, rates: () => [] },
+};
 
 /** Creates pages, shipping methods and the first admin on a brand-new database. */
 export async function ensureInitialData() {
@@ -25,17 +25,17 @@ export async function ensureInitialData() {
   const count = async (table) => (await db().one(`SELECT COUNT(*)::int AS n FROM ${table}`)).n;
 
   if (!(await count('pages'))) {
-    for (const [slug, title, content] of PAGES) {
-      await db().query('INSERT INTO pages (slug, title, content) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [slug, t(title), t(content)]);
+    for (const [i, [slug, title, content]] of PAGES.entries()) {
+      await db().query('INSERT INTO pages (slug, title, content, sort_order) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [slug, t(title), t(content), i]);
     }
   }
-  if (!(await count('shipping_methods'))) {
-    for (const [i, [name, description, price, freeOver, requiresAddress, active]] of SHIPPING.entries()) {
-      await db().query(
-        'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, active, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [t(name), t(description), price, freeOver, requiresAddress, active, i],
-      );
-    }
+  const settings = await getSettings();
+  for (const [kind, m] of Object.entries(SHIPPING)) {
+    if (await db().one('SELECT id FROM shipping_methods WHERE kind = $1', [kind])) continue;
+    await db().query(
+      'INSERT INTO shipping_methods (kind, name, description, price, requires_address, active, sort_order, rates) VALUES ($1, $2, $3, 0, $4, $5, $6, $7)',
+      [kind, '', t(m.description), kind === 'courier', m.active, kind === 'courier' ? 0 : 1, JSON.stringify(m.rates(settings.contact.country || 'CY'))],
+    );
   }
   if (!(await db().one("SELECT id FROM users WHERE role = 'admin' LIMIT 1"))) {
     if (config.admin.email && config.admin.password) {

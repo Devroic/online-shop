@@ -4,17 +4,16 @@ import { api } from '../lib/api.js';
 import { CURRENCY_SYMBOL, centsToInput, parseMoney } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
-import { FieldWrap, Spinner } from '../components/ui.jsx';
-import { countryName, sortedCountries } from '../lib/countries.js';
+import { Spinner } from '../components/ui.jsx';
 
 export function PageHeader({ title, subtitle, actions }) {
   return (
     <div className="a-page-head">
-      <div>
+      <div className="a-page-title">
         <h1>{title}</h1>
         {subtitle && <p className="muted">{subtitle}</p>}
       </div>
-      {actions && <div className="row-gap">{actions}</div>}
+      {actions && <div className="row-gap a-page-actions">{actions}</div>}
     </div>
   );
 }
@@ -32,25 +31,31 @@ export function Toggle({ checked, onChange, label, hint }) {
   );
 }
 
-/** Ticks the countries a shipping method delivers to; at least one stays ticked. */
-export function CountryPicker({ value = [], onChange, label, hint, error }) {
-  const selected = value.length ? value : ['CY'];
-  const toggle = (code) => {
-    if (selected.includes(code)) {
-      if (selected.length > 1) onChange(selected.filter((x) => x !== code));
-    } else onChange([...selected, code]);
-  };
+/**
+ * Save controls every editable admin page uses: the button at the top right
+ * ("Save changes" / "Saved") and, while there are changes, the bar at the bottom
+ * with Discard. With `submit`, both submit the surrounding form instead of calling onSave.
+ */
+export function SaveButton({ dirty, saving, onSave, submit }) {
   return (
-    <FieldWrap label={label} hint={hint} error={error}>
-      <div className="country-grid">
-        {sortedCountries().map((code) => (
-          <label key={code} className="checkbox">
-            <input type="checkbox" checked={selected.includes(code)} onChange={() => toggle(code)} disabled={selected.length === 1 && selected[0] === code} />
-            <span>{countryName(code)}</span>
-          </label>
-        ))}
-      </div>
-    </FieldWrap>
+    <button type={submit ? 'submit' : 'button'} className="btn btn-primary" onClick={submit ? undefined : onSave} disabled={saving || !dirty}>
+      {saving && <Spinner />} {dirty ? t('Save changes') : t('Saved')}
+    </button>
+  );
+}
+
+export function SaveBar({ dirty, saving, onSave, onDiscard, submit }) {
+  if (!dirty) return null;
+  return (
+    <div className="save-bar">
+      <span>{t('You have unsaved changes')}</span>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={onDiscard}>
+        {t('Discard')}
+      </button>
+      <button type={submit ? 'submit' : 'button'} className="btn btn-primary btn-sm" onClick={submit ? undefined : onSave} disabled={saving}>
+        {saving && <Spinner />} {t('Save changes')}
+      </button>
+    </div>
   );
 }
 

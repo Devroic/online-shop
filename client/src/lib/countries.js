@@ -32,6 +32,10 @@ export const shippingCountries = (settings) => {
   return list.length ? list : ['CY'];
 };
 
-/** The shop's address with its country, e.g. "Ermou 10, Nicosia, Κύπρος"; '' without an address. */
-export const shopAddress = (contact) =>
-  contact?.address ? [contact.address, countryName(contact.country)].filter(Boolean).join(', ') : '';
+/** The shop's address on one line, e.g. "Ermou 10, Akaki, 2728 Nicosia, Κύπρος"; '' when it has none. Same as the server's. */
+export function shopAddress(contact) {
+  if (!contact) return '';
+  const town = [contact.postalCode, contact.city].filter(Boolean).join(' ');
+  const parts = [contact.address, contact.region, town].filter(Boolean);
+  return parts.length ? [...parts, countryName(contact.country)].filter(Boolean).join(', ') : '';
+}

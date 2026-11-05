@@ -43,6 +43,15 @@ export const ORDER_STATUS = {
   cancelled: 'Cancelled',
 };
 
+// Store pickup orders (no delivery address) name two steps differently.
+const PICKUP_STATUS = { shipped: 'Ready for pickup', delivered: 'Picked up' };
+
+/** The status name for an order: "Ready for pickup" instead of "Shipped" when it is collected from the shop. */
+export const statusName = (status, order) => t((order && !order.address && PICKUP_STATUS[status]) || ORDER_STATUS[status]);
+
+/** "Pay at the store" instead of "Cash on delivery" for store pickup orders. */
+export const paymentName = (method, order) => t(method === 'cod' && order && !order.address ? 'Pay at the store' : PAYMENT_METHOD[method]);
+
 export const PAYMENT_STATUS = {
   pending: 'Awaiting payment',
   paid: 'Paid',

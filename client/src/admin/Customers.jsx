@@ -54,7 +54,7 @@ export default function Customers() {
       ) : (
         <div className="card table-card">
           <div className="table-wrap">
-            <table className="table">
+            <table className="table clickable">
               <thead>
                 <tr>
                   <th>{t('Customer')}</th>
@@ -69,19 +69,14 @@ export default function Customers() {
                 {data.items.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <strong>{c.name || '—'}</strong> {c.role === 'admin' && <span className="status status-shipped">Admin</span>}
+                      <Link to={`/admin/orders?customer=${c.id}`} className="strong-link row-link">
+                        {c.name || '—'}
+                      </Link>{' '}
+                      {c.role === 'admin' && <span className="status status-shipped">Admin</span>}
                       <div className="muted small">{c.email}</div>
                     </td>
                     <td>{c.phone || '—'}</td>
-                    <td>
-                      {c.orderCount > 0 ? (
-                        <Link to={`/admin/orders?customer=${c.id}`} className="link-btn">
-                          {c.orderCount}
-                        </Link>
-                      ) : (
-                        0
-                      )}
-                    </td>
+                    <td>{c.orderCount}</td>
                     <td className="num">{money(c.spent)}</td>
                     <td className="nowrap">{date(c.createdAt)}</td>
                     <td className="num">

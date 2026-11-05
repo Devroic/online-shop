@@ -165,13 +165,31 @@
   }
 }
 
+/* Title on the left, buttons pinned top right: the description wraps instead of
+   pushing the buttons onto a new line. Only on a phone do they go underneath. */
 .a-page-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 12px 20px;
   margin-bottom: 20px;
+}
+.a-page-title {
+  flex: 1;
+  min-width: 0;
+}
+.a-page-actions {
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .a-page-head {
+    flex-wrap: wrap;
+  }
+  .a-page-actions {
+    flex-shrink: 1;
+    justify-content: flex-start;
+  }
 }
 .a-page-head h1 {
   font-size: 1.6rem;
@@ -393,8 +411,30 @@
 .table tr.dim td {
   opacity: 0.55;
 }
+/* Every admin list: click anywhere on a row to open it. The first cell holds the
+   real link/button (stretched over the row); other controls sit above it. */
 .table.clickable tbody tr {
   position: relative;
+  cursor: pointer;
+}
+.list-card.clickable {
+  position: relative;
+  cursor: pointer;
+}
+.list-card.clickable :is(a, button, input, select, label):not(.row-link),
+.table.clickable td :is(a, button, input, select, label, textarea):not(.row-link) {
+  position: relative;
+  z-index: 1;
+}
+.plain-btn,
+button.prod-cell {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .row-link::after {
   content: '';
@@ -923,13 +963,27 @@ input[type='range'] {
   }
 }
 
-.country-grid {
+/* Courier cost per country. */
+.rates {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 6px 16px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 8px 2px;
+  gap: 8px;
+}
+.rates-head,
+.rates-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 1.2fr) 1fr 1fr 40px;
+  gap: 8px;
+  align-items: center;
+}
+.rates-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+  color: var(--muted);
+}
+.dim-card {
+  opacity: 0.75;
 }
 
 .filter-chip {

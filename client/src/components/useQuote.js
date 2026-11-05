@@ -6,11 +6,11 @@ import { useCart } from '../context/CartContext.jsx';
  * Asks the server to price the current cart (debounced). Keeps the local
  * snapshot in sync with real prices and reports stock problems.
  */
-export function useQuote({ couponCode, shippingMethodId, paymentMethod, enabled = true } = {}) {
+export function useQuote({ couponCode, shippingMethodId, paymentMethod, country, enabled = true } = {}) {
   const { payload, items, syncFromQuote } = useCart();
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(false);
-  const body = JSON.stringify({ items: payload, couponCode: couponCode || undefined, shippingMethodId, paymentMethod });
+  const body = JSON.stringify({ items: payload, couponCode: couponCode || undefined, shippingMethodId, paymentMethod, country });
   const seq = useRef(0);
 
   useEffect(() => {

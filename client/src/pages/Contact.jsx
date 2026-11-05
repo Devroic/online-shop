@@ -79,7 +79,7 @@ export default function Contact() {
               <Mail size={20} /> {contact.email}
             </a>
           )}
-          {contact.address && (
+          {shopAddress(contact) && (
             <a href={`https://maps.google.com/?q=${encodeURIComponent(shopAddress(contact))}`} target="_blank" rel="noreferrer">
               <MapPin size={20} /> {shopAddress(contact)}
             </a>

@@ -289,7 +289,7 @@ const categorySchema = z.object({
   slug: z.string().trim().max(100).optional(),
   description: z.string().max(2000).optional().default(''),
   image: z.string().max(1000).nullish(),
-  sortOrder: z.number().int().default(0),
+  sortOrder: z.number().int().optional(),
   active: z.boolean().default(true),
 });
 
@@ -302,6 +302,13 @@ router.get('/categories', async (_req, res) => {
 
 export async function saveCategory(id, data, conn = db()) {
   const slug = await uniqueSlug(conn, 'categories', slugify(data.slug || data.name), id);
+  // Without a position: keep the current one, or go last for a new category.
+  if (data.sortOrder == null) {
+    const row = id
+      ? await conn.one('SELECT sort_order AS n FROM categories WHERE id = $1', [id])
+      : await conn.one('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories');
+    data = { ...data, sortOrder: row?.n ?? 0 };
+  }
   const vals = [data.name, slug, data.description, data.image ?? null, data.sortOrder, data.active, normalizeSearch(data.name)];
   const row = id
     ? await conn.one(
@@ -316,10 +323,25 @@ export async function saveCategory(id, data, conn = db()) {
 }
 
 router.post('/categories', async (req, res) => res.status(201).json(await saveCategory(null, validate(categorySchema, req.body))));
+/** Saves the order of the list (moved with the arrows): each category gets its index, so none share a place. */
+router.put('/categories/order', async (req, res) => {
+  const { ids } = validate(z.object({ ids: z.array(z.number().int().positive()).max(1000) }), req.body);
+  await tx(async (t) => {
+    for (const [i, id] of ids.entries()) await t.query('UPDATE categories SET sort_order = $1 WHERE id = $2', [i, id]);
+  });
+  res.json({ ok: true });
+});
 router.put('/categories/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!(await db().one('SELECT id FROM categories WHERE id = $1', [id]))) throw notFound();
   res.json(await saveCategory(id, validate(categorySchema, req.body)));
+});
+/** Quick change from the list (visible on/off). */
+router.patch('/categories/:id', async (req, res) => {
+  const { active } = validate(z.object({ active: z.boolean() }), req.body);
+  const row = await db().one('UPDATE categories SET active = $1 WHERE id = $2 RETURNING *', [active, Number(req.params.id)]);
+  if (!row) throw notFound();
+  res.json(serializeCategory(row));
 });
 router.delete('/categories/:id', async (req, res) => {
   if (!(await db().query('DELETE FROM categories WHERE id = $1', [Number(req.params.id)])).rowCount) throw notFound();
@@ -498,47 +520,71 @@ router.delete('/coupons/:id', async (req, res) => {
 
 /* -------------------------------------------------------------- shipping */
 
+// Two fixed methods: the courier (a price per country, optional cash on delivery)
+// and store pickup (the shop's country only, optional payment at the store).
+const rateSchema = z.object({ country: z.enum(COUNTRY_CODES), price: money, freeOver: optMoney });
 const shippingSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  description: z.string().max(500).optional().default(''),
-  price: money,
-  freeOver: optMoney,
-  requiresAddress: z.boolean().default(true),
-  // Where this method delivers. Store pickup (no address) ignores it.
-  countries: z.array(z.enum(COUNTRY_CODES)).min(1, 'required').default(['CY']),
-  active: z.boolean().default(true),
-  sortOrder: z.number().int().default(0),
+  id: z.number().int().positive(),
+  // Empty: customers see "Courier" / "Store pickup".
+  name: z.string().trim().max(100).optional(),
+  description: z.string().max(500).optional(),
+  active: z.boolean().optional(),
+  cod: z.boolean().optional(),
+  codFee: money.optional(),
+  rates: z.array(rateSchema).max(COUNTRY_CODES.length).optional(),
 });
 
 const serializeShipping = (m) => ({
-  id: m.id, name: m.name, description: m.description, price: m.price, freeOver: m.free_over,
-  requiresAddress: m.requires_address, countries: m.countries, active: m.active, sortOrder: m.sort_order,
+  id: m.id, kind: m.kind, name: m.name, description: m.description, active: m.active,
+  cod: m.cod, codFee: m.cod_fee, rates: m.rates,
 });
+
+const shippingMethods = () => db().all("SELECT * FROM shipping_methods WHERE kind IS NOT NULL ORDER BY kind = 'pickup', id");
 
 router.get('/shipping', async (_req, res) => {
-  res.json((await db().all('SELECT * FROM shipping_methods ORDER BY sort_order, id')).map(serializeShipping));
+  res.json((await shippingMethods()).map(serializeShipping));
 });
 
-async function saveShipping(id, d) {
-  const vals = [d.name, d.description, d.price, d.freeOver ?? null, d.requiresAddress, d.active, d.sortOrder, JSON.stringify([...new Set(d.countries)])];
-  const row = id
-    ? await db().one(
-        'UPDATE shipping_methods SET name=$1, description=$2, price=$3, free_over=$4, requires_address=$5, active=$6, sort_order=$7, countries=$8 WHERE id=$9 RETURNING *',
-        [...vals, id],
-      )
-    : await db().one(
-        'INSERT INTO shipping_methods (name, description, price, free_over, requires_address, active, sort_order, countries) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-        vals,
-      );
-  if (!row) throw notFound();
-  return serializeShipping(row);
+/**
+ * The shop must keep a way to deliver and a way to pay: at least one shipping
+ * method on, and card payments on or cash allowed by an active method.
+ */
+export function checkStillSellable(methods, cardEnabled) {
+  if (!methods.some((m) => m.active)) throw badRequest('Validation failed', { active: 'last_shipping' });
+  if (!cardEnabled && !methods.some((m) => m.active && m.cod)) throw badRequest('Validation failed', { cod: 'last_payment' });
 }
 
-router.post('/shipping', async (req, res) => res.status(201).json(await saveShipping(null, validate(shippingSchema, req.body))));
-router.put('/shipping/:id', async (req, res) => res.json(await saveShipping(Number(req.params.id), validate(shippingSchema, req.body))));
-router.delete('/shipping/:id', async (req, res) => {
-  await db().query('DELETE FROM shipping_methods WHERE id = $1', [Number(req.params.id)]);
-  res.json({ ok: true });
+/** Saves both methods together, so switching one off and the other on is one change. */
+router.put('/shipping', async (req, res) => {
+  const { methods: patches } = validate(z.object({ methods: z.array(shippingSchema).min(1).max(2) }), req.body);
+  const methods = await shippingMethods();
+  const next = methods.map((m) => {
+    const d = patches.find((x) => x.id === m.id);
+    if (!d) return m;
+    const courier = m.kind === 'courier';
+    // Fields left out keep their current value.
+    if (courier && d.rates && !d.rates.length) throw badRequest('Validation failed', { rates: 'required' });
+    const rates = courier && d.rates ? d.rates.filter((r, i, all) => all.findIndex((x) => x.country === r.country) === i) : m.rates;
+    return {
+      ...m,
+      name: d.name ?? m.name,
+      description: d.description ?? m.description,
+      active: d.active ?? m.active,
+      cod: d.cod ?? m.cod,
+      cod_fee: courier ? (d.codFee ?? m.cod_fee) : 0,
+      rates: courier ? rates : [],
+    };
+  });
+  if (patches.some((d) => !methods.some((m) => m.id === d.id))) throw notFound();
+  checkStillSellable(next, (await getSettings()).payments.card.enabled);
+  await tx(async (t) => {
+    for (const m of next) {
+      await t.query('UPDATE shipping_methods SET name=$1, description=$2, active=$3, cod=$4, cod_fee=$5, rates=$6 WHERE id=$7', [
+        m.name, m.description, m.active, m.cod, m.cod_fee, JSON.stringify(m.rates), m.id,
+      ]);
+    }
+  });
+  res.json((await shippingMethods()).map(serializeShipping));
 });
 
 /* ----------------------------------------------------------------- pages */
@@ -552,28 +598,41 @@ const pageSchema = z.object({
 
 router.get('/pages', async (_req, res) => {
   res.json(
-    (await db().all('SELECT * FROM pages ORDER BY title')).map((p) => ({
+    (await db().all('SELECT * FROM pages ORDER BY sort_order, title')).map((p) => ({
       slug: p.slug, title: p.title, content: p.content, showInFooter: p.show_in_footer, updatedAt: p.updated_at,
     })),
   );
 });
 
-export async function upsertPage(d, conn = db()) {
+/** Creates or updates a page. A new page goes last unless `sortOrder` says where. */
+export async function upsertPage(d, conn = db(), sortOrder = null) {
   await conn.query(
-    `INSERT INTO pages (slug, title, content, show_in_footer) VALUES ($1, $2, $3, $4)
+    `INSERT INTO pages (slug, title, content, show_in_footer, sort_order)
+       VALUES ($1, $2, $3, $4, COALESCE($5, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM pages)))
      ON CONFLICT (slug) DO UPDATE SET title = excluded.title, content = excluded.content,
        show_in_footer = excluded.show_in_footer, updated_at = now()`,
-    [d.slug, d.title, d.content, d.showInFooter ?? true],
+    [d.slug, d.title, d.content, d.showInFooter ?? true, sortOrder],
   );
 }
 
 router.put('/pages/:slug', async (req, res) => {
   const d = validate(pageSchema, { ...req.body, slug: slugify(req.body.slug || req.params.slug) });
   await tx(async (t) => {
+    // A new address (slug) is a new row: it keeps the old one's place.
+    const old = await t.one('SELECT sort_order FROM pages WHERE slug = $1', [req.params.slug]);
     if (d.slug !== req.params.slug) await t.query('DELETE FROM pages WHERE slug = $1', [req.params.slug]);
-    await upsertPage(d, t);
+    await upsertPage(d, t, old?.sort_order ?? null);
   });
   res.json(d);
+});
+
+/** Saves the order of the list (moved with the arrows), as for categories. */
+router.put('/pages-order', async (req, res) => {
+  const { slugs } = validate(z.object({ slugs: z.array(z.string().max(80)).max(500) }), req.body);
+  await tx(async (t) => {
+    for (const [i, slug] of slugs.entries()) await t.query('UPDATE pages SET sort_order = $1 WHERE slug = $2', [i, slug]);
+  });
+  res.json({ ok: true });
 });
 
 router.delete('/pages/:slug', async (req, res) => {
@@ -645,11 +704,10 @@ const settingsSchema = z
       .partial(),
     announcement: z.string().max(300),
     hero: z.object({ title: z.string().max(200), subtitle: z.string().max(400), imageUrl: z.string().max(1000), ctaText: z.string().max(60), ctaLink: z.string().max(300) }).partial(),
-    contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), country: z.enum(COUNTRY_CODES), hours: z.string().max(300) }).partial(),
+    contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), country: z.enum(COUNTRY_CODES), city: z.string().max(100), region: z.string().max(100), postalCode: z.string().max(20), hours: z.string().max(300) }).partial(),
     social: z.object({ facebook: optUrl, instagram: optUrl, tiktok: optUrl }).partial(),
     payments: z
       .object({
-        cod: z.object({ enabled: z.boolean(), fee: money }).partial(),
         card: z.object({ enabled: z.boolean() }).partial(),
       })
       .partial(),
@@ -669,7 +727,10 @@ const settingsSchema = z
   .partial();
 
 router.put('/settings', async (req, res) => {
-  res.json(await updateSettings(validate(settingsSchema, req.body)));
+  const patch = validate(settingsSchema, req.body);
+  // Turning card payments off must leave cash with an active shipping method.
+  if (patch.payments?.card?.enabled === false) checkStillSellable(await shippingMethods(), false);
+  res.json(await updateSettings(patch));
 });
 
 export default router;

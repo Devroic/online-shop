@@ -49,8 +49,8 @@ export default function AdminApp() {
   const nav = [
     ['/admin', LayoutDashboard, 'Dashboard', 0, true],
     ['/admin/orders', ShoppingCart, 'Orders', pending],
-    ['/admin/products', Package, 'Products'],
     ['/admin/categories', Folder, 'Categories'],
+    ['/admin/products', Package, 'Products'],
     ['/admin/customers', Users, 'Customers'],
     ['/admin/coupons', Ticket, 'Coupons'],
     ['/admin/shipping', Truck, 'Shipping & payments'],

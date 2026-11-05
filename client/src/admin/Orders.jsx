@@ -6,7 +6,7 @@ import { pairAllowed, paymentOptions, statusOptions } from './orderRules.js';
 import { countryName } from '../lib/countries.js';
 import { useFetch } from '../lib/useFetch.js';
 import { money, dateTime } from '../lib/format.js';
-import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
+import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, paymentName, statusName } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { Checkbox, EmptyState, Field, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
@@ -97,11 +97,11 @@ export function OrderList() {
                       <div className="muted small">{o.email}</div>
                     </td>
                     <td>
-                      <div className="small">{t(PAYMENT_METHOD[o.paymentMethod])}</div>
+                      <div className="small">{paymentName(o.paymentMethod, o)}</div>
                       <span className={`status status-${o.paymentStatus}`}>{t(PAYMENT_STATUS[o.paymentStatus])}</span>
                     </td>
                     <td>
-                      <span className={`status status-${o.status}`}>{t(ORDER_STATUS[o.status])}</span>
+                      <span className={`status status-${o.status}`}>{statusName(o.status, o)}</span>
                     </td>
                     <td className="num">
                       <strong>{money(o.total)}</strong>
@@ -188,14 +188,14 @@ export function OrderDetail({ onChange }) {
             </button>
             {quick && (
               <button className="btn btn-primary no-print" disabled={saving} onClick={() => save({ ...form, status: quick })}>
-                {t('Mark as {status}', { status: t(ORDER_STATUS[quick]).toLowerCase() })}
+                {t('Mark as {status}', { status: statusName(quick, order).toLowerCase() })}
               </button>
             )}
           </>
         }
       />
       <div className="row-gap order-badges">
-        <span className={`status status-${order.status}`}>{t(ORDER_STATUS[order.status])}</span>
+        <span className={`status status-${order.status}`}>{statusName(order.status, order)}</span>
         <span className={`status status-${order.paymentStatus}`}>{t(PAYMENT_STATUS[order.paymentStatus])}</span>
       </div>
 
@@ -268,7 +268,7 @@ export function OrderDetail({ onChange }) {
               )}
             </p>
             <h3 className="mt">{t('Payment')}</h3>
-            <p>{t(PAYMENT_METHOD[order.paymentMethod])}</p>
+            <p>{paymentName(order.paymentMethod, order)}</p>
           </section>
 
           <section className="card no-print">
@@ -276,7 +276,7 @@ export function OrderDetail({ onChange }) {
             <Field as="select" label={t('Order status')} value={form.status} onChange={set('status')} error={v.errors.status}>
               {statusChoices.map((s) => (
                 <option key={s} value={s}>
-                  {t(ORDER_STATUS[s])}
+                  {statusName(s, order)}
                 </option>
               ))}
             </Field>

@@ -28,6 +28,10 @@ export function errorMessage(code) {
       return t('Must be {n} or less', { n: arg });
     case 'positive':
       return t('Must be greater than 0');
+    case 'last_shipping':
+      return t('Keep at least one shipping method on');
+    case 'last_payment':
+      return t('Customers need a way to pay: keep card payments on, or cash on an active shipping method');
     case 'country':
       return t('We do not deliver to this country');
     case 'status_combination':

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
-import { t, PAYMENT_METHOD } from '../lib/i18n.js';
+import { t } from '../lib/i18n.js';
 import { shopAddress } from '../lib/countries.js';
 import { FacebookIcon, InstagramIcon, TiktokIcon } from './ui.jsx';
 
@@ -43,6 +43,11 @@ export default function Footer() {
                 <Link to={`/category/${c.slug}`}>{c.name}</Link>
               </li>
             ))}
+            {categories.length > 5 && (
+              <li>
+                <Link to="/products">{t('All categories')} →</Link>
+              </li>
+            )}
           </ul>
         </div>
         <div>
@@ -76,7 +81,7 @@ export default function Footer() {
                 <Mail size={16} /> <a href={`mailto:${contact.email}`}>{contact.email}</a>
               </li>
             )}
-            {contact.address && (
+            {shopAddress(contact) && (
               <li>
                 <MapPin size={16} /> <span>{shopAddress(contact)}</span>
               </li>
@@ -92,13 +97,6 @@ export default function Footer() {
       <div className="container footer-bottom">
         <span>
           © {new Date().getFullYear()} {settings.storeName}
-        </span>
-        <span className="payment-badges">
-          {settings.paymentMethods.map((m) => (
-            <span key={m} className="pill">
-              {t(PAYMENT_METHOD[m])}
-            </span>
-          ))}
         </span>
       </div>
     </footer>

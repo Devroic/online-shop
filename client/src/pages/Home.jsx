@@ -57,6 +57,11 @@ export default function Home() {
                 </Link>
               ))}
             </div>
+            {categories.length > 8 && (
+              <Link to="/products" className="link-arrow mt-sm">
+                {t('All categories')} <ArrowRight size={16} />
+              </Link>
+            )}
           </section>
         )}
 

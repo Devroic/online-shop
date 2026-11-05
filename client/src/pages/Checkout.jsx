@@ -146,7 +146,7 @@ export default function Checkout() {
   const { errors } = v;
   const [submitting, setSubmitting] = useState(false);
 
-  const { quote, loading, problemFor } = useQuote({ couponCode: coupon, shippingMethodId, paymentMethod });
+  const { quote, loading, problemFor } = useQuote({ couponCode: coupon, shippingMethodId, paymentMethod, country: form.country });
 
   useEffect(() => {
     if (!user) return;
@@ -163,19 +163,29 @@ export default function Checkout() {
     });
   }, [user]);
 
-  // Only the methods for the chosen country (store pickup has no country and always shows).
-  const methodsHere = useMemo(
-    () => (quote?.shippingOptions || []).filter((m) => !m.requiresAddress || m.countries?.includes(form.country)),
-    [quote, form.country],
-  );
-
+  // Courier and/or store pickup, whichever the shop has on.
+  const methods = quote?.shippingOptions || [];
   useEffect(() => {
-    if (quote && !methodsHere.some((m) => m.id === shippingMethodId)) {
-      setShippingMethodId(methodsHere[0]?.id ?? null);
-    }
-  }, [quote, methodsHere, shippingMethodId]);
+    if (quote && !methods.some((m) => m.id === shippingMethodId)) setShippingMethodId(methods[0]?.id ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quote, shippingMethodId]);
 
   const shipping = useMemo(() => quote?.shippingOptions.find((m) => m.id === shippingMethodId), [quote, shippingMethodId]);
+  const pickup = shipping?.kind === 'pickup';
+
+  // The courier's countries (its price depends on the country); the address starts on the first.
+  const courierCountries = shipping?.requiresAddress && shipping.countries.length ? shipping.countries : countries;
+  useEffect(() => {
+    if (shipping?.requiresAddress && !courierCountries.includes(form.country)) setForm((f) => ({ ...f, country: courierCountries[0] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shipping?.id, courierCountries.join()]);
+
+  // Card is shop-wide; cash depends on the shipping method (on delivery, or at the store for pickup).
+  const payOptions = settings.paymentMethods.filter((m) => m === 'card' || (m === 'cod' && (!shipping || shipping.cod)));
+  useEffect(() => {
+    if (payOptions.length && !payOptions.includes(paymentMethod)) setPaymentMethod(payOptions[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payOptions.join(), paymentMethod]);
   const termsPage = pages.find((p) => p.slug === settings.checkout.termsPage);
 
   if (!items.length) {
@@ -285,8 +295,8 @@ export default function Checkout() {
 
   // Changing the country re-filters the delivery methods above it.
   const countryField = (
-    <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={errors.country} disabled={countries.length === 1}>
-      {countries.map((c) => (
+    <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={errors.country} disabled={courierCountries.length === 1}>
+      {courierCountries.map((c) => (
         <option key={c} value={c}>
           {countryName(c)}
         </option>
@@ -327,8 +337,7 @@ export default function Checkout() {
               <span className="step-num">2</span> {t('Delivery')}
             </h2>
             <div className="options">
-              {quote && !methodsHere.length && <p className="muted">{t('No delivery to this country is set up yet.')}</p>}
-              {methodsHere.map((m) => (
+              {methods.map((m) => (
                 <label key={m.id} className={`option ${m.id === shippingMethodId ? 'active' : ''}`}>
                   <input type="radio" name="shipping" checked={m.id === shippingMethodId} onChange={() => setShippingMethodId(m.id)} />
                   <div className="grow">
@@ -343,22 +352,18 @@ export default function Checkout() {
             </div>
             {shipping?.requiresAddress ? (
               <div className="address-fields">
-                <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={errors.street} />
                 <div className="grid-2">
+                  {countryField}
                   <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={errors.city} />
-                  <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={errors.postalCode} />
                 </div>
                 <div className="grid-2">
                   <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={errors.region} />
-                  {countryField}
+                  <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={errors.postalCode} />
                 </div>
+                <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={errors.street} />
                 {user && <Checkbox label={t('Save this address to my account')} checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />}
               </div>
-            ) : (
-              // With store pickup (or no delivery to the current country) the country stays
-              // reachable, so the customer can switch to a country that has delivery.
-              countries.length > 1 && <div className="address-fields">{countryField}</div>
-            )}
+            ) : null}
           </section>
 
           <section className="card step">
@@ -366,17 +371,22 @@ export default function Checkout() {
               <span className="step-num">3</span> {t('Payment')}
             </h2>
             <div className="options">
-              {settings.paymentMethods.map((m) => {
+              {payOptions.map((m) => {
                 const Icon = PAYMENT_ICONS[m];
                 return (
                   <label key={m} className={`option ${m === paymentMethod ? 'active' : ''}`}>
                     <input type="radio" name="payment" checked={m === paymentMethod} onChange={() => setPaymentMethod(m)} />
                     <Icon size={20} />
                     <div className="grow">
-                      <strong>{t(PAYMENT_METHOD[m])}</strong>
+                      <strong>{m === 'cod' && pickup ? t('Pay at the store') : t(PAYMENT_METHOD[m])}</strong>
                       <div className="muted small">
                         {m === 'card' && t('Pay securely on the next page')}
-                        {m === 'cod' && (settings.payments.cod.fee ? t('Extra fee {amount}', { amount: money(settings.payments.cod.fee) }) : t('Pay when you receive your order'))}
+                        {m === 'cod' &&
+                          (shipping?.codFee
+                            ? t('Extra fee {amount}', { amount: money(shipping.codFee) })
+                            : pickup
+                              ? t('Pay when you collect your order')
+                              : t('Pay when you receive your order'))}
                       </div>
                     </div>
                   </label>

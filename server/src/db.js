@@ -209,6 +209,41 @@ const migrations = [
   `ALTER TABLE orders ADD COLUMN tracking_url TEXT NOT NULL DEFAULT '';`,
   // 6: countries each shipping method delivers to (ISO codes); existing methods serve Cyprus.
   `ALTER TABLE shipping_methods ADD COLUMN countries JSONB NOT NULL DEFAULT '["CY"]';`,
+  // 7: exactly two shipping methods, "courier" and "pickup". The courier has a price per
+  // country (rates: [{ country, price, freeOver }]); each method says whether it takes
+  // cash (on delivery / at the store), which used to be a shop-wide setting.
+  // The first method with an address becomes the courier and the first without one the
+  // pickup; other methods are removed (orders keep their shipping name and cost).
+  // Missing ones are created by ensureInitialData, in the shop's language.
+  `
+  ALTER TABLE shipping_methods
+    ADD COLUMN kind TEXT,
+    ADD COLUMN rates JSONB NOT NULL DEFAULT '[]',
+    ADD COLUMN cod BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN cod_fee INTEGER NOT NULL DEFAULT 0;
+  UPDATE shipping_methods SET kind = 'courier'
+    WHERE id = (SELECT id FROM shipping_methods WHERE requires_address ORDER BY active DESC, sort_order, id LIMIT 1);
+  UPDATE shipping_methods SET kind = 'pickup'
+    WHERE id = (SELECT id FROM shipping_methods WHERE NOT requires_address ORDER BY active DESC, sort_order, id LIMIT 1);
+  DELETE FROM shipping_methods WHERE kind IS NULL;
+  UPDATE shipping_methods m SET rates = (
+    SELECT COALESCE(jsonb_agg(jsonb_build_object('country', c, 'price', m.price, 'freeOver', m.free_over)), '[]'::jsonb)
+    FROM jsonb_array_elements_text(m.countries) AS c
+  ) WHERE kind = 'courier';
+  UPDATE shipping_methods SET
+    cod = COALESCE((SELECT (value #>> '{payments,cod,enabled}')::boolean FROM settings WHERE key = 'store'), FALSE),
+    cod_fee = CASE WHEN kind = 'courier'
+      THEN COALESCE((SELECT (value #>> '{payments,cod,fee}')::integer FROM settings WHERE key = 'store'), 0) ELSE 0 END;
+  CREATE UNIQUE INDEX shipping_methods_kind ON shipping_methods (kind);
+  `,
+  // 8: pages have a position (moved with arrows in the admin); existing ones keep the
+  // alphabetical order they had in the footer.
+  `
+  ALTER TABLE pages ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+  UPDATE pages p SET sort_order = r.n
+    FROM (SELECT slug, (ROW_NUMBER() OVER (ORDER BY title) - 1)::int AS n FROM pages) r
+    WHERE p.slug = r.slug;
+  `,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

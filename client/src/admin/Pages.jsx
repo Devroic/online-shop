@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
-import { Plus, FileText, Pencil, ExternalLink } from 'lucide-react';
+import { Plus, FileText, ExternalLink, ArrowUp, ArrowDown } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { date } from '../lib/format.js';
@@ -105,9 +105,24 @@ function PageModal({ page, onClose, onSaved }) {
 }
 
 function HelpPages() {
-  const { data, reload } = useFetch('/admin/pages');
+  const { data, reload, setData } = useFetch('/admin/pages');
   const { reload: reloadShop } = useShop();
   const [editing, setEditing] = useState(null);
+  const toast = useToast();
+
+  /** Swaps a page with its neighbour and saves the order (the footer follows it). */
+  const move = async (i, step) => {
+    const list = [...data];
+    [list[i], list[i + step]] = [list[i + step], list[i]];
+    setData(list);
+    try {
+      await api.put('/admin/pages-order', { slugs: list.map((x) => x.slug) });
+      reloadShop();
+    } catch {
+      toast.error(t('Something went wrong. Please try again.'));
+      reload();
+    }
+  };
   return (
     <>
       <PageHeader
@@ -126,22 +141,27 @@ function HelpPages() {
         <EmptyState icon={FileText} title={t('No pages yet')} />
       ) : (
         <div className="card-list">
-          {data.map((p) => (
-            <div key={p.slug} className="card list-card">
+          {data.map((p, i) => (
+            <div key={p.slug} className="card list-card clickable">
               <FileText size={20} className="muted" />
               <div className="grow">
-                <strong>{p.title}</strong>
+                <button type="button" className="row-link plain-btn" onClick={() => setEditing(p)}>
+                  <strong>{p.title}</strong>
+                </button>
                 <div className="muted small">
                   /p/{p.slug} · {t('Updated {date}', { date: date(p.updatedAt) })}
                 </div>
               </div>
               {!p.showInFooter && <span className="status">{t('Hidden from the footer')}</span>}
+              <button className="icon-btn" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('Move up')}>
+                <ArrowUp size={16} />
+              </button>
+              <button className="icon-btn" onClick={() => move(i, 1)} disabled={i === data.length - 1} aria-label={t('Move down')}>
+                <ArrowDown size={16} />
+              </button>
               <a className="icon-btn" href={`/p/${p.slug}`} target="_blank" rel="noreferrer" aria-label={t('View')}>
                 <ExternalLink size={16} />
               </a>
-              <button className="icon-btn" onClick={() => setEditing(p)} aria-label={t('Edit')}>
-                <Pencil size={16} />
-              </button>
             </div>
           ))}
         </div>

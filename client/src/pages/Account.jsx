@@ -8,7 +8,7 @@ import { useFetch } from '../lib/useFetch.js';
 import { date, money } from '../lib/format.js';
 import { countryName, shippingCountries } from '../lib/countries.js';
 import { useShop } from '../context/ShopContext.jsx';
-import { t, ORDER_STATUS, providerName } from '../lib/i18n.js';
+import { t, ORDER_STATUS, providerName, statusName } from '../lib/i18n.js';
 import { EmptyState, Field, FormAlert, PageLoader, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 
@@ -39,7 +39,7 @@ function Orders() {
               {date(o.createdAt)} · {t('{n} items', { n: o.itemCount })}
             </div>
           </div>
-          <span className={`status status-${o.status}`}>{t(ORDER_STATUS[o.status])}</span>
+          <span className={`status status-${o.status}`}>{statusName(o.status, o)}</span>
           <strong>{money(o.total)}</strong>
           <ChevronRight size={18} className="muted" />
         </Link>
@@ -116,13 +116,7 @@ function Profile() {
         </div>
         <Field label={t('Email')} value={user.email} disabled />
         <h3>{t('Default address')}</h3>
-        <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={v.errors.street} />
         <div className="grid-2">
-          <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={v.errors.city} />
-          <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={v.errors.postalCode} />
-        </div>
-        <div className="grid-2">
-          <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={v.errors.region} />
           <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={v.errors.country} disabled={countries.length === 1}>
             {countries.map((c) => (
               <option key={c} value={c}>
@@ -130,7 +124,13 @@ function Profile() {
               </option>
             ))}
           </Field>
+          <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={v.errors.city} />
         </div>
+        <div className="grid-2">
+          <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={v.errors.region} />
+          <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={v.errors.postalCode} />
+        </div>
+        <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={v.errors.street} />
         <FormAlert message={v.errors._} />
         <button className="btn btn-primary" disabled={busy}>
           {busy && <Spinner />} {t('Save')}
