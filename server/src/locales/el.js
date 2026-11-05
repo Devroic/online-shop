@@ -24,6 +24,10 @@ const strings = {
   'Tracking number': 'Αριθμός αποστολής',
   'You can use it on the courier website to see where your parcel is.':
     'Με αυτόν μπορείτε να δείτε πού βρίσκεται το δέμα σας στο site της εταιρείας courier.',
+  'Press the button to see where your parcel is right now.': 'Πατήστε το κουμπί για να δείτε πού βρίσκεται αυτή τη στιγμή το δέμα σας.',
+  'Track your parcel': 'Παρακολουθήστε το δέμα σας',
+  'Follow the parcel of your order #{number}': 'Παρακολουθήστε το δέμα της παραγγελίας σας #{number}',
+  'You can now follow the parcel of your order {number}.': 'Μπορείτε πλέον να παρακολουθείτε το δέμα της παραγγελίας σας {number}.',
   'We will email you again as soon as it ships.': 'Θα σας στείλουμε νέο email μόλις αποσταλεί.',
   'We will email you again as soon as it is ready for pickup.': 'Θα σας στείλουμε νέο email μόλις είναι έτοιμη για παραλαβή.',
   'We will keep you posted by email on its progress.': 'Θα σας ενημερώνουμε με email για την πορεία της.',

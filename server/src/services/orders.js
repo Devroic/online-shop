@@ -291,6 +291,7 @@ export function serializeOrder(o, items, events) {
     notes: o.notes,
     adminNotes: o.admin_notes,
     trackingNumber: o.tracking_number,
+    trackingUrl: o.tracking_url,
     language: o.language,
     createdAt: o.created_at,
     updatedAt: o.updated_at,
@@ -353,12 +354,13 @@ export async function updateOrder(id, patch, { actor = 'admin' } = {}) {
     }
     for (const [key, col] of [
       ['trackingNumber', 'tracking_number'],
+      ['trackingUrl', 'tracking_url'],
       ['adminNotes', 'admin_notes'],
       ['stripeSessionId', 'stripe_session_id'],
     ]) {
       if (patch[key] !== undefined && patch[key] !== o[col]) {
         set(col, patch[key]);
-        if (key === 'trackingNumber' && patch[key]) await addEvent(t, id, 'tracking', patch[key]);
+        if ((key === 'trackingNumber' || key === 'trackingUrl') && patch[key]) await addEvent(t, id, 'tracking', patch[key]);
       }
     }
     if (sets.length) {

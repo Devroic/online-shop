@@ -114,11 +114,18 @@ function deliveryBlock(order, settings, t) {
   return `<p style="margin-top:20px"><strong>${t('Pickup from the store')}</strong>${c.address ? `<br>${esc(c.address)}` : ''}${c.hours ? `<br>${esc(c.hours)}` : ''}</p>`;
 }
 
-const trackingBlock = (order, t) =>
-  order.trackingNumber
-    ? `<p style="background:#f4f4f5;border-radius:8px;padding:12px 16px">${t('Tracking number')}: <strong>${esc(order.trackingNumber)}</strong><br>
-      <span style="color:#52525b;font-size:13px">${t('You can use it on the courier website to see where your parcel is.')}</span></p>`
-    : '';
+/** Tracking number and/or the courier's tracking link, in a grey box. Empty when there is neither. */
+function trackingBlock(order, t, settings) {
+  const { trackingNumber: number, trackingUrl: url } = order;
+  if (!number && !url) return '';
+  const numberLine = number ? `${t('Tracking number')}: <strong>${esc(number)}</strong><br>` : '';
+  const help = url
+    ? t('Press the button to see where your parcel is right now.')
+    : t('You can use it on the courier website to see where your parcel is.');
+  const link = url ? `<p style="margin:12px 0 0">${button(esc(url), t('Track your parcel'), settings.theme.primary)}</p>` : '';
+  return `<div style="background:#f4f4f5;border-radius:8px;padding:12px 16px;margin:16px 0">${numberLine}
+    <span style="color:#52525b;font-size:13px">${help}</span>${link}</div>`;
+}
 
 const orderLink = (order) => `${config.publicUrl}/order/${order.number}?token=${order.accessToken}`;
 
@@ -157,18 +164,21 @@ export function sendOrderConfirmation(order) {
 
 /**
  * One email per change the admin makes (when "notify the customer" is ticked):
- * a status change, or a tracking number added to an order already shipped.
+ * a status change, or a tracking number / tracking link added to an order already shipped.
  */
 export function sendStatusUpdate(order, before) {
   const trackingOnly = before && order.status === before.status;
-  return sendOrderEmail(order, ({ t, total, pickup, cod }) => {
+  return sendOrderEmail(order, ({ s, t, total, pickup, cod }) => {
     const n = { number: order.number };
     const nb = { number: num(order) };
     if (trackingOnly) {
+      const linkOnly = !order.trackingNumber;
       return {
-        subject: t('Tracking number for your order #{number}', n),
+        subject: linkOnly ? t('Follow the parcel of your order #{number}', n) : t('Tracking number for your order #{number}', n),
         title: t('Track your order'),
-        body: p(t('Here is the tracking number for your order {number}:', nb)) + trackingBlock(order, t),
+        body:
+          p(linkOnly ? t('You can now follow the parcel of your order {number}.', nb) : t('Here is the tracking number for your order {number}:', nb)) +
+          trackingBlock(order, t, s),
         details: false,
       };
     }
@@ -193,7 +203,7 @@ export function sendStatusUpdate(order, before) {
           subject: t('Your order #{number} is on its way', n),
           title: t('Your order is on its way'),
           body: p(t('Good news: your order {number} has been sent with {courier} and is on its way to you.', { ...nb, courier: esc(order.shippingName) })) +
-            trackingBlock(order, t) +
+            trackingBlock(order, t, s) +
             (cod ? p(t('Please have {total} ready in cash for the courier.', { total: `<strong>${total}</strong>` })) : ''),
         };
       case 'delivered':

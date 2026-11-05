@@ -163,10 +163,19 @@ export default function OrderPage() {
               </div>
             </div>
             <StatusTimeline status={order.status} />
-            {order.trackingNumber && (
-              <p>
-                {t('Tracking number')}: <strong>{order.trackingNumber}</strong>
-              </p>
+            {(order.trackingNumber || order.trackingUrl) && (
+              <div className="tracking">
+                {order.trackingNumber && (
+                  <p>
+                    {t('Tracking number')}: <strong>{order.trackingNumber}</strong>
+                  </p>
+                )}
+                {order.trackingUrl && (
+                  <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
+                    <Truck size={16} /> {t('Track your parcel')}
+                  </a>
+                )}
+              </div>
             )}
           </section>
 

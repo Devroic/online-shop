@@ -1170,6 +1170,16 @@
 .order-meta strong {
   margin-right: 8px;
 }
+.tracking {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 16px;
+}
+.tracking p {
+  margin: 0;
+}
 .timeline {
   list-style: none;
   padding: 0;

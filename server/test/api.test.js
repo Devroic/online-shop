@@ -132,6 +132,13 @@ test('checkout creates order, decrements stock, ignores client prices', async ()
   const bad = await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'shipped', paymentStatus: 'failed' }).expect(400);
   assert.equal(bad.body.details.paymentStatus, 'status_combination');
 
+  // The tracking link must be a web address; a valid one is shown to the customer.
+  const badLink = await admin.put(`/api/admin/orders/${o.id}`).send({ trackingUrl: 'acs tracking' }).expect(400);
+  assert.equal(badLink.body.details.trackingUrl, 'url');
+  await admin.put(`/api/admin/orders/${o.id}`).send({ trackingUrl: 'https://www.acscourier.net/?p=123' }).expect(200);
+  const tracked = await request(app).get(`/api/orders/${o.number}?token=${o.accessToken}`).expect(200);
+  assert.equal(tracked.body.order.trackingUrl, 'https://www.acscourier.net/?p=123');
+
   // Cancelling restores stock.
   await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'cancelled' }).expect(200);
   assert.equal(await stockOf(productId), 2);

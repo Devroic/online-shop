@@ -386,6 +386,7 @@ const orderUpdateSchema = z.object({
   status: z.enum(ORDER_STATUSES).optional(),
   paymentStatus: z.enum(PAYMENT_STATUSES).optional(),
   trackingNumber: z.string().trim().max(200).optional(),
+  trackingUrl: z.string().trim().max(1000).refine((v) => !v || /^https?:\/\/[^\s.]+\.\S+$/.test(v), 'url').optional(),
   adminNotes: z.string().max(5000).optional(),
   notifyCustomer: z.boolean().optional(),
 });
@@ -406,7 +407,8 @@ router.put('/orders/:id', async (req, res) => {
     throw badRequest('Validation failed', { paymentStatus: 'status_combination' });
   }
   const order = await updateOrder(id, patch);
-  const changed = order.status !== before.status || (patch.trackingNumber && patch.trackingNumber !== before.trackingNumber);
+  const trackingAdded = (key) => patch[key] && patch[key] !== before[key];
+  const changed = order.status !== before.status || trackingAdded('trackingNumber') || trackingAdded('trackingUrl');
   if (notifyCustomer && changed) background(sendStatusUpdate(order, before));
   res.json(order);
 });

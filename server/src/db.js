@@ -205,6 +205,8 @@ const migrations = [
   `,
   // 4: contact messages get a subject, so the admin list can show one line per message.
   `ALTER TABLE messages ADD COLUMN subject TEXT NOT NULL DEFAULT '';`,
+  // 5: a link where the customer can follow the parcel (the courier's tracking page).
+  `ALTER TABLE orders ADD COLUMN tracking_url TEXT NOT NULL DEFAULT '';`,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

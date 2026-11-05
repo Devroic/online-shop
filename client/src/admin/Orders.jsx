@@ -113,7 +113,8 @@ export function OrderList() {
   );
 }
 
-const EVENT_LABEL = { created: 'Order placed', status: 'Status changed', payment: 'Payment', tracking: 'Tracking number' };
+const EVENT_LABEL = { created: 'Order placed', status: 'Status changed', payment: 'Payment', tracking: 'Parcel tracking' };
+const EDITABLE = ['status', 'paymentStatus', 'trackingNumber', 'trackingUrl', 'adminNotes'];
 
 export function OrderDetail({ onChange }) {
   const { id } = useParams();
@@ -129,16 +130,21 @@ export function OrderDetail({ onChange }) {
   };
 
   useEffect(() => {
-    if (order) setForm({ status: order.status, paymentStatus: order.paymentStatus, trackingNumber: order.trackingNumber, adminNotes: order.adminNotes });
+    if (order) setForm(Object.fromEntries(EDITABLE.map((k) => [k, order[k] ?? ''])));
   }, [order]);
 
   if (!order || !form) return <PageLoader />;
-  const dirty =
-    form.status !== order.status || form.paymentStatus !== order.paymentStatus || form.trackingNumber !== order.trackingNumber || form.adminNotes !== order.adminNotes;
-  const customerWillBeNotified = form.status !== order.status || (form.trackingNumber && form.trackingNumber !== order.trackingNumber);
+  const dirty = EDITABLE.some((k) => form[k] !== (order[k] ?? ''));
+  const added = (k) => form[k] && form[k] !== order[k];
+  const customerWillBeNotified = form.status !== order.status || added('trackingNumber') || added('trackingUrl');
 
   const save = async (patch = form) => {
-    if (!v.validate(patch, { trackingNumber: [rules.maxLength(200)], adminNotes: [rules.maxLength(5000)] })) return;
+    const ok = v.validate(patch, {
+      trackingNumber: [rules.maxLength(200)],
+      trackingUrl: [rules.url(), rules.maxLength(1000)],
+      adminNotes: [rules.maxLength(5000)],
+    });
+    if (!ok) return;
     if (patch.status === 'cancelled' && order.status !== 'cancelled' && !window.confirm(t('Cancel this order? Stock will be returned to inventory.'))) return;
     setSaving(true);
     try {
@@ -270,6 +276,16 @@ export function OrderDetail({ onChange }) {
               ))}
             </Field>
             <Field label={t('Tracking number')} value={form.trackingNumber} onChange={set('trackingNumber')} error={v.errors.trackingNumber} />
+            <Field
+              label={t('Tracking link (optional)')}
+              type="url"
+              inputMode="url"
+              placeholder="https://"
+              hint={t("The courier's page where the customer can follow the parcel.")}
+              value={form.trackingUrl}
+              onChange={set('trackingUrl')}
+              error={v.errors.trackingUrl}
+            />
             <Field as="textarea" rows={3} label={t('Internal notes')} hint={t('Only visible to admins')} value={form.adminNotes} onChange={set('adminNotes')} error={v.errors.adminNotes} />
             {customerWillBeNotified && <Checkbox label={t('Email the customer about this change')} checked={notify} onChange={(e) => setNotify(e.target.checked)} />}
             <FormAlert message={v.errors._} />
