@@ -20,6 +20,7 @@ import Shipping from './Shipping.jsx';
 import Pages from './Pages.jsx';
 import Messages from './Messages.jsx';
 import { AppearancePage, StoreDetailsPage } from './Settings.jsx';
+import { ConfirmProvider } from './components.jsx';
 
 export default function AdminApp() {
   const { user, loading, logout } = useAuth();
@@ -61,6 +62,7 @@ export default function AdminApp() {
   ];
 
   return (
+    <ConfirmProvider>
     <div className="admin">
       <aside className={`a-side ${navOpen ? 'open' : ''}`}>
         <div className="a-brand">
@@ -131,5 +133,6 @@ export default function AdminApp() {
         </div>
       </div>
     </div>
+    </ConfirmProvider>
   );
 }

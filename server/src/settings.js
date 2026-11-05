@@ -37,6 +37,15 @@ export const DEFAULT_SETTINGS = {
     ctaText: 'Shop now',
     ctaLink: '/products',
   },
+  // The four boxes under the banner on the home page. Empty title/text show the
+  // default wording in the visitor's language; the delivery text then comes from
+  // the courier's description, the help text from the shop's phone or email.
+  perks: {
+    delivery: { show: true, title: '', text: '' },
+    secure: { show: true, title: '', text: '' },
+    returns: { show: true, title: '', text: '' },
+    help: { show: true, title: '', text: '' },
+  },
   contact: {
     email: '',
     phone: '',

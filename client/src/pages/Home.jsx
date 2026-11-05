@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Truck, ShieldCheck, RotateCcw, Headphones } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { shownPerks } from '../lib/perks.js';
 import { useShop } from '../context/ShopContext.jsx';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
@@ -28,6 +29,7 @@ export default function Home() {
   const latest = useFetch('/products?sort=newest&limit=8');
   useTitle('');
   const { hero } = settings;
+  const perks = shownPerks(settings);
 
   return (
     <>
@@ -71,28 +73,17 @@ export default function Home() {
           </Section>
         )}
 
-        <section className="perks">
-          <div>
-            <Truck size={24} />
-            <strong>{t('Fast delivery')}</strong>
-            <span>{t('Shipped within 1-3 business days')}</span>
-          </div>
-          <div>
-            <ShieldCheck size={24} />
-            <strong>{t('Secure shopping')}</strong>
-            <span>{t('Your data is protected')}</span>
-          </div>
-          <div>
-            <RotateCcw size={24} />
-            <strong>{t('Easy returns')}</strong>
-            <span>{t('14 days to change your mind')}</span>
-          </div>
-          <div>
-            <Headphones size={24} />
-            <strong>{t('Here to help')}</strong>
-            <span>{settings.contact.phone || settings.contact.email || t('Contact us anytime')}</span>
-          </div>
-        </section>
+        {perks.length > 0 && (
+          <section className="perks">
+            {perks.map(({ key, icon: Icon, title, text }) => (
+              <div key={key}>
+                <Icon size={24} />
+                <strong>{title}</strong>
+                <span>{text}</span>
+              </div>
+            ))}
+          </section>
+        )}
 
         <Section title={t('New arrivals')} link="/products?sort=newest">
           {latest.data ? <ProductGrid products={latest.data.items} /> : <ProductGridSkeleton count={4} />}

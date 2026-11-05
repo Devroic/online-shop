@@ -4,7 +4,9 @@ import { translator } from '../i18n.js';
 import { salePrice } from './catalog.js';
 import { HttpError, badRequest, randomToken } from '../utils.js';
 
-export const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+export const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'];
+/** Orders whose items are back on the shelf (never sent, or sent back). */
+export const STOCK_BACK = ['cancelled', 'returned'];
 export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'];
 
 /**
@@ -21,6 +23,7 @@ const ALLOWED_PAYMENT = {
     shipped: ['paid'],
     delivered: ['paid', 'refunded'],
     cancelled: ['pending', 'failed', 'paid', 'refunded'],
+    returned: ['paid', 'refunded'],
   },
   cod: {
     pending: ['pending'],
@@ -28,6 +31,7 @@ const ALLOWED_PAYMENT = {
     shipped: ['pending'],
     delivered: ['pending', 'paid', 'refunded'],
     cancelled: ['pending', 'failed', 'paid', 'refunded'],
+    returned: ['paid', 'refunded'],
   },
 };
 
@@ -373,8 +377,11 @@ export async function updateOrder(id, patch, { actor = 'admin' } = {}) {
     const by = actor !== 'admin' ? ` (${actor})` : '';
     if (patch.status && patch.status !== o.status) {
       // Re-opening a cancelled order takes the stock again (never below zero).
-      if (patch.status === 'cancelled') await adjustStock(t, items, +1);
-      else if (o.status === 'cancelled') await adjustStock(t, items, -1, { guarded: false });
+      // Cancelled or returned: the items go back to stock; leaving those states takes them again.
+      const wasBack = STOCK_BACK.includes(o.status);
+      const isBack = STOCK_BACK.includes(patch.status);
+      if (isBack && !wasBack) await adjustStock(t, items, +1);
+      else if (wasBack && !isBack) await adjustStock(t, items, -1, { guarded: false });
       // Same for the coupon: a cancelled order gives its use back (e.g. an abandoned card payment).
       // Re-opening takes it again even past the limit, like stock: the order already had it.
       if (o.coupon_code && (patch.status === 'cancelled' || o.status === 'cancelled')) {

@@ -7,7 +7,7 @@ import { translator } from '../i18n.js';
 // Default content in English; translated to the shop's language (see ../locales).
 const PAGES = [
   ['about', 'About us', '## Who we are\n\nTell your story here: what makes the shop special and why people should buy from you.'],
-  ['shipping-returns', 'Shipping & Returns', '## Shipping\n\nOrders ship within 1-3 business days.\n\n## Returns\n\nYou can return a product within 14 days of delivery.'],
+  ['shipping-returns', 'Shipping & Returns', '## Shipping\n\nOrders are delivered within 2-7 business days.\n\n## Returns\n\nYou can return a product within 14 days of delivery.'],
   ['terms', 'Terms & Conditions', '## Terms & Conditions\n\nFill in your terms (company details, VAT number, payment methods, right of withdrawal, etc.).'],
   ['privacy', 'Privacy Policy', '## Privacy Policy\n\nDescribe what personal data you collect, why, and how customers can exercise their rights (GDPR).'],
 ];

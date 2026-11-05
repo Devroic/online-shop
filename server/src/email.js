@@ -234,6 +234,18 @@ export function sendStatusUpdate(order, before) {
             p(t('We hope you enjoy your purchase! If anything is not right, just reply to this email and we will sort it out.')),
           details: false,
         };
+      case 'returned': {
+        const refund =
+          order.paymentStatus === 'refunded'
+            ? t('The amount of {total} has been refunded to your card. Depending on your bank, it may take a few business days to show.', { total: `<strong>${total}</strong>` })
+            : t('We will refund {total} to you shortly.', { total: `<strong>${total}</strong>` });
+        return {
+          subject: t('We received the return of your order #{number}', n),
+          title: t('We received your return'),
+          body: p(t('We received the products of your order {number} back.', nb)) + p(refund) + p(t('If you have any questions, just reply to this email.')),
+          details: false,
+        };
+      }
       case 'cancelled': {
         const refund =
           order.paymentStatus === 'refunded'

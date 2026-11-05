@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { ImageUploader, Modal, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle } from './components.jsx';
+import { ImageUploader, Modal, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle, useConfirm } from './components.jsx';
 import ProductImport from './ProductImport.jsx';
 
 function StockCell({ product, onSaved }) {
@@ -117,7 +117,7 @@ export function ProductList() {
           ))}
         </select>
         <button className="btn btn-outline" onClick={() => setDiscounting(true)} disabled={!selected.length && !currentCategory}>
-          <Percent size={16} /> {t('Discount %')}
+          <Percent size={16} /> {t('Discount')}
           {selected.length > 0 && <span className="tab-count">{selected.length}</span>}
         </button>
       </div>
@@ -311,6 +311,7 @@ const EMPTY = {
 };
 
 export function ProductEdit() {
+  const confirm = useConfirm();
   const { id } = useParams();
   const isNew = !id;
   const navigate = useNavigate();
@@ -416,7 +417,7 @@ export function ProductEdit() {
   };
 
   const remove = async () => {
-    if (!window.confirm(t('Delete this product? This cannot be undone.'))) return;
+    if (!(await confirm({ title: t('Delete this product?'), message: t('This cannot be undone.'), confirmLabel: t('Delete'), danger: true }))) return;
     await api.del(`/admin/products/${id}`);
     toast.success(t('Product deleted'));
     reloadShop();

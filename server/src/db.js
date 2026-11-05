@@ -247,6 +247,12 @@ const migrations = [
   // 9: a percentage discount per product. The stored price stays the regular one;
   // the shop shows and charges the reduced price (see salePrice in services/catalog.js).
   `ALTER TABLE products ADD COLUMN discount_percent INTEGER NOT NULL DEFAULT 0 CHECK (discount_percent BETWEEN 0 AND 90);`,
+  // 10: "returned": a delivered order the customer sent back.
+  `
+  ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
+  ALTER TABLE orders ADD CONSTRAINT orders_status_check
+    CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'));
+  `,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

@@ -5,6 +5,7 @@ import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
 import { CURRENCY_SYMBOL } from '../lib/format.js';
 import { countryName, sortedCountries } from '../lib/countries.js';
+import { PERKS } from '../lib/perks.js';
 import { FONT_OPTIONS, applyTheme, useShop } from '../context/ShopContext.jsx';
 import { darkPalette } from '../lib/theme.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -247,6 +248,8 @@ export function Appearance({ s, set, errors, preview, setPreview }) {
 
 /** Admin → Pages → Home page: announcement bar and hero banner. */
 export function HomePage({ s, set, errors }) {
+  // Placeholders show what an empty field displays (courier description, shop phone…).
+  const { settings: liveSettings } = useShop();
   return (
     <>
       <section className="card">
@@ -271,6 +274,29 @@ export function HomePage({ s, set, errors }) {
           <label>{t('Background image (optional)')}</label>
           <ImageUploader multiple={false} value={s.hero.imageUrl ? [s.hero.imageUrl] : []} onChange={(v) => set('hero.imageUrl', v[0] || '')} />
           <span className="field-hint">{t('Wide image, at least 1600px. Text is shown in white over it.')}</span>
+        </div>
+      </section>
+      <section className="card">
+        <h3>{t('Boxes under the banner')}</h3>
+        <p className="muted small">{t('Hide what does not apply to your shop, or write your own words. Empty fields show the text in grey.')}</p>
+        <div className="perk-edit">
+          {PERKS.map(({ key, icon: Icon, title, text }) => {
+            const p = s.perks?.[key] || {};
+            return (
+              <div key={key} className={`perk-edit-row ${p.show === false ? 'dim-card' : ''}`}>
+                <div className="row-gap">
+                  <Icon size={20} className="muted" />
+                  <Toggle checked={p.show !== false} onChange={(v) => set(`perks.${key}.show`, v)} label={title()} />
+                </div>
+                {p.show !== false && (
+                  <div className="grid-2">
+                    <Field label={t('Title')} value={p.title || ''} placeholder={title()} maxLength={60} onChange={(e) => set(`perks.${key}.title`, e.target.value)} error={errors[`perks.${key}.title`]} />
+                    <Field label={t('Text')} value={p.text || ''} placeholder={text(liveSettings)} maxLength={120} onChange={(e) => set(`perks.${key}.text`, e.target.value)} error={errors[`perks.${key}.text`]} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
     </>
@@ -402,6 +428,7 @@ export const SETTINGS_RULES = {
     'hero.subtitle': [r.maxLength(400)],
     'hero.ctaText': [r.maxLength(60)],
     'hero.ctaLink': [r.maxLength(300)],
+    ...Object.fromEntries(['delivery', 'secure', 'returns', 'help'].flatMap((k) => [[`perks.${k}.title`, [r.maxLength(60)]], [`perks.${k}.text`, [r.maxLength(120)]]])),
   },
   payments: {
     orderPrefix: [r.maxLength(10)],

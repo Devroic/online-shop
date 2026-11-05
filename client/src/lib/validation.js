@@ -34,6 +34,8 @@ export function errorMessage(code) {
       return t('Customers need a way to pay: keep card payments on, or cash on an active shipping method');
     case 'country':
       return t('We do not deliver to this country');
+    case 'return_not_delivered':
+      return t('Only a delivered order can be marked as returned');
     case 'status_combination':
       return t('This payment status does not fit the order status');
     case 'integer':

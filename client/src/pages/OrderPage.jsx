@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { CircleCheck, Package, Truck, Store, Clock, XCircle } from 'lucide-react';
+import { CircleCheck, Package, Truck, Store, Clock, XCircle, Undo2 } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -16,6 +16,13 @@ export function StatusTimeline({ status, order }) {
     return (
       <div className="timeline cancelled">
         <XCircle size={20} /> {t('This order was cancelled')}
+      </div>
+    );
+  }
+  if (status === 'returned') {
+    return (
+      <div className="timeline cancelled">
+        <Undo2 size={20} /> {t('This order was returned')}
       </div>
     );
   }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, MessageSquare } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { t } from '../lib/i18n.js';
 import { shopAddress } from '../lib/countries.js';
@@ -56,9 +56,6 @@ export default function Footer() {
             <li>
               <Link to="/track">{t('Track order')}</Link>
             </li>
-            <li>
-              <Link to="/contact">{t('Contact')}</Link>
-            </li>
             {pages
               .filter((p) => p.showInFooter)
               .map((p) => (
@@ -71,14 +68,17 @@ export default function Footer() {
         <div>
           <h4>{t('Contact')}</h4>
           <ul className="contact-list">
-            {contact.phone && (
-              <li>
-                <Phone size={16} /> <a href={`tel:${contact.phone.replace(/\s/g, '')}`}>{contact.phone}</a>
-              </li>
-            )}
+            <li>
+              <MessageSquare size={16} /> <Link to="/contact">{t('Send us a message')}</Link>
+            </li>
             {contact.email && (
               <li>
                 <Mail size={16} /> <a href={`mailto:${contact.email}`}>{contact.email}</a>
+              </li>
+            )}
+            {contact.phone && (
+              <li>
+                <Phone size={16} /> <a href={`tel:${contact.phone.replace(/\s/g, '')}`}>{contact.phone}</a>
               </li>
             )}
             {shopAddress(contact) && (

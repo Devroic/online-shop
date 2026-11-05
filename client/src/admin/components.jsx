@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Upload, X, GripVertical, ImagePlus } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { CURRENCY_SYMBOL, centsToInput, parseMoney } from '../lib/format.js';
@@ -217,9 +217,69 @@ export function ImageUploader({ value, onChange, multiple = true, kind }) {
   );
 }
 
-export function useConfirm() {
-  return (message) => window.confirm(message);
+const ConfirmContext = createContext(null);
+
+/**
+ * Our own confirmation window instead of the browser's (which looks different in
+ * every browser and can be switched off by the visitor). Wrap the admin in
+ * <ConfirmProvider>, then:
+ *   const confirm = useConfirm();
+ *   if (!(await confirm({ title, message, confirmLabel, danger: true }))) return;
+ */
+export function ConfirmProvider({ children }) {
+  const [ask, setAsk] = useState(null); // { title, message, confirmLabel, danger, resolve }
+  const answer = useCallback(
+    (yes) => {
+      ask?.resolve(yes);
+      setAsk(null);
+    },
+    [ask],
+  );
+  const confirm = useCallback((opts) => new Promise((resolve) => setAsk({ ...(typeof opts === 'string' ? { message: opts } : opts), resolve })), []);
+
+  useEffect(() => {
+    if (!ask) return;
+    // Capture first, so Escape closes only this window and not an editor behind it.
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
+        answer(false);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [ask, answer]);
+
+  return (
+    <ConfirmContext.Provider value={confirm}>
+      {children}
+      {ask && (
+        <div className="modal-backdrop confirm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && answer(false)}>
+          <div className="modal confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+            <div className="modal-body">
+              <h2 id="confirm-title">{ask.title || t('Are you sure?')}</h2>
+              {ask.message && (
+                <p id="confirm-message" className="muted">
+                  {ask.message}
+                </p>
+              )}
+            </div>
+            <div className="modal-foot">
+              <button className="btn btn-ghost" onClick={() => answer(false)}>
+                {ask.cancelLabel || t('Cancel')}
+              </button>
+              <button className={`btn ${ask.danger ? 'btn-danger' : 'btn-primary'}`} onClick={() => answer(true)} autoFocus>
+                {ask.confirmLabel || t('OK')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </ConfirmContext.Provider>
+  );
 }
+
+export const useConfirm = () => useContext(ConfirmContext);
 
 export function SearchInput({ value, onChange, placeholder }) {
   const [text, setText] = useState(value || '');

@@ -18,12 +18,16 @@ export async function publicSettings() {
   const { notifications, ...rest } = s;
   const oauthReady = !!(config.supabase.url && config.supabase.anonKey);
   // The courier's countries (the first is preselected); none when only store pickup is on.
-  const methods = await db().all('SELECT kind, active, cod, rates FROM shipping_methods WHERE kind IS NOT NULL');
+  const methods = await db().all('SELECT kind, active, cod, rates, description FROM shipping_methods WHERE kind IS NOT NULL');
   const courier = methods.find((m) => m.kind === 'courier' && m.active);
   const deliveryCountries = courier ? courier.rates.map((r) => r.country) : [];
+  // Default text of the home page's delivery box: the courier's description, or store pickup only.
+  const pickup = methods.find((m) => m.kind === 'pickup' && m.active);
+  const deliveryNote = courier ? courier.description : pickup ? 'pickup' : '';
   return {
     ...rest,
     deliveryCountries,
+    deliveryNote,
     login: { google: oauthReady && config.loginProviders.includes('google'), facebook: oauthReady && config.loginProviders.includes('facebook') },
     // Public by design (Supabase "anon" key); used only for Google/Facebook sign-in.
     supabase: oauthReady ? { url: config.supabase.url, anonKey: config.supabase.anonKey } : null,

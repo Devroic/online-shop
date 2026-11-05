@@ -25,7 +25,7 @@ router.get('/stats', async (req, res) => {
   const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 7), 365);
   const q = (sql, vals) => db().one(sql, vals);
   const sum = (where, vals = []) =>
-    q(`SELECT COUNT(*)::int AS orders, COALESCE(SUM(total), 0)::int AS revenue FROM orders WHERE status <> 'cancelled' AND ${where}`, vals);
+    q(`SELECT COUNT(*)::int AS orders, COALESCE(SUM(total), 0)::int AS revenue FROM orders WHERE status NOT IN ('cancelled', 'returned') AND ${where}`, vals);
   const localDay = `(created_at AT TIME ZONE '${TZ}')::date`;
   const today = `(now() AT TIME ZONE '${TZ}')::date`;
   const since = `created_at >= now() - make_interval(days => $1)`;
@@ -34,7 +34,7 @@ router.get('/stats', async (req, res) => {
     `SELECT to_char(d, 'YYYY-MM-DD') AS day, COALESCE(o.orders, 0)::int AS orders, COALESCE(o.revenue, 0)::int AS revenue
      FROM generate_series(${today} - ($1::int - 1), ${today}, interval '1 day') d
      LEFT JOIN (SELECT ${localDay} AS day, COUNT(*) AS orders, SUM(total) AS revenue FROM orders
-                WHERE status <> 'cancelled' GROUP BY 1) o ON o.day = d::date
+                WHERE status NOT IN ('cancelled', 'returned') GROUP BY 1) o ON o.day = d::date
      ORDER BY d`,
     [days],
   );
@@ -51,7 +51,7 @@ router.get('/stats', async (req, res) => {
     topProducts: await db().all(
       `SELECT oi.product_id AS id, oi.name, SUM(oi.quantity)::int AS quantity, SUM(oi.price * oi.quantity)::int AS revenue
        FROM order_items oi JOIN orders o ON o.id = oi.order_id
-       WHERE o.status <> 'cancelled' AND o.${since}
+       WHERE o.status NOT IN ('cancelled', 'returned') AND o.${since}
        GROUP BY oi.product_id, oi.name ORDER BY quantity DESC LIMIT 5`,
       [days],
     ),
@@ -452,6 +452,10 @@ router.put('/orders/:id', async (req, res) => {
   const status = patch.status ?? before.status;
   const paymentStatus = patch.paymentStatus ?? before.paymentStatus;
   const pairChanged = status !== before.status || paymentStatus !== before.paymentStatus;
+  // A return is only possible for an order that was delivered.
+  if (status === 'returned' && before.status !== 'returned' && before.status !== 'delivered') {
+    throw badRequest('Validation failed', { status: 'return_not_delivered' });
+  }
   if (
     pairChanged &&
     (!statusPairAllowed(before.paymentMethod, status, paymentStatus) || !paymentStepAllowed(before.paymentMethod, before.paymentStatus, paymentStatus))
@@ -479,7 +483,7 @@ router.get('/customers', async (req, res) => {
   const sql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const { n: total } = await db().one(`SELECT COUNT(*)::int AS n FROM users u ${sql}`, list);
   const rows = await db().all(
-    `SELECT u.*, COUNT(o.id)::int AS order_count, COALESCE(SUM(o.total) FILTER (WHERE o.status <> 'cancelled'), 0)::int AS spent
+    `SELECT u.*, COUNT(o.id)::int AS order_count, COALESCE(SUM(o.total) FILTER (WHERE o.status NOT IN ('cancelled', 'returned')), 0)::int AS spent
      FROM users u LEFT JOIN orders o ON o.user_id = u.id ${sql} GROUP BY u.id ORDER BY u.id DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
     list,
   );
@@ -732,6 +736,13 @@ const settingsSchema = z
       .partial(),
     announcement: z.string().max(300),
     hero: z.object({ title: z.string().max(200), subtitle: z.string().max(400), imageUrl: z.string().max(1000), ctaText: z.string().max(60), ctaLink: z.string().max(300) }).partial(),
+    perks: z
+      .object(
+        Object.fromEntries(
+          ['delivery', 'secure', 'returns', 'help'].map((k) => [k, z.object({ show: z.boolean(), title: z.string().trim().max(60), text: z.string().trim().max(120) }).partial()]),
+        ),
+      )
+      .partial(),
     contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), country: z.enum(COUNTRY_CODES), city: z.string().max(100), region: z.string().max(100), postalCode: z.string().max(20), hours: z.string().max(300) }).partial(),
     social: z.object({ facebook: optUrl, instagram: optUrl, tiktok: optUrl }).partial(),
     payments: z

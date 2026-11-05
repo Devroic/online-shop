@@ -7,12 +7,13 @@ import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { Modal, MoneyInput, PageHeader, Toggle } from './components.jsx';
+import { Modal, MoneyInput, PageHeader, Toggle, useConfirm } from './components.jsx';
 
 const describe = (c) =>
   c.type === 'percent' ? `-${c.value}%` : c.type === 'fixed' ? `-${money(c.value)}` : t('Free shipping');
 
 function CouponModal({ coupon, onClose, onSaved }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState(
     coupon ? { ...coupon, expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('sv-SE') : '' } : { code: '', type: 'percent', value: 10, minOrder: 0, maxUses: '', expiresAt: '', active: true },
   );
@@ -59,7 +60,7 @@ function CouponModal({ coupon, onClose, onSaved }) {
     }
   };
   const remove = async () => {
-    if (!window.confirm(t('Delete this code?'))) return;
+    if (!(await confirm({ title: t('Delete this code?'), message: t('Customers will no longer be able to use it.'), confirmLabel: t('Delete'), danger: true }))) return;
     await api.del(`/admin/coupons/${coupon.id}`);
     onSaved();
   };

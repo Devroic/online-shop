@@ -8,9 +8,10 @@ import { useShop } from '../context/ShopContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { ImageUploader, Modal, PageHeader, Toggle } from './components.jsx';
+import { ImageUploader, Modal, PageHeader, Toggle, useConfirm } from './components.jsx';
 
 function CategoryModal({ category, onClose, onSaved }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState(category || { name: '', slug: '', description: '', image: null, active: true });
   const v = useValidation();
   const { errors } = v;
@@ -41,7 +42,7 @@ function CategoryModal({ category, onClose, onSaved }) {
     }
   };
   const remove = async () => {
-    if (!window.confirm(t('Delete this category? Its products will stay, without a category.'))) return;
+    if (!(await confirm({ title: t('Delete this category?'), message: t('Its products will stay, without a category.'), confirmLabel: t('Delete'), danger: true }))) return;
     await api.del(`/admin/categories/${category.id}`);
     onSaved();
   };

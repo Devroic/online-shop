@@ -5,10 +5,11 @@ import { useFetch } from '../lib/useFetch.js';
 import { dateTime } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { EmptyState, PageLoader, Pagination } from '../components/ui.jsx';
-import { PageHeader } from './components.jsx';
+import { PageHeader, useConfirm } from './components.jsx';
 
 /** Contact form messages: one line each (subject, sender, date); click to read. */
 export default function Messages({ onChange }) {
+  const confirm = useConfirm();
   const [page, setPage] = useState(1);
   const { data, setData, reload } = useFetch(`/admin/messages?page=${page}`);
   const [openId, setOpenId] = useState(null);
@@ -25,7 +26,7 @@ export default function Messages({ onChange }) {
     if (opening && !m.read) markRead(m, true);
   };
   const remove = async (m) => {
-    if (!window.confirm(t('Delete this message?'))) return;
+    if (!(await confirm({ title: t('Delete this message?'), message: t('This cannot be undone.'), confirmLabel: t('Delete'), danger: true }))) return;
     await api.del(`/admin/messages/${m.id}`);
     // Reload so the page refills from the next one; step back if this page is now empty.
     if (data.items.length === 1 && page > 1) setPage(page - 1);

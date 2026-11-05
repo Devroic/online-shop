@@ -41,6 +41,7 @@ export const ORDER_STATUS = {
   shipped: 'Shipped',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
+  returned: 'Returned',
 };
 
 // Store pickup orders (no delivery address) name two steps differently.

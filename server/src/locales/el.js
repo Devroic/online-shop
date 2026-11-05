@@ -8,6 +8,7 @@ const strings = {
   Shipped: 'Απεστάλη',
   Delivered: 'Παραδόθηκε',
   Cancelled: 'Ακυρώθηκε',
+  Returned: 'Επιστράφηκε',
 
   // Emails: shared parts
   Subtotal: 'Υποσύνολο',
@@ -68,6 +69,10 @@ const strings = {
     'Το ποσό των {total} επιστράφηκε στην κάρτα σας. Ανάλογα με την τράπεζά σας, μπορεί να χρειαστούν μερικές εργάσιμες μέχρι να εμφανιστεί.',
   'Since you have already paid, we will refund {total} to your card.': 'Επειδή έχετε ήδη πληρώσει, θα σας επιστρέψουμε το ποσό των {total} στην κάρτα σας.',
   'Your order is active again': 'Η παραγγελία σας είναι ξανά ενεργή',
+  'We received your return': 'Λάβαμε την επιστροφή σας',
+  'We received the return of your order #{number}': 'Λάβαμε την επιστροφή της παραγγελίας σας #{number}',
+  'We received the products of your order {number} back.': 'Παραλάβαμε τα προϊόντα της παραγγελίας σας {number}.',
+  'We will refund {total} to you shortly.': 'Θα σας επιστρέψουμε σύντομα το ποσό των {total}.',
   'Update on your order #{number}': 'Ενημέρωση για την παραγγελία σας #{number}',
   'Your order {number} is active again.': 'Η παραγγελία σας {number} είναι ξανά ενεργή.',
   'Track your order': 'Παρακολουθήστε την παραγγελία σας',
@@ -111,6 +116,8 @@ const strings = {
   '## Who we are\n\nTell your story here: what makes the shop special and why people should buy from you.':
     '## Ποιοι είμαστε\n\nΓράψτε εδώ την ιστορία του καταστήματος, τι σας κάνει ξεχωριστούς και γιατί να ψωνίσει κάποιος από εσάς.',
   'Shipping & Returns': 'Αποστολές & Επιστροφές',
+  '## Shipping\n\nOrders are delivered within 2-7 business days.\n\n## Returns\n\nYou can return a product within 14 days of delivery.':
+    '## Αποστολές\n\nΟι παραγγελίες παραδίδονται εντός 2-7 εργάσιμων ημερών.\n\n## Επιστροφές\n\nΜπορείτε να επιστρέψετε ένα προϊόν εντός 14 ημερών από την παραλαβή.',
   '## Shipping\n\nOrders ship within 1-3 business days.\n\n## Returns\n\nYou can return a product within 14 days of delivery.':
     '## Αποστολές\n\nΟι παραγγελίες αποστέλλονται εντός 1-3 εργάσιμων ημερών.\n\n## Επιστροφές\n\nΜπορείτε να επιστρέψετε ένα προϊόν εντός 14 ημερών από την παραλαβή.',
   'Terms & Conditions': 'Όροι χρήσης',

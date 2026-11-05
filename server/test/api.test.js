@@ -391,6 +391,23 @@ test('percentage discount: shown and charged reduced, regular price kept, bulk b
   await admin.post('/api/admin/products/discount').send({ percent: 10 }).expect(400);
 });
 
+test('returned: only after delivery, puts stock back, not counted as revenue', async () => {
+  const p = (await admin.post('/api/admin/products').send({ name: 'Return test', price: 1000, stock: 5 }).expect(201)).body;
+  const o = (await request(app).post('/api/orders').send(checkout({ items: [{ productId: p.id, quantity: 2 }] })).expect(201)).body.order;
+  assert.equal(await stockOf(p.id), 3);
+  const early = await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'returned', paymentStatus: 'paid' }).expect(400);
+  assert.equal(early.body.details.status, 'return_not_delivered');
+  await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'delivered', paymentStatus: 'paid' }).expect(200);
+  const revenue = async () => (await admin.get('/api/admin/stats?days=7').expect(200)).body.allTime.revenue;
+  const withIt = await revenue();
+  await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'returned', paymentStatus: 'refunded' }).expect(200);
+  assert.equal(await stockOf(p.id), 5);
+  assert.equal(await revenue(), withIt - o.total);
+  // Back to delivered (a mistake): the stock is taken again.
+  await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'delivered', paymentStatus: 'paid' }).expect(200);
+  assert.equal(await stockOf(p.id), 3);
+});
+
 test('language switch is off by default', async () => {
   const { DEFAULT_SETTINGS } = await import('../src/settings.js');
   assert.equal(DEFAULT_SETTINGS.languageSwitch, false);

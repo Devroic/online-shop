@@ -574,6 +574,7 @@ input[type='number'] {
   background: var(--danger-soft);
   color: var(--danger);
 }
+.status-returned,
 .status-refunded {
   background: var(--surface);
   color: var(--muted);

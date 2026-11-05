@@ -7,9 +7,10 @@ import { t } from '../lib/i18n.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, PageLoader, Pagination } from '../components/ui.jsx';
-import { PageHeader, SearchInput } from './components.jsx';
+import { PageHeader, SearchInput, useConfirm } from './components.jsx';
 
 export default function Customers() {
+  const confirm = useConfirm();
   const [params, setParams] = useSearchParams();
   const q = params.get('q') || '';
   const role = params.get('role') || '';
@@ -26,7 +27,7 @@ export default function Customers() {
 
   const setRole = async (c, newRole) => {
     const msg = newRole === 'admin' ? t('Give {email} full access to the admin panel?') : t('Remove admin access from {email}?');
-    if (!window.confirm(msg.replace('{email}', c.email))) return;
+    if (!(await confirm({ title: newRole === 'admin' ? t('Make admin') : t('Remove admin'), message: msg.replace('{email}', c.email), confirmLabel: newRole === 'admin' ? t('Make admin') : t('Remove admin'), danger: newRole !== 'admin' }))) return;
     try {
       await api.put(`/admin/customers/${c.id}/role`, { role: newRole });
       reload();

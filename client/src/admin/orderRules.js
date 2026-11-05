@@ -12,6 +12,7 @@ const ALLOWED_PAYMENT = {
     shipped: ['paid'],
     delivered: ['paid', 'refunded'],
     cancelled: ['pending', 'failed', 'paid', 'refunded'],
+    returned: ['paid', 'refunded'],
   },
   cod: {
     pending: ['pending'],
@@ -19,6 +20,7 @@ const ALLOWED_PAYMENT = {
     shipped: ['pending'],
     delivered: ['pending', 'paid', 'refunded'],
     cancelled: ['pending', 'failed', 'paid', 'refunded'],
+    returned: ['paid', 'refunded'],
   },
 };
 
@@ -27,7 +29,12 @@ export const pairAllowed = (method, status, paymentStatus) =>
 
 /** Order statuses that can go with `paymentStatus`. The saved status always stays listed. */
 export const statusOptions = (method, statuses, paymentStatus, saved) =>
-  statuses.filter((s) => s === saved || pairAllowed(method, s, paymentStatus));
+  statuses.filter(
+    (s) =>
+      s === saved ||
+      // "Returned" is offered only for a delivered order.
+      ((s !== 'returned' || saved === 'delivered') && pairAllowed(method, s, paymentStatus)),
+  );
 
 /** A card payment Stripe confirmed cannot become unpaid or failed again. */
 export const paymentStepAllowed = (method, saved, next) =>

@@ -11,9 +11,9 @@ import { useToast } from '../context/ToastContext.jsx';
 import { Checkbox, EmptyState, Field, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 import { OrderItems, OrderTotals } from '../pages/OrderPage.jsx';
-import { PageHeader, SearchInput } from './components.jsx';
+import { PageHeader, SearchInput, useConfirm } from './components.jsx';
 
-const STATUS_TABS = ['', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+const STATUS_TABS = ['', 'pending', 'processing', 'shipped', 'delivered', 'returned', 'cancelled'];
 
 export function OrderList() {
   const [params, setParams] = useSearchParams();
@@ -123,6 +123,7 @@ const EVENT_LABEL = { created: 'Order placed', status: 'Status changed', payment
 const EDITABLE = ['status', 'paymentStatus', 'trackingNumber', 'trackingUrl', 'adminNotes'];
 
 export function OrderDetail({ onChange }) {
+  const confirm = useConfirm();
   const { id } = useParams();
   const { data: order, setData } = useFetch(`/admin/orders/${id}`, { keepPrevious: false });
   const toast = useToast();
@@ -151,7 +152,12 @@ export function OrderDetail({ onChange }) {
       adminNotes: [rules.maxLength(5000)],
     });
     if (!ok) return;
-    if (patch.status === 'cancelled' && order.status !== 'cancelled' && !window.confirm(t('Cancel this order? Stock will be returned to inventory.'))) return;
+    if (
+      patch.status === 'cancelled' &&
+      order.status !== 'cancelled' &&
+      !(await confirm({ title: t('Cancel this order?'), message: t('Stock will be returned to inventory.'), confirmLabel: t('Cancel order'), cancelLabel: t('Keep order'), danger: true }))
+    )
+      return;
     setSaving(true);
     try {
       const updated = await api.put(`/admin/orders/${id}`, { ...patch, notifyCustomer: notify });
@@ -314,5 +320,5 @@ export function OrderDetail({ onChange }) {
 /** Event messages look like "pending → processing (stripe)"; translate the status words. */
 function translateEvent(type, msg) {
   const all = type === 'payment' ? PAYMENT_STATUS : ORDER_STATUS;
-  return msg.replace(/\b(pending|processing|shipped|delivered|cancelled|paid|failed|refunded)\b/g, (w) => (all[w] ? t(all[w]) : w));
+  return msg.replace(/\b(pending|processing|shipped|delivered|cancelled|returned|paid|failed|refunded)\b/g, (w) => (all[w] ? t(all[w]) : w));
 }

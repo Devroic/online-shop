@@ -10,10 +10,11 @@ import { useShop } from '../context/ShopContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { Modal, PageHeader, Toggle } from './components.jsx';
+import { Modal, PageHeader, Toggle, useConfirm } from './components.jsx';
 import { HomePage, SETTINGS_RULES, SettingsForm } from './Settings.jsx';
 
 function PageModal({ page, onClose, onSaved }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState(page || { slug: '', title: '', content: '', showInFooter: true });
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,7 +44,7 @@ function PageModal({ page, onClose, onSaved }) {
     }
   };
   const remove = async () => {
-    if (!window.confirm(t('Delete this page?'))) return;
+    if (!(await confirm({ title: t('Delete this page?'), message: t('Links to it will stop working.'), confirmLabel: t('Delete'), danger: true }))) return;
     await api.del(`/admin/pages/${page.slug}`);
     onSaved();
   };
