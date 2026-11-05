@@ -42,6 +42,8 @@ export async function sendMail({ to, subject, html, replyTo }) {
       await smtpTransport().sendMail({ from, to, subject, html, replyTo });
     } else if (!config.isTest) {
       console.log(`[mail] (email not configured) to=${to} subject="${subject}"`);
+      // Locally, show the links (password reset, order page…) so they can be opened from the terminal.
+      if (!config.isProd) for (const [, href] of html.matchAll(/href="([^"]+)"/g)) console.log(`[mail]   link: ${href.replaceAll('&amp;', '&')}`);
     }
   } catch (err) {
     console.error('[mail] failed:', err.message);
