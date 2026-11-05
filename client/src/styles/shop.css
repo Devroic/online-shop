@@ -381,7 +381,8 @@
 .category-tiles {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 1fr);
+  /* At most 4 tiles per row width: one or two categories stay tile-sized instead of filling the page. */
+  grid-auto-columns: minmax(150px, calc((100% - 3 * 12px) / 4));
   gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
