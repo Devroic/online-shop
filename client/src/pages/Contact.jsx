@@ -9,7 +9,7 @@ import { rules, useValidation } from '../lib/validation.js';
 export default function Contact() {
   const { settings } = useShop();
   const { contact } = settings;
-  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const v = useValidation();
   const [state, setState] = useState('idle');
   useTitle(t('Contact'));
@@ -38,6 +38,7 @@ export default function Contact() {
                   name: [rules.required(), rules.maxLength(100)],
                   email: [rules.required(), rules.email()],
                   phone: [rules.maxLength(40)],
+                  subject: [rules.required(), rules.maxLength(150)],
                   message: [rules.required(), rules.minLength(5), rules.maxLength(5000)],
                 });
                 if (!ok) return;
@@ -57,6 +58,7 @@ export default function Contact() {
                 <Field label={t('Email')} type="email" autoComplete="email" value={form.email} onChange={set('email')} error={v.errors.email} />
               </div>
               <Field label={t('Phone (optional)')} type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} error={v.errors.phone} />
+              <Field label={t('Subject')} value={form.subject} onChange={set('subject')} error={v.errors.subject} maxLength={150} />
               <Field as="textarea" rows={6} label={t('Message')} value={form.message} onChange={set('message')} error={v.errors.message} />
               <FormAlert message={v.errors._} />
               <button className="btn btn-primary" disabled={state === 'sending'}>

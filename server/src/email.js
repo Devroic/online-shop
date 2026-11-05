@@ -276,11 +276,12 @@ export async function sendPasswordReset(user, token, lang) {
 export async function sendContactMessage(msg) {
   const s = await getSettings();
   const t = translator(s.language);
-  const body = `${heading(t('New message from the contact form'))}
+  const body = `${small(t('New message from the contact form'))}
+    ${heading(msg.subject)}
     <p><strong>${esc(msg.name)}</strong><br>${esc(msg.email)}${msg.phone ? `<br>${esc(msg.phone)}` : ''}</p>
-    <p style="white-space:pre-line;background:#f4f4f5;border-radius:8px;padding:12px 16px">${esc(msg.message)}</p>
+    <p style="white-space:pre-line;overflow-wrap:anywhere;word-break:break-word;background:#f4f4f5;border-radius:8px;padding:12px 16px">${esc(msg.message)}</p>
     ${small(t('Reply to this email to answer {name} directly.', { name: esc(msg.name) }))}`;
-  return sendMail({ to: s.contact.email, subject: t('New message from {name}', { name: msg.name }), html: layout(s, body), replyTo: msg.email });
+  return sendMail({ to: s.contact.email, subject: `${msg.subject} – ${msg.name}`, html: layout(s, body), replyTo: msg.email });
 }
 
 /** Welcome email. With `verifyToken` (email & password sign-up) it also asks to confirm the address. */

@@ -203,6 +203,8 @@ const migrations = [
   );
   ALTER TABLE email_verifications ENABLE ROW LEVEL SECURITY;
   `,
+  // 4: contact messages get a subject, so the admin list can show one line per message.
+  `ALTER TABLE messages ADD COLUMN subject TEXT NOT NULL DEFAULT '';`,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

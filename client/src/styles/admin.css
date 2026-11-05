@@ -923,20 +923,62 @@ input[type='range'] {
   }
 }
 
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+/* Messages: one row per message (subject), opened in place. */
 .message {
-  cursor: default;
+  padding: 0;
+  overflow: hidden;
 }
 .message.unread {
   border-left: 3px solid var(--accent);
 }
-.message-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+.message-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.message-subject {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.message.unread .message-subject {
+  font-weight: 700;
+}
+.message-from {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.message-open {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border);
 }
 .message-body {
   white-space: pre-line;
+  overflow-wrap: anywhere;
   margin: 12px 0;
 }
 

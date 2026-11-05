@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Download, Printer, ShoppingCart, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Download, Printer, ShoppingCart, Mail, Phone, X } from 'lucide-react';
 import { api, qs } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { money, dateTime } from '../lib/format.js';
@@ -51,6 +51,14 @@ export function OrderList() {
         <input className="input" type="date" value={filters.from} onChange={(e) => update({ from: e.target.value })} aria-label={t('From')} />
         <input className="input" type="date" value={filters.to} onChange={(e) => update({ to: e.target.value })} aria-label={t('To')} />
       </div>
+      {filters.customer && (
+        <p className="filter-chip">
+          {t('Orders of customer: {name}', { name: data?.items[0]?.customerName || '…' })}
+          <button type="button" className="icon-btn" onClick={() => update({ customer: '' })} aria-label={t('Show all orders')}>
+            <X size={14} />
+          </button>
+        </p>
+      )}
       {!data ? (
         <PageLoader />
       ) : !data.items.length ? (
@@ -220,7 +228,7 @@ export function OrderDetail({ onChange }) {
             </p>
             {order.userId && (
               <Link to={`/admin/orders?customer=${order.userId}`} className="link-btn small no-print">
-                {t('Registered customer')}
+                {t('All orders of this customer')}
               </Link>
             )}
             <h3 className="mt">{t('Delivery')}</h3>

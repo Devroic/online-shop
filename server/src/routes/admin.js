@@ -567,7 +567,7 @@ router.delete('/pages/:slug', async (req, res) => {
 router.get('/messages', async (_req, res) => {
   res.json(
     (await db().all('SELECT * FROM messages ORDER BY id DESC LIMIT 500')).map((m) => ({
-      id: m.id, name: m.name, email: m.email, phone: m.phone, message: m.message, read: m.read, createdAt: m.created_at,
+      id: m.id, name: m.name, email: m.email, phone: m.phone, subject: m.subject, message: m.message, read: m.read, createdAt: m.created_at,
     })),
   );
 });

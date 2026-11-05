@@ -101,12 +101,15 @@ const contactSchema = z.object({
   name: z.string().trim().min(1).max(100),
   email: z.email().max(200),
   phone: z.string().trim().max(40).optional().default(''),
+  subject: z.string().trim().min(1).max(150),
   message: z.string().trim().min(5).max(5000),
 });
 
 router.post('/contact', contactLimiter, async (req, res) => {
   const msg = validate(contactSchema, req.body);
-  await db().query('INSERT INTO messages (name, email, phone, message) VALUES ($1, $2, $3, $4)', [msg.name, msg.email, msg.phone, msg.message]);
+  await db().query('INSERT INTO messages (name, email, phone, subject, message) VALUES ($1, $2, $3, $4, $5)', [
+    msg.name, msg.email, msg.phone, msg.subject, msg.message,
+  ]);
   background(sendContactMessage(msg));
   res.status(201).json({ ok: true });
 });
