@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined); // undefined = still loading
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/auth/me').then((r) => setUser(r.user), () => setUser(null));
@@ -26,11 +28,14 @@ export function AuthProvider({ children }) {
         return r.user;
       },
       logout: async () => {
+        // Leave account/admin pages first: signed out there, they send you to
+        // /login?next=… and the next sign-in would land back on them.
+        navigate('/', { replace: true });
         await api.post('/auth/logout');
         setUser(null);
       },
     }),
-    [user],
+    [user, navigate],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

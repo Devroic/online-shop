@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from './AuthContext.jsx';
 
 const CartContext = createContext(null);
 const KEY = 'shop.cart.v1';
@@ -90,6 +91,18 @@ export function CartProvider({ children }) {
 
   const remove = useCallback((key) => setItems((list) => list.filter((l) => l.key !== key)), []);
   const clear = useCallback(() => setItems([]), []);
+
+  // Signing out empties the cart, so the next person on this device does not see it.
+  // (A guest who signs in keeps their cart.)
+  const { user } = useAuth();
+  const wasSignedIn = useRef(false);
+  useEffect(() => {
+    if (user) wasSignedIn.current = true;
+    else if (user === null && wasSignedIn.current) {
+      wasSignedIn.current = false;
+      clear();
+    }
+  }, [user, clear]);
 
   /** Updates snapshots from a server quote (fresh prices, names, images). */
   const syncFromQuote = useCallback((quote) => {
