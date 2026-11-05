@@ -528,6 +528,8 @@
   }
 }
 .perks > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
   background: var(--surface);
   border-radius: var(--radius);
   padding: 20px;
@@ -726,6 +728,7 @@
 }
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -745,8 +748,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .sort select {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 40px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
@@ -804,6 +811,7 @@
 
 .product-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 @media (min-width: 900px) {
@@ -1010,6 +1018,18 @@
   display: flex;
   gap: 12px;
 }
+.buy-row > .btn {
+  flex: 1;
+  min-width: 0;
+}
+/* Very small phones: the button text wraps instead of pushing past the edge. */
+@media (max-width: 380px) {
+  .buy-row > .btn {
+    white-space: normal;
+    line-height: 1.2;
+    padding-inline: 12px;
+  }
+}
 .product-perks {
   list-style: none;
   padding: 16px 0;
@@ -1060,6 +1080,7 @@
 }
 .two-col {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 @media (min-width: 900px) {
@@ -1254,6 +1275,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-height: 44px;
   border: 0;
   background: none;
   padding: 0;
@@ -1321,7 +1343,7 @@
   padding: 0;
   margin: 0 0 8px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   position: relative;
 }
 .timeline li {
@@ -1333,6 +1355,7 @@
   text-align: center;
   color: var(--muted);
   position: relative;
+  min-width: 0;
 }
 .timeline li::before {
   content: '';
@@ -1368,6 +1391,26 @@
   background: var(--success);
   border-color: var(--success);
   color: #fff;
+}
+/* Small phones: four labels do not fit side by side, so the steps stack. */
+@media (max-width: 420px) {
+  .timeline {
+    grid-template-columns: none;
+    gap: 10px;
+  }
+  .timeline li {
+    flex-direction: row;
+    gap: 12px;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+  .timeline li::before {
+    top: -10px;
+    left: 16px;
+    right: auto;
+    width: 2px;
+    height: 10px;
+  }
 }
 .timeline.cancelled {
   display: flex;
@@ -1483,7 +1526,11 @@
 .footer-grid {
   display: grid;
   gap: 24px 32px;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.footer-grid > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .footer-grid > div:first-child {
   grid-column: 1 / -1;

@@ -280,6 +280,7 @@
 }
 .a-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -529,6 +530,7 @@ button.prod-cell {
 
 .a-edit {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 @media (min-width: 1000px) {
@@ -1056,7 +1058,7 @@ input[type='range'] {
 }
 .message-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
   width: 100%;
   padding: 14px 16px;
