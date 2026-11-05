@@ -7,7 +7,7 @@ import { api } from '../lib/api.js';
 import { t } from '../lib/i18n.js';
 import { FormAlert, PageLoader, useTitle } from '../components/ui.jsx';
 
-const safeNext = (next) => (next && next.startsWith('/') && !next.startsWith('//') ? next : '/account');
+const safeNext = (next) => (next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
 
 /** Google/Facebook send the visitor back here; we turn that into a shop session. */
 export default function AuthCallback() {

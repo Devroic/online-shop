@@ -23,13 +23,13 @@ export function Login() {
     setForm({ ...form, [k]: e.target.value });
   };
 
-  if (user) return <Navigate to={safeNext(params.get('next'), user.role === 'admin' ? '/admin' : '/account')} replace />;
+  if (user) return <Navigate to={safeNext(params.get('next'), user.role === 'admin' ? '/admin' : '/')} replace />;
 
   return (
     <div className="container narrow">
       <div className="card auth-card">
         <h1>{t('Sign in')}</h1>
-        <SocialLogin next={safeNext(params.get('next'), '/account')} />
+        <SocialLogin next={safeNext(params.get('next'), '/')} />
         <form
           noValidate
           onSubmit={async (e) => {
@@ -38,7 +38,7 @@ export function Login() {
             setBusy(true);
             try {
               const u = await login(form.email, form.password);
-              navigate(safeNext(params.get('next'), u.role === 'admin' ? '/admin' : '/account'), { replace: true });
+              navigate(safeNext(params.get('next'), u.role === 'admin' ? '/admin' : '/'), { replace: true });
             } catch (err) {
               v.show({
                 _: err.status === 429
@@ -80,7 +80,7 @@ export function Register() {
   const [busy, setBusy] = useState(false);
   useTitle(t('Create an account'));
 
-  if (user) return <Navigate to={safeNext(params.get('next'), '/account')} replace />;
+  if (user) return <Navigate to={safeNext(params.get('next'), '/')} replace />;
   const set = (k) => (e) => {
     v.clear(k);
     setForm({ ...form, [k]: e.target.value });
@@ -91,7 +91,7 @@ export function Register() {
       <div className="card auth-card">
         <h1>{t('Create an account')}</h1>
         <p className="muted">{t('Faster checkout and all your orders in one place.')}</p>
-        <SocialLogin next={safeNext(params.get('next'), '/account')} />
+        <SocialLogin next={safeNext(params.get('next'), '/')} />
         <form
           noValidate
           onSubmit={async (e) => {
@@ -106,7 +106,7 @@ export function Register() {
             setBusy(true);
             try {
               await register(form);
-              navigate(safeNext(params.get('next'), '/account'), { replace: true });
+              navigate(safeNext(params.get('next'), '/'), { replace: true });
             } catch (err) {
               if (err.details?.email === 'exists') v.show({ email: t('An account with this email already exists') });
               else v.fail(err);

@@ -21,7 +21,7 @@ const FacebookIcon = () => (
 );
 
 /** "Continue with Google / Facebook" buttons; renders nothing if neither is enabled. */
-export default function SocialLogin({ next = '/account' }) {
+export default function SocialLogin({ next = '/' }) {
   const { settings } = useShop();
   const toast = useToast();
   const [busy, setBusy] = useState(null);
