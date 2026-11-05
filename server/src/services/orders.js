@@ -5,6 +5,37 @@ import { HttpError, badRequest, randomToken } from '../utils.js';
 export const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'];
 
+/**
+ * Payment statuses that make sense for each order status, per payment method.
+ * Card orders are paid before they are prepared; cash on delivery is collected
+ * at delivery. A cancelled order may be unpaid, failed, paid (refund owed) or
+ * refunded; a delivered one may be refunded after a return.
+ * Keep in sync with client/src/admin/orderRules.js.
+ */
+const ALLOWED_PAYMENT = {
+  card: {
+    pending: ['pending'],
+    processing: ['paid'],
+    shipped: ['paid'],
+    delivered: ['paid', 'refunded'],
+    cancelled: ['pending', 'failed', 'paid', 'refunded'],
+  },
+  cod: {
+    pending: ['pending'],
+    processing: ['pending'],
+    shipped: ['pending'],
+    delivered: ['pending', 'paid', 'refunded'],
+    cancelled: ['pending', 'failed', 'paid', 'refunded'],
+  },
+};
+
+export const statusPairAllowed = (paymentMethod, status, paymentStatus) =>
+  (ALLOWED_PAYMENT[paymentMethod] || ALLOWED_PAYMENT.cod)[status]?.includes(paymentStatus) ?? false;
+
+/** A card payment Stripe confirmed cannot become unpaid or failed again. */
+export const paymentStepAllowed = (paymentMethod, before, next) =>
+  !(paymentMethod === 'card' && ['paid', 'refunded'].includes(before) && ['pending', 'failed'].includes(next));
+
 /** Which payment methods are currently offered, based on settings + env. */
 export function availablePaymentMethods(settings, stripeReady) {
   const p = settings.payments;

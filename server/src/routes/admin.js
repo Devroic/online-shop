@@ -6,7 +6,7 @@ import { getSettings, updateSettings } from '../settings.js';
 import { requireAdmin, publicUser } from '../auth.js';
 import { badRequest, normalizeSearch, notFound, paginate, params, slugify, uniqueSlug, validate } from '../utils.js';
 import { getProduct, listProducts, productSearchText, serializeCategory } from '../services/catalog.js';
-import { ORDER_STATUSES, PAYMENT_STATUSES, getOrder, serializeOrder, updateOrder } from '../services/orders.js';
+import { ORDER_STATUSES, PAYMENT_STATUSES, getOrder, paymentStepAllowed, serializeOrder, statusPairAllowed, updateOrder } from '../services/orders.js';
 import { stripeReady } from '../services/payments.js';
 import { deleteFile, saveFile, storageMode, upload } from '../storage.js';
 import { background, emailConfigured, sendStatusUpdate } from '../email.js';
@@ -395,6 +395,16 @@ router.put('/orders/:id', async (req, res) => {
   const { notifyCustomer, ...patch } = validate(orderUpdateSchema, req.body);
   const before = await getOrder({ id });
   if (!before) throw notFound();
+  // Refuse pairs like "shipped" + "payment failed"; an old pair that is left unchanged is fine.
+  const status = patch.status ?? before.status;
+  const paymentStatus = patch.paymentStatus ?? before.paymentStatus;
+  const pairChanged = status !== before.status || paymentStatus !== before.paymentStatus;
+  if (
+    pairChanged &&
+    (!statusPairAllowed(before.paymentMethod, status, paymentStatus) || !paymentStepAllowed(before.paymentMethod, before.paymentStatus, paymentStatus))
+  ) {
+    throw badRequest('Validation failed', { paymentStatus: 'status_combination' });
+  }
   const order = await updateOrder(id, patch);
   const changed = order.status !== before.status || (patch.trackingNumber && patch.trackingNumber !== before.trackingNumber);
   if (notifyCustomer && changed) background(sendStatusUpdate(order, before));

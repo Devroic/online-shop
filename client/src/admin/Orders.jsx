@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, Printer, ShoppingCart, Mail, Phone, X } from 'lucide-react';
 import { api, qs } from '../lib/api.js';
+import { pairAllowed, paymentOptions, statusOptions } from './orderRules.js';
 import { useFetch } from '../lib/useFetch.js';
 import { money, dateTime } from '../lib/format.js';
 import { t, ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../lib/i18n.js';
@@ -154,7 +155,11 @@ export function OrderDetail({ onChange }) {
   };
 
   const a = order.address;
-  const quick = { pending: 'processing', processing: 'shipped', shipped: 'delivered' }[order.status];
+  const next = { pending: 'processing', processing: 'shipped', shipped: 'delivered' }[order.status];
+  // No quick "next step" that does not fit the payment, e.g. preparing an unpaid card order.
+  const quick = next && pairAllowed(order.paymentMethod, next, order.paymentStatus) ? next : null;
+  const statusChoices = statusOptions(order.paymentMethod, Object.keys(ORDER_STATUS), form.paymentStatus, order.status);
+  const paymentChoices = paymentOptions(order.paymentMethod, Object.keys(PAYMENT_STATUS), form.status, order.paymentStatus);
 
   return (
     <div className="order-detail">
@@ -251,14 +256,14 @@ export function OrderDetail({ onChange }) {
           <section className="card no-print">
             <h3>{t('Manage order')}</h3>
             <Field as="select" label={t('Order status')} value={form.status} onChange={set('status')} error={v.errors.status}>
-              {Object.keys(ORDER_STATUS).map((s) => (
+              {statusChoices.map((s) => (
                 <option key={s} value={s}>
                   {t(ORDER_STATUS[s])}
                 </option>
               ))}
             </Field>
             <Field as="select" label={t('Payment status')} value={form.paymentStatus} onChange={set('paymentStatus')} error={v.errors.paymentStatus}>
-              {Object.keys(PAYMENT_STATUS).map((s) => (
+              {paymentChoices.map((s) => (
                 <option key={s} value={s}>
                   {t(PAYMENT_STATUS[s])}
                 </option>

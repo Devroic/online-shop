@@ -128,6 +128,10 @@ test('checkout creates order, decrements stock, ignores client prices', async ()
   const again = await request(app).post('/api/orders').send(checkout({ items: [{ productId, quantity: 1 }] })).expect(409);
   assert.equal(again.body.details.problems[0].code, 'out_of_stock');
 
+  // Status and payment status must fit together: an open order cannot have a failed payment.
+  const bad = await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'shipped', paymentStatus: 'failed' }).expect(400);
+  assert.equal(bad.body.details.paymentStatus, 'status_combination');
+
   // Cancelling restores stock.
   await admin.put(`/api/admin/orders/${o.id}`).send({ status: 'cancelled' }).expect(200);
   assert.equal(await stockOf(productId), 2);

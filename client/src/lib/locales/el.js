@@ -624,6 +624,7 @@ export default {
   'Enter a whole number': 'Συμπληρώστε έναν ακέραιο αριθμό',
   'Enter a valid link': 'Συμπληρώστε έναν έγκυρο σύνδεσμο (https://…)',
   'Must be greater than 0': 'Πρέπει να είναι μεγαλύτερο από 0',
+  'This payment status does not fit the order status': 'Αυτή η κατάσταση πληρωμής δεν ταιριάζει με την κατάσταση της παραγγελίας',
   'Must be higher than the price': 'Πρέπει να είναι μεγαλύτερη από την τιμή',
   'Must be {n} or less': 'Πρέπει να είναι έως {n}',
   'Must be {n} or more': 'Πρέπει να είναι τουλάχιστον {n}',
