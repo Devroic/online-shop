@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
@@ -5,17 +6,36 @@ import { discountPercent } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { Price } from './ui.jsx';
 
+const CYCLE_MS = 1200; // time each photo stays while the mouse is over the card
+
 export default function ProductCard({ product }) {
   const { add } = useCart();
   const off = discountPercent(product.price, product.compareAtPrice);
   const hasVariants = product.variants.length > 0;
-  const [img, hover] = product.images;
+  const [img, ...more] = product.images;
+
+  // While hovered: show the 2nd photo at once, then go through all of them and back to the 1st.
+  const [hovered, setHovered] = useState(false);
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (!hovered || !more.length) return setShown(0);
+    setShown(1);
+    const id = setInterval(() => setShown((i) => (i + 1) % product.images.length), CYCLE_MS);
+    return () => clearInterval(id);
+  }, [hovered, more.length, product.images.length]);
 
   return (
     <article className={`product-card ${product.inStock ? '' : 'is-soldout'}`}>
-      <Link to={`/product/${product.slug}`} className="product-card-media">
+      <Link
+        to={`/product/${product.slug}`}
+        className="product-card-media"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
         {img ? <img src={img} alt={product.name} loading="lazy" /> : <div className="img-placeholder" />}
-        {hover && <img src={hover} alt="" loading="lazy" className="hover-img" aria-hidden="true" />}
+        {more.map((src, i) => (
+          <img key={src} src={src} alt="" loading="lazy" className={`hover-img ${shown === i + 1 ? 'is-shown' : ''}`} aria-hidden="true" />
+        ))}
         <div className="badges">
           {!product.inStock && <span className="badge badge-dark">{t('Sold out')}</span>}
           {product.inStock && off > 0 && <span className="badge badge-sale">-{off}%</span>}

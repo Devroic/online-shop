@@ -583,13 +583,16 @@
   position: absolute;
   inset: 0;
   opacity: 0;
+  /* Solid behind the second photo: a transparent PNG would otherwise show the first one through it. */
+  background: var(--surface);
+}
+/* ProductCard cycles the extra photos while the mouse is over it. */
+.product-card-media .hover-img.is-shown {
+  opacity: 1;
 }
 @media (hover: hover) {
   .product-card:hover .product-card-media img {
     transform: scale(1.04);
-  }
-  .product-card:hover .hover-img {
-    opacity: 1;
   }
 }
 .product-card.is-soldout .product-card-media img {
