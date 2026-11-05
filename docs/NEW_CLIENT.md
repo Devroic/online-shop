@@ -167,7 +167,8 @@
   - **APIs & Services → OAuth consent screen**: όνομα καταστήματος, email, λογότυπο → **Publish**
   - **Credentials → Create credentials → OAuth client ID** → Web application → Authorized redirect URI: το Callback URL της Supabase
   - αντέγραψε **Client ID** και **Client secret** στη Supabase (Google provider) → Save
-- Admin καταστήματος → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Google» → Αποθήκευση.
+- Στο `clients/margarita.json`, μέσα στο `settings`, πρόσθεσε `"login": { "google": true }` και ξανατρέξε
+  το `npm run configure` (Βήμα 5). Ο διακόπτης δεν υπάρχει στο admin, για να μην τον αλλάξει κατά λάθος ο πελάτης.
 
 ## Προαιρετικό: σύνδεση πελατών με Facebook
 
@@ -191,7 +192,8 @@
 - Supabase → **Providers → Facebook**: Facebook client ID = App ID, Facebook secret = App Secret → Save
 - Facebook → πάνω στη σελίδα **App Mode: Development → Live** (ή **Publish**). Αν σου ζητήσει
   **Business verification**, ακολούθησε τα βήματα με τα στοιχεία της επιχείρησης του πελάτη.
-- Admin καταστήματος → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Facebook» → Αποθήκευση.
+- Στο `clients/margarita.json`, μέσα στο `settings`, πρόσθεσε (κράτα το `google` αν το έχεις) `"login": { "google": true, "facebook": true }` και ξανατρέξε
+  το `npm run configure` (Βήμα 5). Ο διακόπτης δεν υπάρχει στο admin, για να μην τον αλλάξει κατά λάθος ο πελάτης.
 - Αν κάποιος λογαριασμός Facebook δεν δώσει email, το κατάστημα του ζητά να συνδεθεί με email
   (χωρίς email δεν μπορούν να σταλούν οι επιβεβαιώσεις παραγγελιών).
 
@@ -199,7 +201,7 @@
 
 - Στο `.env` βάλε `SUPABASE_URL` και `SUPABASE_ANON_KEY` ενός δοκιμαστικού Supabase project.
 - Supabase → **Authentication → URL Configuration → Redirect URLs**: πρόσθεσε `http://localhost:5173/**`.
-- Admin → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε Google/Facebook → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
+- Άνοιξε Google/Facebook όπως παραπάνω (`"login"` στο JSON + `npm run configure`) → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
 
 ---
 

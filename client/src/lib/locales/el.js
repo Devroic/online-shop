@@ -511,14 +511,6 @@ export default {
   'Leave empty to have them calculated from the colours above.': 'Αφήστε τα κενά για να υπολογιστούν αυτόματα από τα παραπάνω χρώματα.',
   'Light mode': 'Φωτεινό θέμα',
   'Dark mode': 'Σκούρο θέμα',
-  'Customer sign-in': 'Σύνδεση πελατών',
-  'Email & password sign-in is always available. Google and Facebook sign-in must first be enabled in the shop’s Supabase project (see the setup guide).':
-    'Η σύνδεση με email και κωδικό είναι πάντα διαθέσιμη. Η σύνδεση με Google και Facebook πρέπει πρώτα να ενεργοποιηθεί στο Supabase project του καταστήματος (δείτε τον οδηγό εγκατάστασης).',
-  'Sign in with Google': 'Σύνδεση με Google',
-  'Sign in with Facebook': 'Σύνδεση με Facebook',
-  'SUPABASE_URL and SUPABASE_ANON_KEY are not set on the server, so these buttons are hidden from customers.':
-    'Τα SUPABASE_URL και SUPABASE_ANON_KEY δεν έχουν οριστεί στον server, οπότε τα κουμπιά δεν εμφανίζονται στους πελάτες.',
-  'Redirect URL to add in Supabase → Authentication → URL Configuration:': 'Redirect URL για το Supabase → Authentication → URL Configuration:',
   'Email sending (Resend or SMTP) is not configured on the server, so emails are not sent yet.':
     'Η αποστολή email (Resend ή SMTP) δεν έχει ρυθμιστεί στον server, οπότε δεν στέλνονται email ακόμα.',
   'Continue with Google': 'Συνέχεια με Google',
@@ -615,8 +607,7 @@ export default {
     'Αλλάζουν γλώσσα τα μενού, τα κουμπιά και τα email. Τα ονόματα και οι περιγραφές προϊόντων και οι σελίδες μένουν όπως τα γράψατε.',
   // Admin sections
   'Store details': 'Στοιχεία καταστήματος',
-  'Name, contact details, emails, customer sign-in, stock and search engines.':
-    'Όνομα, στοιχεία επικοινωνίας, email, σύνδεση πελατών, απόθεμα και μηχανές αναζήτησης.',
+  'Name, contact details, emails, stock and search engines.': 'Όνομα, στοιχεία επικοινωνίας, email, απόθεμα και μηχανές αναζήτησης.',
   'Logo, colours, light/dark mode and font.': 'Λογότυπο, χρώματα, φωτεινό/σκοτεινό θέμα και γραμματοσειρά.',
   'Shipping & payments': 'Αποστολές & πληρωμές',
   Payments: 'Πληρωμές',
