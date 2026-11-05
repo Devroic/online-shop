@@ -9,7 +9,7 @@ const strings = {
   Delivered: 'Παραδόθηκε',
   Cancelled: 'Ακυρώθηκε',
 
-  // Emails
+  // Emails: shared parts
   Subtotal: 'Υποσύνολο',
   Discount: 'Έκπτωση',
   Shipping: 'Αποστολή',
@@ -17,34 +17,89 @@ const strings = {
   Total: 'Σύνολο',
   Payment: 'Πληρωμή',
   Reference: 'Αιτιολογία',
-  'Thank you for your order!': 'Ευχαριστούμε για την παραγγελία σας!',
   'Hi {name},': 'Γεια σας {name},',
-  'we have received your order {number}.': 'λάβαμε την παραγγελία σας {number}.',
-  'View order': 'Προβολή παραγγελίας',
-  'Order confirmation': 'Επιβεβαίωση παραγγελίας',
-  'New order': 'Νέα παραγγελία',
-  'Open in admin': 'Άνοιγμα στη διαχείριση',
+  'View order': 'Δείτε την παραγγελία',
+  'Delivery address': 'Διεύθυνση παράδοσης',
+  'Pickup from the store': 'Παραλαβή από το κατάστημα',
   'Tracking number': 'Αριθμός αποστολής',
-  'Order update': 'Ενημέρωση παραγγελίας',
-  'Your order status is now': 'Η κατάσταση της παραγγελίας σας είναι τώρα',
-  'We received a request to reset your password.': 'Λάβαμε αίτημα επαναφοράς κωδικού.',
-  'Choose a new password': 'Ορισμός νέου κωδικού',
-  'The link expires in 1 hour. If you did not ask for this, ignore this email.':
-    'Ο σύνδεσμος λήγει σε 1 ώρα. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το email.',
-  'Password reset': 'Επαναφορά κωδικού',
-  'Contact form': 'Φόρμα επικοινωνίας',
+  'You can use it on the courier website to see where your parcel is.':
+    'Με αυτόν μπορείτε να δείτε πού βρίσκεται το δέμα σας στο site της εταιρείας courier.',
+  'We will email you again as soon as it ships.': 'Θα σας στείλουμε νέο email μόλις αποσταλεί.',
+  'We will email you again as soon as it is ready for pickup.': 'Θα σας στείλουμε νέο email μόλις είναι έτοιμη για παραλαβή.',
+  'We will keep you posted by email on its progress.': 'Θα σας ενημερώνουμε με email για την πορεία της.',
+  'If you have any questions, just reply to this email.': 'Για οποιαδήποτε απορία, απλώς απαντήστε σε αυτό το email.',
+
+  // Emails: new order (customer)
+  'Thank you for your order!': 'Ευχαριστούμε για την παραγγελία σας!',
+  'We received your order #{number}': 'Λάβαμε την παραγγελία σας #{number}',
+  'We received your order {number}.': 'Λάβαμε την παραγγελία σας {number}.',
+  'You will pay {total} in cash when you receive it.': 'Θα πληρώσετε {total} με αντικαταβολή, όταν την παραλάβετε.',
+  'Your order is confirmed': 'Η παραγγελία σας επιβεβαιώθηκε',
+  'Your order #{number} is confirmed': 'Η παραγγελία σας #{number} επιβεβαιώθηκε',
+  'We received your payment and your order {number} is confirmed.': 'Λάβαμε την πληρωμή σας και η παραγγελία σας {number} επιβεβαιώθηκε.',
+
+  // Emails: order updates (customer)
+  'We are preparing your order': 'Ετοιμάζουμε την παραγγελία σας',
+  'We are preparing your order #{number}': 'Ετοιμάζουμε την παραγγελία σας #{number}',
+  'Your order {number} is confirmed and we are now preparing it.': 'Η παραγγελία σας {number} επιβεβαιώθηκε και ήδη την ετοιμάζουμε.',
+  'Your order is on its way': 'Η παραγγελία σας είναι καθ’ οδόν',
+  'Your order #{number} is on its way': 'Η παραγγελία σας #{number} στάλθηκε',
+  'Good news: your order {number} has been sent with {courier} and is on its way to you.':
+    'Καλά νέα! Η παραγγελία σας {number} στάλθηκε με {courier} και έρχεται προς εσάς.',
+  'Please have {total} ready in cash for the courier.': 'Έχετε έτοιμο το ποσό των {total} για την αντικαταβολή.',
+  'Your order is ready for pickup': 'Η παραγγελία σας είναι έτοιμη για παραλαβή',
+  'Your order #{number} is ready for pickup': 'Η παραγγελία σας #{number} είναι έτοιμη για παραλαβή',
+  'Your order {number} is ready and waiting for you at the store.': 'Η παραγγελία σας {number} είναι έτοιμη και σας περιμένει στο κατάστημα.',
+  'The amount to pay at pickup is {total}.': 'Το ποσό που θα πληρώσετε κατά την παραλαβή είναι {total}.',
+  'Thank you for shopping with us!': 'Σας ευχαριστούμε που ψωνίσατε από εμάς!',
+  'Your order #{number} has been delivered': 'Η παραγγελία σας #{number} παραδόθηκε',
+  'Your order {number} has been delivered.': 'Η παραγγελία σας {number} παραδόθηκε.',
+  'We hope you enjoy your purchase! If anything is not right, just reply to this email and we will sort it out.':
+    'Ελπίζουμε να μείνετε ικανοποιημένοι από την αγορά σας! Αν κάτι δεν είναι όπως το περιμένατε, απαντήστε σε αυτό το email και θα το φροντίσουμε.',
+  'Your order has been cancelled': 'Η παραγγελία σας ακυρώθηκε',
+  'Your order #{number} has been cancelled': 'Η παραγγελία σας #{number} ακυρώθηκε',
+  'Your order {number} has been cancelled.': 'Η παραγγελία σας {number} ακυρώθηκε.',
+  'The amount of {total} has been refunded to your card. Depending on your bank, it may take a few business days to show.':
+    'Το ποσό των {total} επιστράφηκε στην κάρτα σας. Ανάλογα με την τράπεζά σας, μπορεί να χρειαστούν μερικές εργάσιμες μέχρι να εμφανιστεί.',
+  'Since you have already paid, we will refund {total} to your card.': 'Επειδή έχετε ήδη πληρώσει, θα σας επιστρέψουμε το ποσό των {total} στην κάρτα σας.',
+  'Your order is active again': 'Η παραγγελία σας είναι ξανά ενεργή',
+  'Update on your order #{number}': 'Ενημέρωση για την παραγγελία σας #{number}',
+  'Your order {number} is active again.': 'Η παραγγελία σας {number} είναι ξανά ενεργή.',
+  'Track your order': 'Παρακολουθήστε την παραγγελία σας',
+  'Tracking number for your order #{number}': 'Αριθμός αποστολής για την παραγγελία σας #{number}',
+  'Here is the tracking number for your order {number}:': 'Ο αριθμός αποστολής για την παραγγελία σας {number} είναι:',
+
+  // Emails: to the shop
+  'New order': 'Νέα παραγγελία',
+  Customer: 'Πελάτης',
+  'Customer notes': 'Σχόλια πελάτη',
+  'Card – paid': 'Κάρτα – πληρώθηκε',
+  'Card – awaiting payment': 'Κάρτα – αναμένεται η πληρωμή',
+  'Cash on delivery – collect {total}': 'Αντικαταβολή – προς είσπραξη {total}',
+  'Open in admin': 'Άνοιγμα στη διαχείριση',
+  'New message from the contact form': 'Νέο μήνυμα από τη φόρμα επικοινωνίας',
+  'New message from {name}': 'Νέο μήνυμα: {name}',
+  'Reply to this email to answer {name} directly.': 'Απαντήστε σε αυτό το email και η απάντησή σας θα πάει απευθείας στον αποστολέα ({name}).',
+
+  // Emails: account
   'Welcome, {name}!': 'Καλώς ήρθατε, {name}!',
-  'Your account at {store} is ready.': 'Ο λογαριασμός σας στο {store} δημιουργήθηκε.',
-  'From your account you can follow your orders and save your address for faster checkout.':
-    'Από τον λογαριασμό σας μπορείτε να βλέπετε τις παραγγελίες σας και να αποθηκεύσετε τη διεύθυνσή σας για γρηγορότερες αγορές.',
-  'Start shopping': 'Ξεκινήστε τις αγορές',
   'Welcome to {store}': 'Καλώς ήρθατε στο {store}',
+  'Your account at {store} is ready.': 'Ο λογαριασμός σας στο {store} είναι έτοιμος.',
+  'From your account you can follow your orders and save your address for faster checkout.':
+    'Από τον λογαριασμό σας μπορείτε να παρακολουθείτε τις παραγγελίες σας και να αποθηκεύσετε τη διεύθυνσή σας, ώστε οι επόμενες αγορές να γίνονται πιο γρήγορα.',
+  'Start shopping': 'Δείτε τα προϊόντα μας',
   'Please confirm your email address, so we can link your earlier orders and keep your account safe.':
-    'Επιβεβαιώστε τη διεύθυνση email σας, ώστε να συνδέσουμε τις παλαιότερες παραγγελίες σας και να προστατεύσουμε τον λογαριασμό σας.',
-  'Confirm my email': 'Επιβεβαίωση email',
+    'Για να ολοκληρωθεί η εγγραφή σας, επιβεβαιώστε το email σας. Έτσι προστατεύουμε τον λογαριασμό σας και συνδέουμε σε αυτόν όσες παραγγελίες έχετε ήδη κάνει με αυτό το email.',
+  'Confirm my email': 'Επιβεβαιώνω το email μου',
   'The link expires in 7 days. If you did not create this account, ignore this email.':
-    'Ο σύνδεσμος λήγει σε 7 ημέρες. Αν δεν δημιουργήσατε εσείς αυτόν τον λογαριασμό, αγνοήστε αυτό το email.',
-  'Confirm your email': 'Επιβεβαιώστε το email σας',
+    'Ο σύνδεσμος ισχύει για 7 ημέρες. Αν δεν δημιουργήσατε εσείς λογαριασμό, αγνοήστε αυτό το email.',
+  'Confirm your email for {store}': 'Επιβεβαιώστε το email σας – {store}',
+  'We received a request to change your password. Press the button below to choose a new one.':
+    'Λάβαμε αίτημα για αλλαγή του κωδικού σας. Πατήστε το παρακάτω κουμπί για να ορίσετε νέο κωδικό.',
+  'Choose a new password': 'Ορισμός νέου κωδικού',
+  'The link expires in 1 hour. If you did not ask for this, ignore this email: your password will not change.':
+    'Ο σύνδεσμος ισχύει για 1 ώρα. Αν δεν το ζητήσατε εσείς, αγνοήστε αυτό το email· ο κωδικός σας δεν θα αλλάξει.',
+  'Change your password – {store}': 'Αλλαγή κωδικού – {store}',
 
   // Default pages
   'About us': 'Σχετικά με εμάς',

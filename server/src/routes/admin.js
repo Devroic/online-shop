@@ -397,7 +397,7 @@ router.put('/orders/:id', async (req, res) => {
   if (!before) throw notFound();
   const order = await updateOrder(id, patch);
   const changed = order.status !== before.status || (patch.trackingNumber && patch.trackingNumber !== before.trackingNumber);
-  if (notifyCustomer && changed) background(sendStatusUpdate(order));
+  if (notifyCustomer && changed) background(sendStatusUpdate(order, before));
   res.json(order);
 });
 

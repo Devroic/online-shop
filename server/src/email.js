@@ -75,10 +75,15 @@ function layout(settings, body) {
   </div></body></html>`;
 }
 
-const STATUS_TEXT = { pending: 'Pending', processing: 'Processing', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' };
 
 const button = (href, label, color) =>
   `<a href="${href}" style="background:${esc(color)};color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${esc(label)}</a>`;
+const p = (html) => `<p>${html}</p>`;
+const heading = (text) => `<h2 style="margin-top:0">${esc(text)}</h2>`;
+const small = (html) => `<p style="color:#71717a;font-size:13px">${html}</p>`;
+/** "Μαρία" rather than "Μαρία Παπαδοπούλου" in greetings. */
+const firstName = (name) => String(name ?? '').trim().split(/\s+/)[0];
+const num = (order) => `<strong>#${esc(order.number)}</strong>`;
 
 function orderTable(order, settings, t) {
   const m = (c) => formatMoney(c, settings);
@@ -93,71 +98,189 @@ function orderTable(order, settings, t) {
   return `<table style="width:100%;border-collapse:collapse;border-top:1px solid #e4e4e7;margin-top:12px">${rows}
     ${line(t('Subtotal'), m(order.subtotal))}
     ${order.discount ? line(t('Discount'), '-' + m(order.discount)) : ''}
-    ${line(`${t('Shipping')} (${esc(order.shippingName)})`, m(order.shippingCost))}
+    ${line(order.address ? `${t('Shipping')} (${esc(order.shippingName)})` : esc(order.shippingName), order.shippingCost ? m(order.shippingCost) : t('Free'))}
     ${order.paymentFee ? line(t('Payment fee'), m(order.paymentFee)) : ''}
     <tr><td style="padding:8px 0;font-weight:bold;border-top:1px solid #e4e4e7">${t('Total')}</td>
     <td style="padding:8px 0;font-weight:bold;text-align:right;border-top:1px solid #e4e4e7">${m(order.total)}</td></tr></table>`;
 }
 
-const orderLink = (order) => `${config.publicUrl}/order/${order.number}?token=${order.accessToken}`;
-
-export async function sendOrderConfirmation(order) {
-  const s = await getSettings();
-  const t = translator(order.language || s.language);
-  const body = `<h2 style="margin-top:0">${t('Thank you for your order!')}</h2>
-    <p>${t('Hi {name},', { name: esc(order.customerName) })}<br>${t('we have received your order {number}.', { number: `<strong>#${esc(order.number)}</strong>` })}</p>
-    ${orderTable(order, s, t)}
-    <p style="margin-top:24px">${button(orderLink(order), t('View order'), s.theme.primary)}</p>`;
-  return sendMail({ to: order.email, subject: `${t('Order confirmation')} #${order.number}`, html: layout(s, body) });
+/** Where the order goes: the delivery address, or the shop's address for store pickup. */
+function deliveryBlock(order, settings, t) {
+  const a = order.address;
+  if (a) {
+    return `<p style="margin-top:20px"><strong>${t('Delivery address')}</strong><br>${esc(order.customerName)}<br>${esc(a.street)}<br>${esc(a.postalCode)} ${esc(a.city)}${a.region ? `, ${esc(a.region)}` : ''}</p>`;
+  }
+  const c = settings.contact;
+  return `<p style="margin-top:20px"><strong>${t('Pickup from the store')}</strong>${c.address ? `<br>${esc(c.address)}` : ''}${c.hours ? `<br>${esc(c.hours)}` : ''}</p>`;
 }
 
-/** Sent to the shop owner; always in the shop's language. */
+const trackingBlock = (order, t) =>
+  order.trackingNumber
+    ? `<p style="background:#f4f4f5;border-radius:8px;padding:12px 16px">${t('Tracking number')}: <strong>${esc(order.trackingNumber)}</strong><br>
+      <span style="color:#52525b;font-size:13px">${t('You can use it on the courier website to see where your parcel is.')}</span></p>`
+    : '';
+
+const orderLink = (order) => `${config.publicUrl}/order/${order.number}?token=${order.accessToken}`;
+
+/** Common frame of the emails to a customer about their order. Replies go to the shop. */
+async function sendOrderEmail(order, build) {
+  const s = await getSettings();
+  const t = translator(order.language || s.language);
+  const total = formatMoney(order.total, s);
+  const { subject, title, body, details = true } = build({ s, t, total, pickup: !order.address, cod: order.paymentMethod === 'cod' });
+  const html = `${heading(title)}
+    ${p(t('Hi {name},', { name: esc(firstName(order.customerName)) }))}
+    ${body}
+    ${details ? orderTable(order, s, t) + deliveryBlock(order, s, t) : ''}
+    <p style="margin-top:24px">${button(orderLink(order), t('View order'), s.theme.primary)}</p>`;
+  return sendMail({ to: order.email, subject, html: layout(s, html), replyTo: s.contact.email || undefined });
+}
+
+/** Sent once per order: right away for cash on delivery, after payment for card orders. */
+export function sendOrderConfirmation(order) {
+  return sendOrderEmail(order, ({ t, total, pickup, cod }) => {
+    const paid = order.paymentStatus === 'paid';
+    const next = cod
+      ? t('We will keep you posted by email on its progress.')
+      : pickup
+        ? t('We will email you again as soon as it is ready for pickup.')
+        : t('We will email you again as soon as it ships.');
+    return {
+      subject: paid ? t('Your order #{number} is confirmed', { number: order.number }) : t('We received your order #{number}', { number: order.number }),
+      title: paid ? t('Your order is confirmed') : t('Thank you for your order!'),
+      body: `${p(paid ? t('We received your payment and your order {number} is confirmed.', { number: num(order) }) : t('We received your order {number}.', { number: num(order) }))}
+        ${cod ? p(t('You will pay {total} in cash when you receive it.', { total: `<strong>${total}</strong>` })) : ''}
+        ${p(next)}`,
+    };
+  });
+}
+
+/**
+ * One email per change the admin makes (when "notify the customer" is ticked):
+ * a status change, or a tracking number added to an order already shipped.
+ */
+export function sendStatusUpdate(order, before) {
+  const trackingOnly = before && order.status === before.status;
+  return sendOrderEmail(order, ({ t, total, pickup, cod }) => {
+    const n = { number: order.number };
+    const nb = { number: num(order) };
+    if (trackingOnly) {
+      return {
+        subject: t('Tracking number for your order #{number}', n),
+        title: t('Track your order'),
+        body: p(t('Here is the tracking number for your order {number}:', nb)) + trackingBlock(order, t),
+        details: false,
+      };
+    }
+    switch (order.status) {
+      case 'processing':
+        return {
+          subject: t('We are preparing your order #{number}', n),
+          title: t('We are preparing your order'),
+          body: p(t('Your order {number} is confirmed and we are now preparing it.', nb)) +
+            p(pickup ? t('We will email you again as soon as it is ready for pickup.') : t('We will email you again as soon as it ships.')),
+        };
+      case 'shipped':
+        if (pickup) {
+          return {
+            subject: t('Your order #{number} is ready for pickup', n),
+            title: t('Your order is ready for pickup'),
+            body: p(t('Your order {number} is ready and waiting for you at the store.', nb)) +
+              (cod ? p(t('The amount to pay at pickup is {total}.', { total: `<strong>${total}</strong>` })) : ''),
+          };
+        }
+        return {
+          subject: t('Your order #{number} is on its way', n),
+          title: t('Your order is on its way'),
+          body: p(t('Good news: your order {number} has been sent with {courier} and is on its way to you.', { ...nb, courier: esc(order.shippingName) })) +
+            trackingBlock(order, t) +
+            (cod ? p(t('Please have {total} ready in cash for the courier.', { total: `<strong>${total}</strong>` })) : ''),
+        };
+      case 'delivered':
+        return {
+          subject: t('Your order #{number} has been delivered', n),
+          title: t('Thank you for shopping with us!'),
+          body: p(t('Your order {number} has been delivered.', nb)) +
+            p(t('We hope you enjoy your purchase! If anything is not right, just reply to this email and we will sort it out.')),
+          details: false,
+        };
+      case 'cancelled': {
+        const refund =
+          order.paymentStatus === 'refunded'
+            ? t('The amount of {total} has been refunded to your card. Depending on your bank, it may take a few business days to show.', { total: `<strong>${total}</strong>` })
+            : order.paymentStatus === 'paid'
+              ? t('Since you have already paid, we will refund {total} to your card.', { total: `<strong>${total}</strong>` })
+              : '';
+        return {
+          subject: t('Your order #{number} has been cancelled', n),
+          title: t('Your order has been cancelled'),
+          body: p(t('Your order {number} has been cancelled.', nb)) + (refund ? p(refund) : '') + p(t('If you have any questions, just reply to this email.')),
+          details: false,
+        };
+      }
+      default:
+        return {
+          subject: t('Update on your order #{number}', n),
+          title: t('Your order is active again'),
+          body: p(t('Your order {number} is active again.', nb)) + p(t('We will keep you posted by email on its progress.')),
+        };
+    }
+  });
+}
+
+/** Sent to the shop owner; always in the shop's language. Replying writes to the customer. */
 export async function sendAdminNewOrder(order) {
   const s = await getSettings();
   const t = translator(s.language);
   const to = s.notifications.orderEmail || s.contact.email;
-  const body = `<h2 style="margin-top:0">${t('New order')} #${esc(order.number)}</h2>
-    <p>${esc(order.customerName)} · ${esc(order.email)} · ${esc(order.phone)}<br>${t('Payment')}: ${esc(order.paymentMethod)}</p>
+  const total = formatMoney(order.total, s);
+  const payment =
+    order.paymentMethod === 'cod'
+      ? t('Cash on delivery – collect {total}', { total })
+      : order.paymentStatus === 'paid'
+        ? t('Card – paid')
+        : t('Card – awaiting payment');
+  const body = `${heading(`${t('New order')} #${order.number}`)}
+    <p><strong>${t('Customer')}</strong><br>${esc(order.customerName)}<br>${esc(order.email)}${order.phone ? `<br>${esc(order.phone)}` : ''}</p>
+    <p><strong>${t('Payment')}</strong><br>${esc(payment)}</p>
+    ${deliveryBlock(order, s, t)}
+    ${order.notes ? `<p><strong>${t('Customer notes')}</strong><br><span style="white-space:pre-line">${esc(order.notes)}</span></p>` : ''}
     ${orderTable(order, s, t)}
-    <p>${button(`${config.publicUrl}/admin/orders/${order.id}`, t('Open in admin'), s.theme.primary)}</p>`;
-  return sendMail({ to, subject: `${t('New order')} #${order.number} – ${formatMoney(order.total, s)}`, html: layout(s, body) });
+    <p style="margin-top:24px">${button(`${config.publicUrl}/admin/orders/${order.id}`, t('Open in admin'), s.theme.primary)}</p>`;
+  return sendMail({ to, subject: `${t('New order')} #${order.number} – ${total}`, html: layout(s, body), replyTo: order.email });
 }
 
-export async function sendStatusUpdate(order) {
-  const s = await getSettings();
-  const t = translator(order.language || s.language);
-  const statusText = t(STATUS_TEXT[order.status]);
-  const tracking = order.trackingNumber ? `<p>${t('Tracking number')}: <strong>${esc(order.trackingNumber)}</strong></p>` : '';
-  const body = `<h2 style="margin-top:0">${t('Order update')} #${esc(order.number)}</h2>
-    <p>${t('Your order status is now')}: <strong>${statusText}</strong></p>
-    ${tracking}<p>${button(orderLink(order), t('View order'), s.theme.primary)}</p>`;
-  return sendMail({ to: order.email, subject: `#${order.number}: ${statusText}`, html: layout(s, body) });
-}
+const confirmEmailBlock = (t, s, token) => `${p(t('Please confirm your email address, so we can link your earlier orders and keep your account safe.'))}
+  <p style="margin-top:24px">${button(`${config.publicUrl}/account/verify?token=${token}`, t('Confirm my email'), s.theme.primary)}</p>
+  ${small(t('The link expires in 7 days. If you did not create this account, ignore this email.'))}`;
 
 export async function sendEmailConfirmation(user, token, lang) {
   const s = await getSettings();
   const t = translator(lang || s.language);
-  const body = `<p>${t('Please confirm your email address, so we can link your earlier orders and keep your account safe.')}</p>
-    <p>${button(`${config.publicUrl}/account/verify?token=${token}`, t('Confirm my email'), s.theme.primary)}</p>
-    <p style="color:#71717a;font-size:13px">${t('The link expires in 7 days. If you did not create this account, ignore this email.')}</p>`;
-  return sendMail({ to: user.email, subject: t('Confirm your email'), html: layout(s, body) });
+  const body = `${p(t('Hi {name},', { name: esc(firstName(user.name)) }))}${confirmEmailBlock(t, s, token)}`;
+  return sendMail({ to: user.email, subject: t('Confirm your email for {store}', { store: s.storeName }), html: layout(s, body) });
 }
 
 export async function sendPasswordReset(user, token, lang) {
   const s = await getSettings();
   const t = translator(lang || s.language);
   const link = `${config.publicUrl}/account/reset?token=${token}`;
-  const body = `<p>${t('We received a request to reset your password.')}</p>
-    <p>${button(link, t('Choose a new password'), s.theme.primary)}</p>
-    <p style="color:#71717a;font-size:13px">${t('The link expires in 1 hour. If you did not ask for this, ignore this email.')}</p>`;
-  return sendMail({ to: user.email, subject: t('Password reset'), html: layout(s, body) });
+  const body = `${p(t('Hi {name},', { name: esc(firstName(user.name)) }))}
+    ${p(t('We received a request to change your password. Press the button below to choose a new one.'))}
+    <p style="margin-top:24px">${button(link, t('Choose a new password'), s.theme.primary)}</p>
+    ${small(t('The link expires in 1 hour. If you did not ask for this, ignore this email: your password will not change.'))}`;
+  return sendMail({ to: user.email, subject: t('Change your password – {store}', { store: s.storeName }), html: layout(s, body) });
 }
 
+/** Contact form message to the shop. Replying answers the visitor directly. */
 export async function sendContactMessage(msg) {
   const s = await getSettings();
   const t = translator(s.language);
-  const body = `<p><strong>${esc(msg.name)}</strong> &lt;${esc(msg.email)}&gt; ${esc(msg.phone)}</p><p style="white-space:pre-line">${esc(msg.message)}</p>`;
-  return sendMail({ to: s.contact.email, subject: `${t('Contact form')}: ${msg.name}`, html: layout(s, body), replyTo: msg.email });
+  const body = `${heading(t('New message from the contact form'))}
+    <p><strong>${esc(msg.name)}</strong><br>${esc(msg.email)}${msg.phone ? `<br>${esc(msg.phone)}` : ''}</p>
+    <p style="white-space:pre-line;background:#f4f4f5;border-radius:8px;padding:12px 16px">${esc(msg.message)}</p>
+    ${small(t('Reply to this email to answer {name} directly.', { name: esc(msg.name) }))}`;
+  return sendMail({ to: s.contact.email, subject: t('New message from {name}', { name: msg.name }), html: layout(s, body), replyTo: msg.email });
 }
 
 /** Welcome email. With `verifyToken` (email & password sign-up) it also asks to confirm the address. */
@@ -165,13 +288,11 @@ export async function sendWelcome(user, lang, verifyToken) {
   const s = await getSettings();
   const t = translator(lang || s.language);
   const action = verifyToken
-    ? `<p>${t('Please confirm your email address, so we can link your earlier orders and keep your account safe.')}</p>
-    <p style="margin-top:24px">${button(`${config.publicUrl}/account/verify?token=${verifyToken}`, t('Confirm my email'), s.theme.primary)}</p>
-    <p style="color:#71717a;font-size:13px">${t('The link expires in 7 days. If you did not create this account, ignore this email.')}</p>`
+    ? confirmEmailBlock(t, s, verifyToken)
     : `<p style="margin-top:24px">${button(`${config.publicUrl}/products`, t('Start shopping'), s.theme.primary)}</p>`;
-  const body = `<h2 style="margin-top:0">${t('Welcome, {name}!', { name: esc(user.name) })}</h2>
-    <p>${t('Your account at {store} is ready.', { store: `<strong>${esc(s.storeName)}</strong>` })}</p>
-    <p>${t('From your account you can follow your orders and save your address for faster checkout.')}</p>
+  const body = `${heading(t('Welcome, {name}!', { name: firstName(user.name) }))}
+    ${p(t('Your account at {store} is ready.', { store: `<strong>${esc(s.storeName)}</strong>` }))}
+    ${p(t('From your account you can follow your orders and save your address for faster checkout.'))}
     ${action}`;
   return sendMail({ to: user.email, subject: t('Welcome to {store}', { store: s.storeName }), html: layout(s, body) });
 }
