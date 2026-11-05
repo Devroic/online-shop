@@ -4,17 +4,19 @@ import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { dateTime } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
-import { EmptyState, PageLoader } from '../components/ui.jsx';
+import { EmptyState, PageLoader, Pagination } from '../components/ui.jsx';
 import { PageHeader } from './components.jsx';
 
 /** Contact form messages: one line each (subject, sender, date); click to read. */
 export default function Messages({ onChange }) {
-  const { data, setData } = useFetch('/admin/messages');
+  const [page, setPage] = useState(1);
+  const { data, setData, reload } = useFetch(`/admin/messages?page=${page}`);
   const [openId, setOpenId] = useState(null);
+  const setItems = (fn) => setData((d) => ({ ...d, items: fn(d.items) }));
 
   const markRead = async (m, read) => {
     await api.put(`/admin/messages/${m.id}`, { read });
-    setData((list) => list.map((x) => (x.id === m.id ? { ...x, read } : x)));
+    setItems((list) => list.map((x) => (x.id === m.id ? { ...x, read } : x)));
     onChange?.();
   };
   const toggle = (m) => {
@@ -25,7 +27,9 @@ export default function Messages({ onChange }) {
   const remove = async (m) => {
     if (!window.confirm(t('Delete this message?'))) return;
     await api.del(`/admin/messages/${m.id}`);
-    setData((list) => list.filter((x) => x.id !== m.id));
+    // Reload so the page refills from the next one; step back if this page is now empty.
+    if (data.items.length === 1 && page > 1) setPage(page - 1);
+    else reload();
     onChange?.();
   };
 
@@ -34,11 +38,11 @@ export default function Messages({ onChange }) {
       <PageHeader title={t('Messages')} subtitle={t('Sent from the contact form.')} />
       {!data ? (
         <PageLoader />
-      ) : !data.length ? (
+      ) : !data.items.length ? (
         <EmptyState icon={MessageSquare} title={t('No messages yet')} />
       ) : (
         <div className="card-list">
-          {data.map((m) => {
+          {data.items.map((m) => {
             const open = openId === m.id;
             // Messages sent before subjects existed show the start of the text instead.
             const subject = m.subject || m.message.slice(0, 80);
@@ -85,6 +89,7 @@ export default function Messages({ onChange }) {
           })}
         </div>
       )}
+      {data && <Pagination page={page} pages={data.pages} onChange={(p) => { setOpenId(null); setPage(p); }} />}
     </>
   );
 }

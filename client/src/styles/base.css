@@ -769,6 +769,22 @@ input[type='number'] {
   color: var(--text);
   border-bottom-color: var(--primary);
 }
+.tab-count {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 18px;
+  text-align: center;
+}
+.tabs .active .tab-count {
+  background: var(--primary);
+  color: #fff;
+}
 
 @media (max-width: 899px) {
   .only-desktop {

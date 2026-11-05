@@ -348,14 +348,15 @@ router.get('/orders', async (req, res) => {
   const { n: total } = await db().one(`SELECT COUNT(*)::int AS n FROM orders o ${sql}`, list);
   const rows = await db().all(
     `SELECT o.*, (SELECT SUM(quantity)::int FROM order_items WHERE order_id = o.id) AS item_count
-     FROM orders o ${sql}
-     -- Orders that need work first (processing, then pending), finished ones last; newest first within each.
-     ORDER BY CASE o.status WHEN 'processing' THEN 0 WHEN 'pending' THEN 1 WHEN 'shipped' THEN 2
-       WHEN 'delivered' THEN 3 ELSE 4 END, o.id DESC
-     LIMIT ${p(limit)} OFFSET ${p(offset)}`,
+     FROM orders o ${sql} ORDER BY o.created_at DESC, o.id DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
     list,
   );
-  res.json({ items: rows.map((o) => serializeOrder(o)), total, page, pages: Math.ceil(total / limit) });
+  // How many orders each status tab holds, with the same search/date/customer filters.
+  const others = orderFilters({ ...req.query, status: '' });
+  const statusCounts = Object.fromEntries(
+    (await db().all(`SELECT o.status, COUNT(*)::int AS n FROM orders o ${others.sql} GROUP BY o.status`, others.list)).map((r) => [r.status, r.n]),
+  );
+  res.json({ items: rows.map((o) => serializeOrder(o)), total, page, pages: Math.ceil(total / limit), statusCounts });
 });
 
 router.get('/orders.csv', async (req, res) => {
@@ -464,8 +465,11 @@ const serializeCoupon = (c) => ({
   usedCount: c.used_count, expiresAt: c.expires_at, active: c.active, createdAt: c.created_at,
 });
 
-router.get('/coupons', async (_req, res) => {
-  res.json((await db().all('SELECT * FROM coupons ORDER BY id DESC')).map(serializeCoupon));
+router.get('/coupons', async (req, res) => {
+  const { limit, page, offset } = paginate(req.query, { defaultLimit: 25 });
+  const { n: total } = await db().one('SELECT COUNT(*)::int AS n FROM coupons');
+  const rows = await db().all('SELECT * FROM coupons ORDER BY id DESC LIMIT $1 OFFSET $2', [limit, offset]);
+  res.json({ items: rows.map(serializeCoupon), total, page, pages: Math.ceil(total / limit) });
 });
 
 async function saveCoupon(id, d) {
@@ -576,12 +580,16 @@ router.delete('/pages/:slug', async (req, res) => {
 
 /* -------------------------------------------------------------- messages */
 
-router.get('/messages', async (_req, res) => {
-  res.json(
-    (await db().all('SELECT * FROM messages ORDER BY id DESC LIMIT 500')).map((m) => ({
+router.get('/messages', async (req, res) => {
+  const { limit, page, offset } = paginate(req.query, { defaultLimit: 25 });
+  const { n: total } = await db().one('SELECT COUNT(*)::int AS n FROM messages');
+  const rows = await db().all('SELECT * FROM messages ORDER BY id DESC LIMIT $1 OFFSET $2', [limit, offset]);
+  res.json({
+    items: rows.map((m) => ({
       id: m.id, name: m.name, email: m.email, phone: m.phone, subject: m.subject, message: m.message, read: m.read, createdAt: m.created_at,
     })),
-  );
+    total, page, pages: Math.ceil(total / limit),
+  });
 });
 
 router.put('/messages/:id', async (req, res) => {

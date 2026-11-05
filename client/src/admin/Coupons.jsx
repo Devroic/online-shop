@@ -5,7 +5,7 @@ import { useFetch } from '../lib/useFetch.js';
 import { date, money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
-import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
+import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 import { Modal, MoneyInput, PageHeader, Toggle } from './components.jsx';
 
@@ -122,7 +122,8 @@ function CouponModal({ coupon, onClose, onSaved }) {
 }
 
 export default function Coupons() {
-  const { data, reload } = useFetch('/admin/coupons');
+  const [page, setPage] = useState(1);
+  const { data, reload } = useFetch(`/admin/coupons?page=${page}`);
   const [editing, setEditing] = useState(null);
   return (
     <>
@@ -137,7 +138,7 @@ export default function Coupons() {
       />
       {!data ? (
         <PageLoader />
-      ) : !data.length ? (
+      ) : !data.items.length ? (
         <EmptyState icon={Ticket} title={t('No discount codes yet')} text={t('Create a code like WELCOME10 to reward new customers.')} />
       ) : (
         <div className="card table-card">
@@ -154,7 +155,7 @@ export default function Coupons() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((c) => {
+                {data.items.map((c) => {
                   const expired = c.expiresAt && new Date(c.expiresAt) < new Date();
                   return (
                     <tr key={c.id} className={c.active && !expired ? '' : 'dim'}>
@@ -192,6 +193,7 @@ export default function Coupons() {
           </div>
         </div>
       )}
+      {data && <Pagination page={page} pages={data.pages} onChange={setPage} />}
       {editing && (
         <CouponModal
           coupon={editing.id ? editing : null}

@@ -71,8 +71,25 @@ function layout(settings, body) {
       <div style="background:${esc(color)};color:#fff;padding:20px 24px;font-size:20px;font-weight:bold">${esc(settings.storeName)}</div>
       <div style="padding:24px;line-height:1.5">${body}</div>
     </div>
-    <p style="text-align:center;color:#71717a;font-size:12px">${esc(settings.contact.email)} ${esc(settings.contact.phone)}</p>
+    ${footer(settings)}
   </div></body></html>`;
+}
+
+const SOCIAL = [
+  ['instagram', 'Instagram'],
+  ['facebook', 'Facebook'],
+  ['tiktok', 'TikTok'],
+];
+
+/** Shop contact details and social links (text, not icons: many inboxes block images). */
+function footer(settings) {
+  const contact = [settings.contact.email, settings.contact.phone].filter(Boolean).map(esc).join(' · ');
+  const social = SOCIAL.filter(([key]) => settings.social?.[key])
+    .map(([key, name]) => `<a href="${esc(settings.social[key])}" style="color:#52525b;text-decoration:underline">${name}</a>`)
+    .join(' &nbsp;·&nbsp; ');
+  if (!contact && !social) return '';
+  return `<div style="text-align:center;color:#71717a;font-size:12px;line-height:1.8;padding-top:12px">
+    ${contact ? `<div>${contact}</div>` : ''}${social ? `<div>${social}</div>` : ''}</div>`;
 }
 
 

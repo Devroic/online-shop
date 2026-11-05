@@ -41,11 +41,16 @@ export function OrderList() {
         }
       />
       <nav className="tabs">
-        {STATUS_TABS.map((s) => (
-          <button key={s} className={status === s ? 'active' : ''} onClick={() => update({ status: s })}>
-            {s ? t(ORDER_STATUS[s]) : t('All')}
-          </button>
-        ))}
+        {STATUS_TABS.map((s) => {
+          const counts = data?.statusCounts;
+          const n = counts && (s ? counts[s] || 0 : Object.values(counts).reduce((a, b) => a + b, 0));
+          return (
+            <button key={s} className={status === s ? 'active' : ''} onClick={() => update({ status: s })}>
+              {s ? t(ORDER_STATUS[s]) : t('All')}
+              {counts && <span className="tab-count">{n}</span>}
+            </button>
+          );
+        })}
       </nav>
       <div className="a-filters">
         <SearchInput value={q} onChange={(v) => update({ q: v })} placeholder={t('Order number, name, email or phone…')} />
