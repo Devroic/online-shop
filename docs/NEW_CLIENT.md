@@ -160,7 +160,7 @@
 
 - Supabase → **Authentication → URL Configuration**:
   - Site URL: `https://margarita.gr`
-  - Redirect URLs: πρόσθεσε `https://margarita.gr/auth/callback`
+  - Redirect URLs: πρόσθεσε `https://margarita.gr/**` (με το `/**`: καλύπτει το `/auth/callback?next=…`)
 - Supabase → **Authentication → Providers → Google**: άνοιξέ το και αντέγραψε το **Callback URL** που δείχνει.
 - https://console.cloud.google.com (ο δικός σου λογαριασμός Google):
   - φτιάξε νέο project `margarita`
@@ -198,7 +198,7 @@
 ## Δοκιμή Google/Facebook στον υπολογιστή σου
 
 - Στο `.env` βάλε `SUPABASE_URL` και `SUPABASE_ANON_KEY` ενός δοκιμαστικού Supabase project.
-- Supabase → **Authentication → URL Configuration → Redirect URLs**: πρόσθεσε `http://localhost:5173/auth/callback`.
+- Supabase → **Authentication → URL Configuration → Redirect URLs**: πρόσθεσε `http://localhost:5173/**`.
 - Admin → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε Google/Facebook → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
 
 ---
