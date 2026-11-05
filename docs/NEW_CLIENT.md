@@ -160,14 +160,15 @@
 
 - Supabase → **Authentication → URL Configuration**:
   - Site URL: `https://margarita.gr`
-  - Redirect URLs: πρόσθεσε `https://margarita.gr/auth/callback`
+  - Redirect URLs: πρόσθεσε `https://margarita.gr/**` (με το `/**`: καλύπτει το `/auth/callback?next=…`)
 - Supabase → **Authentication → Providers → Google**: άνοιξέ το και αντέγραψε το **Callback URL** που δείχνει.
 - https://console.cloud.google.com (ο δικός σου λογαριασμός Google):
   - φτιάξε νέο project `margarita`
   - **APIs & Services → OAuth consent screen**: όνομα καταστήματος, email, λογότυπο → **Publish**
   - **Credentials → Create credentials → OAuth client ID** → Web application → Authorized redirect URI: το Callback URL της Supabase
   - αντέγραψε **Client ID** και **Client secret** στη Supabase (Google provider) → Save
-- Admin καταστήματος → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Google» → Αποθήκευση.
+- Στο `clients/margarita.json`, μέσα στο `settings`, πρόσθεσε `"login": { "google": true }` και ξανατρέξε
+  το `npm run configure` (Βήμα 5). Ο διακόπτης δεν υπάρχει στο admin, για να μην τον αλλάξει κατά λάθος ο πελάτης.
 
 ## Προαιρετικό: σύνδεση πελατών με Facebook
 
@@ -191,15 +192,16 @@
 - Supabase → **Providers → Facebook**: Facebook client ID = App ID, Facebook secret = App Secret → Save
 - Facebook → πάνω στη σελίδα **App Mode: Development → Live** (ή **Publish**). Αν σου ζητήσει
   **Business verification**, ακολούθησε τα βήματα με τα στοιχεία της επιχείρησης του πελάτη.
-- Admin καταστήματος → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε «Σύνδεση με Facebook» → Αποθήκευση.
+- Στο `clients/margarita.json`, μέσα στο `settings`, πρόσθεσε (κράτα το `google` αν το έχεις) `"login": { "google": true, "facebook": true }` και ξανατρέξε
+  το `npm run configure` (Βήμα 5). Ο διακόπτης δεν υπάρχει στο admin, για να μην τον αλλάξει κατά λάθος ο πελάτης.
 - Αν κάποιος λογαριασμός Facebook δεν δώσει email, το κατάστημα του ζητά να συνδεθεί με email
   (χωρίς email δεν μπορούν να σταλούν οι επιβεβαιώσεις παραγγελιών).
 
 ## Δοκιμή Google/Facebook στον υπολογιστή σου
 
 - Στο `.env` βάλε `SUPABASE_URL` και `SUPABASE_ANON_KEY` ενός δοκιμαστικού Supabase project.
-- Supabase → **Authentication → URL Configuration → Redirect URLs**: πρόσθεσε `http://localhost:5173/auth/callback`.
-- Admin → **Στοιχεία καταστήματος → Σύνδεση πελατών** → άνοιξε Google/Facebook → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
+- Supabase → **Authentication → URL Configuration → Redirect URLs**: πρόσθεσε `http://localhost:5173/**`.
+- Άνοιξε Google/Facebook όπως παραπάνω (`"login"` στο JSON + `npm run configure`) → τα κουμπιά εμφανίζονται στη σύνδεση και στην εγγραφή.
 
 ---
 

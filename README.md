@@ -68,7 +68,7 @@ Client files (`clients/*.json`, `.env.*`) are **not** committed: they contain em
 - Pages: home page banner and announcement, text pages under “Help”
 - Shipping & payments: delivery methods, card/cash on delivery, checkout options
 - Appearance: logo, colours (light & dark) with live preview, font
-- Store details: name, contact, order emails, Google/Facebook sign-in, stock, SEO
+- Store details: name, contact, order emails, stock, SEO
 
 ## Security
 - Prices, discounts and stock are calculated on the server inside a transaction; two simultaneous

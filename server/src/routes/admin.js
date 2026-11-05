@@ -588,8 +588,6 @@ router.get('/settings', async (_req, res) =>
       stripeConfigured: stripeReady(),
       emailConfigured: emailConfigured(),
       storage: storageMode(),
-      socialLoginConfigured: !!(config.supabase.url && config.supabase.anonKey),
-      supabaseUrl: config.supabase.url || '',
     },
   }),
 );
