@@ -86,6 +86,9 @@
     - Endpoint URL: `https://margarita.gr/api/stripe/webhook`
     - Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired`
     - Signing secret (`whsec_…`) → `STRIPE_WEBHOOK_SECRET=`
+  - **Settings → Payments → Payment methods** (οι τρόποι πληρωμής στη σελίδα του Stripe ορίζονται μόνο εδώ, όχι από τον κώδικα):
+    - **On**: Cards, Apple Pay, Google Pay, PayPal
+    - **Off**: όλα τα υπόλοιπα (Link, Amazon Pay, Klarna, Bancontact, EPS, MB WAY, Satispay κ.λπ.)
 
 ## Βήμα 5. Vercel (το site)
 
@@ -117,6 +120,8 @@
 - Stripe: όταν ο πελάτης έχει ολοκληρώσει την ενεργοποίηση (Βήμα 4), κλείσε το **Test mode** και ξανακάνε για **live**:
   - Developers → API keys → `sk_live_…`
   - Developers → Webhooks → Add endpoint (ίδιο URL, ίδια 3 events) → νέο `whsec_…`
+  - Settings → Payments → Payment methods: ίδιες ρυθμίσεις με το Βήμα 4 (το live έχει δικές του). Το PayPal μπορεί να ζητήσει
+    έγκριση από το Stripe· μέχρι να ενεργοποιηθεί, η σελίδα πληρωμής δείχνει μόνο κάρτα, Apple Pay και Google Pay.
 - Vercel → project → **Settings → Environment Variables**: άλλαξε τα `STRIPE_SECRET_KEY` και `STRIPE_WEBHOOK_SECRET` με τα live.
 - Vercel → **Deployments** → στο τελευταίο: **⋯ → Redeploy**, για να φορτώσουν τα νέα κλειδιά.
 - Backup: GitHub → repository → **Settings → Secrets and variables → Actions → `BACKUP_DATABASE_URLS`** → Update:
