@@ -283,6 +283,17 @@ export default function Checkout() {
     }
   };
 
+  // Changing the country re-filters the delivery methods above it.
+  const countryField = (
+    <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={errors.country} disabled={countries.length === 1}>
+      {countries.map((c) => (
+        <option key={c} value={c}>
+          {countryName(c)}
+        </option>
+      ))}
+    </Field>
+  );
+
   const hasProblems = quote?.problems.length > 0;
 
   return (
@@ -315,16 +326,6 @@ export default function Checkout() {
             <h2>
               <span className="step-num">2</span> {t('Delivery')}
             </h2>
-            {/* Hidden when the shop only offers store pickup. */}
-            {settings.deliveryCountries?.length > 0 && (
-              <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={errors.country} disabled={countries.length === 1}>
-                {countries.map((c) => (
-                  <option key={c} value={c}>
-                    {countryName(c)}
-                  </option>
-                ))}
-              </Field>
-            )}
             <div className="options">
               {quote && !methodsHere.length && <p className="muted">{t('No delivery to this country is set up yet.')}</p>}
               {methodsHere.map((m) => (
@@ -340,16 +341,23 @@ export default function Checkout() {
               ))}
               {!quote && <Spinner />}
             </div>
-            {shipping?.requiresAddress && (
+            {shipping?.requiresAddress ? (
               <div className="address-fields">
                 <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={errors.street} />
-                <div className="grid-3">
+                <div className="grid-2">
                   <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={errors.city} />
                   <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={errors.postalCode} />
+                </div>
+                <div className="grid-2">
                   <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={errors.region} />
+                  {countryField}
                 </div>
                 {user && <Checkbox label={t('Save this address to my account')} checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />}
               </div>
+            ) : (
+              // With store pickup (or no delivery to the current country) the country stays
+              // reachable, so the customer can switch to a country that has delivery.
+              countries.length > 1 && <div className="address-fields">{countryField}</div>
             )}
           </section>
 
