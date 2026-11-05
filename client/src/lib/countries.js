@@ -31,3 +31,7 @@ export const shippingCountries = (settings) => {
   const list = (settings?.deliveryCountries || []).filter((c) => COUNTRY_CODES.includes(c));
   return list.length ? list : ['CY'];
 };
+
+/** The shop's address with its country, e.g. "Ermou 10, Nicosia, Κύπρος"; '' without an address. */
+export const shopAddress = (contact) =>
+  contact?.address ? [contact.address, countryName(contact.country)].filter(Boolean).join(', ') : '';

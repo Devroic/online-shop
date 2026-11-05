@@ -130,7 +130,8 @@ function deliveryBlock(order, settings, t, lang = settings.language) {
     return `<p style="margin-top:20px"><strong>${t('Delivery address')}</strong><br>${esc(order.customerName)}<br>${esc(a.street)}<br>${esc(a.postalCode)} ${esc(a.city)}${a.region ? `, ${esc(a.region)}` : ''}${country}</p>`;
   }
   const c = settings.contact;
-  return `<p style="margin-top:20px"><strong>${t('Pickup from the store')}</strong>${c.address ? `<br>${esc(c.address)}` : ''}${c.hours ? `<br>${esc(c.hours)}` : ''}</p>`;
+  const address = c.address ? [c.address, countryName(c.country, lang)].filter(Boolean).join(', ') : '';
+  return `<p style="margin-top:20px"><strong>${t('Pickup from the store')}</strong>${address ? `<br>${esc(address)}` : ''}${c.hours ? `<br>${esc(c.hours)}` : ''}</p>`;
 }
 
 /** Tracking number and/or the courier's tracking link, in a grey box. Empty when there is neither. */

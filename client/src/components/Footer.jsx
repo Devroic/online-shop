@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { t, PAYMENT_METHOD } from '../lib/i18n.js';
+import { shopAddress } from '../lib/countries.js';
 import { FacebookIcon, InstagramIcon, TiktokIcon } from './ui.jsx';
 
 export default function Footer() {
@@ -77,7 +78,7 @@ export default function Footer() {
             )}
             {contact.address && (
               <li>
-                <MapPin size={16} /> <span>{contact.address}</span>
+                <MapPin size={16} /> <span>{shopAddress(contact)}</span>
               </li>
             )}
             {contact.hours && (

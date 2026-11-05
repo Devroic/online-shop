@@ -3,6 +3,7 @@ import { Mail, Phone, MapPin, Clock, CircleCheck } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { api } from '../lib/api.js';
 import { t } from '../lib/i18n.js';
+import { shopAddress } from '../lib/countries.js';
 import { Field, FormAlert, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 
@@ -79,8 +80,8 @@ export default function Contact() {
             </a>
           )}
           {contact.address && (
-            <a href={`https://maps.google.com/?q=${encodeURIComponent(contact.address)}`} target="_blank" rel="noreferrer">
-              <MapPin size={20} /> {contact.address}
+            <a href={`https://maps.google.com/?q=${encodeURIComponent(shopAddress(contact))}`} target="_blank" rel="noreferrer">
+              <MapPin size={20} /> {shopAddress(contact)}
             </a>
           )}
           {contact.hours && (
