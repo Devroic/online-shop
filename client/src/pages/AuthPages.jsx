@@ -75,7 +75,7 @@ export function Register() {
   const { user, register } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: params.get('email') || '', phone: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: params.get('email') || '', phone: '', password: '', passwordConfirm: '' });
   const v = useValidation();
   const [busy, setBusy] = useState(false);
   useTitle(t('Create an account'));
@@ -101,11 +101,17 @@ export function Register() {
               email: [rules.required(), rules.email()],
               phone: [rules.maxLength(40)],
               password: [rules.required(), rules.minLength(8)],
+              passwordConfirm: [rules.required()],
             });
             if (!ok) return;
+            if (form.passwordConfirm !== form.password) {
+              v.show({ passwordConfirm: t('The passwords do not match') });
+              return;
+            }
             setBusy(true);
             try {
-              await register(form);
+              const { passwordConfirm, ...data } = form;
+              await register(data);
               navigate(safeNext(params.get('next'), '/'), { replace: true });
             } catch (err) {
               if (err.details?.email === 'exists') v.show({ email: t('An account with this email already exists') });
@@ -125,6 +131,14 @@ export function Register() {
             onChange={set('password')}
             error={v.errors.password}
             hint={t('At least 8 characters')}
+          />
+          <Field
+            label={t('Confirm password')}
+            type="password"
+            autoComplete="new-password"
+            value={form.passwordConfirm}
+            onChange={set('passwordConfirm')}
+            error={v.errors.passwordConfirm}
           />
           <FormAlert message={v.errors._} />
           <button className="btn btn-primary btn-block" disabled={busy}>

@@ -1,6 +1,6 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, Minus, Plus, LoaderCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Minus, Plus, LoaderCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
@@ -82,10 +82,33 @@ export function Field({ label, error, hint, as: Tag = 'input', className = '', c
   const id = useId();
   return (
     <FieldWrap label={label} error={error} hint={hint} htmlFor={id} className={className}>
-      <Tag id={id} aria-invalid={!!error} {...props}>
-        {children}
-      </Tag>
+      {Tag === 'input' && props.type === 'password' ? (
+        <PasswordInput id={id} aria-invalid={!!error} {...props} />
+      ) : (
+        <Tag id={id} aria-invalid={!!error} {...props}>
+          {children}
+        </Tag>
+      )}
     </FieldWrap>
+  );
+}
+
+/** Password input with an eye button to show what was typed. */
+function PasswordInput(props) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="password-input">
+      <input {...props} type={shown ? 'text' : 'password'} />
+      <button
+        type="button"
+        className="password-toggle"
+        onClick={() => setShown((s) => !s)}
+        aria-label={shown ? t('Hide password') : t('Show password')}
+        aria-pressed={shown}
+      >
+        {shown ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
   );
 }
 
