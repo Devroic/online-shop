@@ -180,6 +180,10 @@ test('validation errors come back as short codes the UI translates', async () =>
   const settings = await admin.put('/api/admin/settings').send({ contact: { email: 'nope' }, social: { instagram: 'instagram' }, theme: { primary: 'red' } }).expect(400);
   assert.deepEqual(settings.body.details, { 'contact.email': 'email', 'social.instagram': 'url', 'theme.primary': 'colour' });
   await admin.put('/api/admin/settings').send({ contact: { email: '' }, social: { instagram: '' } }).expect(200);
+  // The shop's own contact details follow the same phone / postal code rules as customers'.
+  const contact = await admin.put('/api/admin/settings').send({ contact: { phone: 'abc', postalCode: 'xyz' } }).expect(400);
+  assert.deepEqual(contact.body.details, { 'contact.phone': 'phone', 'contact.postalCode': 'postal_code' });
+  await admin.put('/api/admin/settings').send({ contact: { phone: '', postalCode: '' } }).expect(200);
 });
 
 test('guest orders join an account only after the email is confirmed', async () => {

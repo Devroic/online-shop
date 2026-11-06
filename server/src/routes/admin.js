@@ -5,7 +5,7 @@ import { db, tx } from '../db.js';
 import { config } from '../config.js';
 import { getSettings, updateSettings } from '../settings.js';
 import { requireAdmin, publicUser } from '../auth.js';
-import { badRequest, normalizeSearch, notFound, paginate, params, slugify, uniqueSlug, validate } from '../utils.js';
+import { badRequest, isPhone, isPostalCode, normalizeSearch, notFound, paginate, params, slugify, uniqueSlug, validate } from '../utils.js';
 import { getProduct, listProducts, productSearchText, serializeCategory } from '../services/catalog.js';
 import { ORDER_STATUSES, PAYMENT_STATUSES, getOrder, paymentStepAllowed, serializeOrder, statusPairAllowed, updateOrder } from '../services/orders.js';
 import { stripeReady } from '../services/payments.js';
@@ -820,7 +820,7 @@ const settingsSchema = z
         ),
       )
       .partial(),
-    contact: z.object({ email: optEmail, phone: z.string().max(60), address: z.string().max(300), country: z.enum(COUNTRY_CODES), city: z.string().max(100), region: z.string().max(100), postalCode: z.string().max(20), hours: z.string().max(300) }).partial(),
+    contact: z.object({ email: optEmail, phone: z.string().trim().max(60).refine((s) => !s || isPhone(s), { message: 'phone' }), address: z.string().max(300), country: z.enum(COUNTRY_CODES), city: z.string().max(100), region: z.string().max(100), postalCode: z.string().trim().max(20).refine((s) => !s || isPostalCode(s), { message: 'postal_code' }), hours: z.string().max(300) }).partial(),
     social: z.object({ facebook: optUrl, instagram: optUrl, tiktok: optUrl }).partial(),
     payments: z
       .object({
