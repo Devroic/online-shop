@@ -136,8 +136,9 @@ export function OrderDetail({ onChange }) {
   const [form, setForm] = useState(null);
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [shipping, setShipping] = useState(null); // the "mark as shipped" window: { trackingNumber, trackingUrl }
+  const [shipping, setShipping] = useState(null); // the quick "mark as …" window: { status, tracking, trackingNumber, trackingUrl }
   const v = useValidation();
+  const sv = useValidation(); // the "mark as shipped" window
   useUnsavedGuard(!!order && !!form && EDITABLE.some((k) => form[k] !== (order[k] ?? '')));
   const set = (k) => (e) => {
     v.clear(k);
@@ -178,6 +179,7 @@ export function OrderDetail({ onChange }) {
     try {
       const updated = await api.put(`/admin/orders/${id}`, { ...patch, notifyCustomer: notify });
       setData(updated);
+      setNotify(true); // "don't email" is for one change only
       onChange?.();
       v.reset();
       toast.success(t('Order updated'));
@@ -188,20 +190,22 @@ export function OrderDetail({ onChange }) {
     }
   };
 
-  // "Mark as shipped" for a courier order asks for the tracking number first, so the
-  // customer's email can include it (both fields stay optional).
+  // Every quick "Mark as …" opens the same small window, so the email choice is always
+  // in sight. A courier order being shipped without tracking also asks for it there.
   const startQuick = (status) => {
-    if (status === 'shipped' && order.address && !order.trackingNumber && !order.trackingUrl) {
-      setShipping({ trackingNumber: form.trackingNumber, trackingUrl: form.trackingUrl });
-      return;
-    }
-    save(withCodPaid({ ...form, status }));
+    sv.reset();
+    setShipping({
+      status,
+      tracking: status === 'shipped' && !!order.address && !order.trackingNumber && !order.trackingUrl,
+      trackingNumber: form.trackingNumber,
+      trackingUrl: form.trackingUrl,
+    });
   };
-  const confirmShipped = async () => {
-    const ok = v.validate(shipping, { trackingNumber: [rules.maxLength(200)], trackingUrl: [rules.url(), rules.maxLength(1000)] });
-    if (!ok) return;
+  const confirmQuick = async () => {
+    const { status, tracking, trackingNumber, trackingUrl } = shipping;
+    if (tracking && !sv.validate(shipping, { trackingNumber: [rules.maxLength(200)], trackingUrl: [rules.url(), rules.maxLength(1000)] })) return;
     setShipping(null);
-    await save({ ...form, ...shipping, status: 'shipped' });
+    await save(withCodPaid({ ...form, ...(tracking ? { trackingNumber, trackingUrl } : {}), status }));
   };
 
   const a = order.address;
@@ -334,6 +338,7 @@ export function OrderDetail({ onChange }) {
               hint={t("The courier's page where the customer can follow the parcel.")}
               value={form.trackingUrl}
               onChange={set('trackingUrl')}
+              onBlur={() => setForm((f) => ({ ...f, trackingUrl: withHttps(f.trackingUrl) }))}
               error={v.errors.trackingUrl}
             />
             <Field as="textarea" rows={3} label={t('Internal notes')} hint={t('Only visible to admins')} value={form.adminNotes} onChange={set('adminNotes')} error={v.errors.adminNotes} />
@@ -347,29 +352,37 @@ export function OrderDetail({ onChange }) {
       </div>
       {shipping && (
         <Modal
-          title={t('Mark as {status}', { status: statusName('shipped', order).toLowerCase() })}
+          title={t('Mark as {status}', { status: statusName(shipping.status, order).toLowerCase() })}
           onClose={() => setShipping(null)}
           footer={
             <>
               <button type="button" className="btn btn-ghost" onClick={() => setShipping(null)}>
                 {t('Cancel')}
               </button>
-              <button type="button" className="btn btn-primary" onClick={confirmShipped} disabled={saving}>
-                {saving && <Spinner />} {shipping.trackingNumber || shipping.trackingUrl ? t('Mark as {status}', { status: statusName('shipped', order).toLowerCase() }) : t('Ship without tracking')}
+              <button type="button" className="btn btn-primary" onClick={confirmQuick} disabled={saving}>
+                {saving && <Spinner />}{' '}
+                {shipping.tracking && !shipping.trackingNumber && !shipping.trackingUrl
+                  ? t('Ship without tracking')
+                  : t('Mark as {status}', { status: statusName(shipping.status, order).toLowerCase() })}
               </button>
             </>
           }
         >
+          {withCodPaid({ ...form, status: shipping.status }).paymentStatus !== form.paymentStatus && (
+            <p className="muted">{t('The payment will be marked as paid: the money was collected on delivery.')}</p>
+          )}
+          {shipping.tracking && (
+            <>
           <p className="muted">{t('Add the tracking number so the customer can follow the parcel. It goes in the email about the shipment.')}</p>
           <Field
-            label={t('Tracking number')}
+            label={t('Tracking number (optional)')}
             value={shipping.trackingNumber}
             autoFocus
             onChange={(e) => {
-              v.clear('trackingNumber');
+              sv.clear('trackingNumber');
               setShipping({ ...shipping, trackingNumber: e.target.value });
             }}
-            error={v.errors.trackingNumber}
+            error={sv.errors.trackingNumber}
           />
           <Field
             label={t('Tracking link (optional)')}
@@ -378,17 +391,26 @@ export function OrderDetail({ onChange }) {
             placeholder="https://"
             value={shipping.trackingUrl}
             onChange={(e) => {
-              v.clear('trackingUrl');
+              sv.clear('trackingUrl');
               setShipping({ ...shipping, trackingUrl: e.target.value });
             }}
-            error={v.errors.trackingUrl}
+            onBlur={() => setShipping((s) => ({ ...s, trackingUrl: withHttps(s.trackingUrl) }))}
+            error={sv.errors.trackingUrl}
           />
-          {notify && <p className="muted small">{t('The customer gets an email about the shipment.')}</p>}
+            </>
+          )}
+          <Checkbox label={t('Email the customer about this change')} checked={notify} onChange={(e) => setNotify(e.target.checked)} />
         </Modal>
       )}
     </div>
   );
 }
+
+/** "acs.com.cy/track" → "https://acs.com.cy/track"; empty stays empty. */
+const withHttps = (url) => {
+  const u = (url || '').trim();
+  return u && !/^https?:\/\//i.test(u) ? `https://${u}` : u;
+};
 
 /** Event messages look like "pending → processing (stripe)"; translate the status words. */
 function translateEvent(type, msg) {

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Download, FileSpreadsheet, CircleCheck, AlertCircle } from 'lucide-react';
+import { Download, FileSpreadsheet, CircleCheck, AlertCircle, Info } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
@@ -144,6 +144,11 @@ export default function ProductImport({ onClose, onDone }) {
             <span className="status status-processing">{t('{n} to update', { n: parsed.products.length - newCount })}</span>
             {parsed.errors.length > 0 && <span className="status status-cancelled">{t('{n} rows with problems', { n: parsed.errors.length })}</span>}
           </div>
+          {parsed.kept.length > 0 && parsed.products.length - newCount > 0 && (
+            <p className="notice">
+              <Info size={16} /> {t('Not in the file, so they stay as they are on products being updated: {cols}.', { cols: parsed.kept.join(', ') })}
+            </p>
+          )}
           {parsed.errors.length > 0 && (
             <div className="import-errors">
               <p>
@@ -174,10 +179,11 @@ export default function ProductImport({ onClose, onDone }) {
                   <tr key={p.row}>
                     <td>
                       <strong>{p.name}</strong>
-                      {p.variants.length > 0 && <div className="muted small">{p.variants.map((v) => v.name).join(', ')}</div>}
+                      {p.variants?.length > 0 && <div className="muted small">{p.variants.map((v) => v.name).join(', ')}</div>}
                     </td>
                     <td className="nowrap">{money(p.price)}</td>
-                    <td>{!p.trackStock ? '∞' : p.variants.length ? p.variants.reduce((n, v) => n + v.stock, 0) : p.stock}</td>
+                    {/* "—": not in the file, an existing product keeps its value. */}
+                    <td>{p.trackStock === undefined ? '—' : !p.trackStock ? '∞' : p.variants?.length ? p.variants.reduce((n, v) => n + (v.stock ?? 0), 0) : p.stock}</td>
                     <td>{p.categoryName || '—'}</td>
                     <td>{isNew(p) ? <span className="status status-delivered">{t('New')}</span> : <span className="status status-processing">{t('Update')}</span>}</td>
                   </tr>
@@ -203,7 +209,9 @@ export default function ProductImport({ onClose, onDone }) {
       {step === 'done' && (
         <div className="import-progress">
           <CircleCheck size={40} className="ok-icon" />
-          <h3>{t('{created} products created, {updated} updated', { created: result.created, updated: result.updated })}</h3>
+          <h3>
+            {t('{n} products created', { n: result.created })}, {t('{n} updated', { n: result.updated })}
+          </h3>
           {result.errors.length > 0 && (
             <div className="import-errors">
               <p>

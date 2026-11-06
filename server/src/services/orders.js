@@ -167,8 +167,9 @@ export async function quoteCart({ items = [], couponCode, shippingMethodId, paym
       requiresAddress: !pickup,
       countries: pickup ? [] : m.rates.map((r) => r.country),
       country: pickup ? null : rate.country ?? null,
-      freeOver: rate.freeOver,
-      cost: coupon?.type === 'free_shipping' || (rate.freeOver != null && afterDiscount >= rate.freeOver) ? 0 : rate.price,
+      // 0 (or empty, from before) = no free-shipping threshold.
+      freeOver: rate.freeOver > 0 ? rate.freeOver : null,
+      cost: coupon?.type === 'free_shipping' || (rate.freeOver > 0 && afterDiscount >= rate.freeOver) ? 0 : rate.price,
       cod: m.cod,
       codFee: m.cod ? m.cod_fee : 0,
     };

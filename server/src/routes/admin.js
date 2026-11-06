@@ -194,12 +194,25 @@ const importSchema = z.object({
   dryRun: z.boolean().optional(),
   products: z
     .array(
+      // No defaults here: a field left out (its column is not in the file) keeps the
+      // product's current value; see the merge in the route below.
       productSchema.extend({
-        images: z.array(z.url().max(1000)).max(20).default([]),
+        description: z.string().max(20000).optional(),
+        compareAtPrice: optMoney, // undefined = keep, null = remove
+        sku: z.string().trim().max(100).optional(),
+        stock: z.number().int().min(0).max(1_000_000).optional(),
+        trackStock: z.boolean().optional(),
+        images: z.array(z.url().max(1000)).max(20).optional(),
         categoryName: z.string().trim().max(100).optional().default(''),
         featured: z.boolean().optional(),
         active: z.boolean().optional(),
         discountPercent: z.number().int().min(0).max(90).optional(),
+        optionName: z.string().trim().max(40).optional(),
+        // Present only with an "Option" column; then it is the full list of options.
+        variants: z
+          .array(variantSchema.extend({ sku: z.string().trim().max(100).optional(), stock: z.number().int().min(0).max(1_000_000).optional() }))
+          .max(100)
+          .optional(),
       }),
     )
     .min(1)
@@ -235,16 +248,31 @@ router.post('/products/import', async (req, res) => {
       }
       const id = byName.get(item.name.trim().toLowerCase()) ?? null;
       const current = id ? await getProduct({ id }, { admin: true }) : null;
+      // What the sheet doesn't say (its column is missing) stays as it is; a new product
+      // starts from the usual defaults.
+      const keep = (value, currentValue, fallback) => (value !== undefined ? value : current ? currentValue : fallback);
+      const currentVariants = current?.variants.map((v) => ({ id: v.id, name: v.name, sku: v.sku, price: v.priceOverride, stock: v.stock })) ?? [];
+      const variants = data.variants
+        ? data.variants.map((v) => {
+            const same = currentVariants.find((cv) => cv.name.toLowerCase() === v.name.toLowerCase());
+            return { ...v, id: same?.id, sku: v.sku ?? same?.sku ?? '', stock: v.stock ?? same?.stock ?? 0 };
+          })
+        : currentVariants;
       await saveProduct(id, {
         ...data,
         slug: current?.slug,
+        description: keep(data.description, current?.description, ''),
+        compareAtPrice: keep(data.compareAtPrice, current?.regularCompareAtPrice, null),
+        sku: keep(data.sku, current?.sku, ''),
+        stock: keep(data.stock, current?.variants.length ? 0 : current?.stock, 0),
+        trackStock: keep(data.trackStock, current?.trackStock, true),
+        optionName: keep(data.optionName, current?.optionName, ''),
         categoryId: categoryId ?? current?.categoryId ?? null,
-        // Keep what the sheet doesn't say: photos, visibility, featured, option ids.
-        images: data.images.length ? data.images : current?.images ?? [],
+        images: data.images?.length ? data.images : current?.images ?? [],
         featured: data.featured ?? current?.featured ?? false,
         active: data.active ?? current?.active ?? true,
         discountPercent: data.discountPercent ?? current?.discountPercent ?? 0,
-        variants: data.variants.map((v) => ({ ...v, id: current?.variants.find((cv) => cv.name.toLowerCase() === v.name.toLowerCase())?.id })),
+        variants,
       });
       result[id ? 'updated' : 'created']++;
     } catch (err) {
@@ -592,7 +620,8 @@ router.delete('/coupons/:id', async (req, res) => {
 
 // Two fixed methods: the courier (a price per country, optional cash on delivery)
 // and store pickup (the shop's country only, optional payment at the store).
-const rateSchema = z.object({ country: z.enum(COUNTRY_CODES), price: money, freeOver: optMoney });
+// freeOver 0 = no free shipping (empty is saved as 0).
+const rateSchema = z.object({ country: z.enum(COUNTRY_CODES), price: money, freeOver: optMoney.transform((v) => v ?? 0) });
 const shippingSchema = z.object({
   id: z.number().int().positive(),
   // Empty: customers see "Courier" / "Store pickup".
@@ -606,7 +635,7 @@ const shippingSchema = z.object({
 
 const serializeShipping = (m) => ({
   id: m.id, kind: m.kind, name: m.name, description: m.description, active: m.active,
-  cod: m.cod, codFee: m.cod_fee, rates: m.rates,
+  cod: m.cod, codFee: m.cod_fee, rates: (m.rates || []).map((r) => ({ ...r, freeOver: r.freeOver ?? 0 })),
 });
 
 const shippingMethods = () => db().all("SELECT * FROM shipping_methods WHERE kind IS NOT NULL ORDER BY kind = 'pickup', id");

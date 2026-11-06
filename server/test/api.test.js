@@ -283,6 +283,43 @@ test('bulk import creates and updates products, categories and options', async (
   await admin.post('/api/admin/products/import').send({ products: [{ name: '', price: 1 }] }).expect(400);
 });
 
+test('import with only some columns leaves the other fields of existing products alone', async () => {
+  const { parseSheet } = await import('../../client/src/lib/productImport.js');
+  const full = (
+    await admin
+      .post('/api/admin/products')
+      .send({
+        name: 'Partial Tee', price: 1990, compareAtPrice: 2490, description: 'Soft cotton', sku: 'PT-1', optionName: 'Size',
+        variants: ['S', 'M', 'L', 'XL'].map((name, i) => ({ name, sku: `PT-${name}`, stock: i + 1 })),
+      })
+      .expect(201)
+  ).body;
+
+  // What the browser sends for a sheet with just Name, Price, Stock.
+  const { products, errors, kept } = parseSheet([['Name', 'Price', 'Stock'], ['Partial Tee', 17.5, 7]]);
+  assert.equal(errors.length, 0);
+  assert.ok(kept.includes('Description') && kept.includes('Option'));
+  assert.deepEqual(Object.keys(products[0]).sort(), ['name', 'price', 'row', 'stock', 'trackStock']);
+  const { row: _row, ...item } = products[0];
+  assert.equal((await admin.post('/api/admin/products/import').send({ products: [item] }).expect(200)).body.updated, 1);
+
+  const after = (await admin.get(`/api/admin/products/${full.id}`).expect(200)).body;
+  assert.equal(after.regularPrice, 1750); // the sheet's price
+  assert.equal(after.description, 'Soft cotton');
+  assert.equal(after.regularCompareAtPrice, 2490);
+  assert.equal(after.sku, 'PT-1');
+  assert.equal(after.optionName, 'Size');
+  assert.deepEqual(after.variants.map((v) => [v.name, v.sku, v.stock]), [['S', 'PT-S', 1], ['M', 'PT-M', 2], ['L', 'PT-L', 3], ['XL', 'PT-XL', 4]]);
+
+  // With an "Option" column the options are the sheet's; stock of a listed size changes, codes stay.
+  const withOptions = parseSheet([['Name', 'Option', 'Price', 'Stock'], ['Partial Tee', 'S', 17.5, 9], ['Partial Tee', 'M', 17.5, 2]]).products[0];
+  const { row: _r, ...item2 } = withOptions;
+  await admin.post('/api/admin/products/import').send({ products: [item2] }).expect(200);
+  const after2 = (await admin.get(`/api/admin/products/${full.id}`).expect(200)).body;
+  assert.deepEqual(after2.variants.map((v) => [v.name, v.sku, v.stock]), [['S', 'PT-S', 9], ['M', 'PT-M', 2]]);
+  assert.equal(after2.description, 'Soft cotton');
+});
+
 test('orders remember the visitor language; store pickup starts disabled', async () => {
   const p = await admin.post('/api/admin/products').send({ name: 'Lang test', price: 100, stock: 5 }).expect(201);
   const en = await request(app).post('/api/orders').set('X-Shop-Lang', 'en').send(checkout({ items: [{ productId: p.body.id, quantity: 1 }] })).expect(201);
@@ -418,9 +455,9 @@ test('phone and postal code must look real', async () => {
 });
 
 test('greeklish search, option name, guests in customers', async () => {
-  const p = (await admin.post('/api/admin/products').send({ name: 'Κούπα θάλασσας', price: 900, stock: 3, optionName: 'Μέγεθος', variants: [{ name: 'M', stock: 3 }] }).expect(201)).body;
+  const p = (await admin.post('/api/admin/products').send({ name: 'Κούπα θάλασσας δώρου', price: 900, stock: 3, optionName: 'Μέγεθος', variants: [{ name: 'M', stock: 3 }] }).expect(201)).body;
   assert.equal(p.optionName, 'Μέγεθος');
-  for (const q of ['koupa', 'kupa', 'thalassas', '8alassas']) {
+  for (const q of ['koupa', 'kupa', 'thalassas', '8alassas', 'doro']) {
     const found = (await request(app).get(`/api/products?q=${q}`).expect(200)).body.items.map((x) => x.id);
     assert.ok(found.includes(p.id), q);
   }

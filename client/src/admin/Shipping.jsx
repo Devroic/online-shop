@@ -45,7 +45,7 @@ function MethodCard({ form, onChange, errors }) {
       </div>
 
       {courier && (
-        <FieldWrap label={t('Countries and cost')} hint={t('Customers can only choose these countries. Leave “free over” empty for no free shipping.')} error={errors.rates}>
+        <FieldWrap label={t('Countries and cost')} hint={t('Customers can only choose these countries. “Free over” 0: no free shipping.')} error={errors.rates}>
           <div className="rates">
             <div className="rates-head muted small">
               <span>{t('Country')}</span>
@@ -57,7 +57,7 @@ function MethodCard({ form, onChange, errors }) {
               <div key={r.country} className="rates-row">
                 <strong>{countryName(r.country)}</strong>
                 <MoneyInput value={r.price} onChange={(cents) => setRate(i, { price: cents })} aria-label={t('Cost')} />
-                <MoneyInput value={r.freeOver} onChange={(cents) => setRate(i, { freeOver: cents })} allowEmpty aria-label={t('Free over')} />
+                <MoneyInput value={r.freeOver ?? 0} onChange={(cents) => setRate(i, { freeOver: cents })} aria-label={t('Free over')} />
                 <button
                   type="button"
                   className="icon-btn"
@@ -75,7 +75,7 @@ function MethodCard({ form, onChange, errors }) {
                 <select
                   className="input"
                   value=""
-                  onChange={(e) => e.target.value && set('rates', [...form.rates, { country: e.target.value, price: form.rates[0]?.price ?? 0, freeOver: null }])}
+                  onChange={(e) => e.target.value && set('rates', [...form.rates, { country: e.target.value, price: 0, freeOver: 0 }])}
                   aria-label={t('Add country')}
                 >
                   <option value="">{t('Add country…')}</option>

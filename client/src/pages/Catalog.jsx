@@ -29,8 +29,10 @@ export default function Catalog() {
   const sort = params.get('sort') || 'featured';
   const page = Number(params.get('page') || 1);
   const inStock = params.get('inStock') === '1';
-  const min = params.get('min') || '';
-  const max = params.get('max') || '';
+  // The wrong way round ("from 40 to 10", e.g. typed in the address) is read as 10 to 40.
+  let min = params.get('min') || '';
+  let max = params.get('max') || '';
+  if (min && max && parseMoney(min) > parseMoney(max)) [min, max] = [max, min];
 
   const { data, loading } = useFetch(
     `/products${qs({ q, sort, page, inStock: inStock ? 1 : '', category: slug, minPrice: parseMoney(min), maxPrice: parseMoney(max), limit: 24 })}`,

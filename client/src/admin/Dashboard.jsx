@@ -19,7 +19,7 @@ function RevenueChart({ series }) {
             <strong>{money(series[hover].revenue)}</strong>
             <span className="muted">
               {' '}
-              · {series[hover].orders} {t('orders')} · {date(series[hover].day)}
+              · {t('{n} orders', { n: series[hover].orders })} · {date(series[hover].day)}
             </span>
           </>
         ) : (
@@ -62,7 +62,7 @@ export default function Dashboard() {
     [TrendingUp, t('Revenue'), money(data.period.revenue), t('Today: {v}', { v: money(data.today.revenue) })],
     [ShoppingCart, t('Orders'), data.period.orders, t('Today: {v}', { v: data.today.orders })],
     [Package, t('Average order'), money(avg), t('{n} products in catalog', { n: data.products })],
-    [Users, t('Customers'), data.customers, t('registered accounts')],
+    [Users, t('Customers'), data.customers, t('registered accounts', { n: data.customers })],
   ];
 
   return (

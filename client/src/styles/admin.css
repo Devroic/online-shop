@@ -1289,11 +1289,20 @@ input[type='range'] {
   .orders-table td:nth-child(4) { grid-area: 2 / 2; text-align: right; }
   .orders-table td:nth-child(3) { grid-area: 3 / 1 / 4 / 3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .orders-table td:nth-child(3) .small { color: var(--muted); }
+  /* Search on its own row; under it "From" and "To", half a row each, label above the field. */
+  .a-filters .a-search {
+    flex-basis: 100%;
+    min-width: 0;
+  }
   .date-filter {
-    flex: 1;
+    flex: 1 1 calc(50% - 4px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 0;
   }
   .date-filter .input {
-    flex: 1;
+    width: 100%;
     min-width: 0;
   }
 }

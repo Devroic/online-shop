@@ -131,8 +131,11 @@ export async function listProducts(
       const match = [`p.search_text LIKE ${like}`, `c.search_name LIKE ${like}`];
       // Greek typed in Latin letters ("koupa" finds "Κούπα"): both sides are folded the same way.
       if (isLatin(clean)) {
-        const folded = p(`%${foldGreeklish(clean)}%`);
-        match.push(`${sqlFoldGreek('p.search_text')} LIKE ${folded}`, `${sqlFoldGreek("COALESCE(c.search_name, '')")} LIKE ${folded}`);
+        const f = foldGreeklish(clean);
+        for (const form of f.endsWith('o') ? [f, `${f.slice(0, -1)}u`] : [f]) {
+          const folded = p(`%${form}%`);
+          match.push(`${sqlFoldGreek('p.search_text')} LIKE ${folded}`, `${sqlFoldGreek("COALESCE(c.search_name, '')")} LIKE ${folded}`);
+        }
       }
       where.push(`(${match.join(' OR ')})`);
     }

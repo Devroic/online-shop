@@ -20,7 +20,17 @@ import Shipping from './Shipping.jsx';
 import Pages from './Pages.jsx';
 import Messages from './Messages.jsx';
 import { AppearancePage, StoreDetailsPage } from './Settings.jsx';
-import { ConfirmProvider } from './components.jsx';
+import { ConfirmProvider, useConfirmLeave } from './components.jsx';
+
+/** Inside ConfirmProvider, so it can ask about unsaved changes first. */
+function SignOutButton({ onSignOut }) {
+  const confirmLeave = useConfirmLeave();
+  return (
+    <button onClick={async () => (await confirmLeave()) && onSignOut()}>
+      <LogOut size={16} /> {t('Sign out')}
+    </button>
+  );
+}
 
 export default function AdminApp() {
   const { user, loading, logout } = useAuth();
@@ -84,9 +94,7 @@ export default function AdminApp() {
           <a href="/" target="_blank" rel="noreferrer">
             <ExternalLink size={16} /> {t('View shop')}
           </a>
-          <button onClick={logout}>
-            <LogOut size={16} /> {t('Sign out')}
-          </button>
+          <SignOutButton onSignOut={logout} />
           <div className="a-side-prefs">
             <LanguageSwitch />
             <AppearanceToggle className="a-theme-toggle" />

@@ -1,0 +1,21 @@
+// English singular forms of counted texts; the English text in the code is the plural.
+export const one = {
+  'The {n} ticked products': 'The {n} ticked product',
+  'Discount set on {n} products': 'Discount set on {n} product',
+  'Discount removed from {n} products': 'Discount removed from {n} product',
+  '{n} products': '{n} product',
+  '{n} items': '{n} item',
+  '{n} products in catalog': '{n} product in catalog',
+  '{n} days': '{n} day',
+  '{n} orders waiting to be processed': '{n} order waiting to be processed',
+  '{n} orders': '{n} order',
+  '{n} options': '{n} option',
+  '{n} accounts': '{n} account',
+  '{n} guests': '{n} guest',
+  'registered accounts': 'registered account',
+  '{n} products created': '{n} product created',
+  'Import {n} products': 'Import {n} product',
+  '{n} rows with problems': '{n} row with problems',
+  'At least {n} characters': 'At least {n} character',
+  'Up to {n} characters': 'Up to {n} character',
+};

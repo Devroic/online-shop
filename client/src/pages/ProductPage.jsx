@@ -183,8 +183,8 @@ export default function ProductPage() {
 
           <div className="stock-line">
             {!canBuy ? (
-              <span className="stock out">{t('Out of stock')}</span>
-            ) : lowStock ? (
+              <span className="stock out">{t('Sold out')}</span>
+            ) : lowStock && !allInCart ? (
               <span className="stock low">{t('Only {n} left', { n: available })}</span>
             ) : (
               <span className="stock in">

@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import { useCart } from '../context/CartContext.jsx';
+import { lineKey, useCart } from '../context/CartContext.jsx';
 import { discountPercent } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
+import { useToast } from '../context/ToastContext.jsx';
 import { Price } from './ui.jsx';
 
 const CYCLE_MS = 1200; // time each photo stays while the mouse is over the card
 
 export default function ProductCard({ product }) {
-  const { add } = useCart();
+  const { add, items } = useCart();
+  const toast = useToast();
   const off = discountPercent(product.price, product.compareAtPrice);
   const hasVariants = product.variants.length > 0;
+  // The quick "+" stops at the stock, counting what is already in the cart.
+  const inCart = items.find((l) => l.key === lineKey(product.id, null))?.quantity || 0;
+  const allInCart = product.trackStock && !hasVariants && inCart >= product.stock;
   const [img, ...more] = product.images;
 
   // While hovered: show the 2nd photo at once, then go through all of them and back to the 1st.
@@ -53,7 +58,13 @@ export default function ProductCard({ product }) {
                 <Plus size={18} />
               </Link>
             ) : (
-              <button className="quick-add" onClick={() => add(product, null, 1)} aria-label={`${t('Add to cart')}: ${product.name}`}>
+              <button
+                className="quick-add"
+                onClick={() => (allInCart ? toast.error(t('All available pieces are already in your cart.')) : add(product, null, 1, product.trackStock ? product.stock : null))}
+                aria-disabled={allInCart}
+                title={allInCart ? t('All available pieces are already in your cart.') : undefined}
+                aria-label={`${t('Add to cart')}: ${product.name}`}
+              >
                 <Plus size={18} />
               </button>
             ))}

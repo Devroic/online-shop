@@ -117,6 +117,10 @@ export function parseSheet(sheet, t = identity) {
     });
   });
 
+  // Only the columns in the file are sent. A column that is not there leaves that field
+  // of an existing product as it is (a sheet with just Name, Price, Stock must not wipe
+  // descriptions, sale prices or sizes). A column that is there is the new value, even empty.
+  const has = (key) => map[key] != null;
   const products = [];
   for (const { name, rows } of groups.values()) {
     const first = (k) => rows.find((r) => !isEmpty(r[k]) && !(Array.isArray(r[k]) && !r[k].length))?.[k];
@@ -131,26 +135,35 @@ export function parseSheet(sheet, t = identity) {
     }
     const price = Math.min(...rows.map((r) => r.price));
     const tracked = rows.some((r) => r.stock != null);
-    products.push({
-      row: rows[0].rowNo,
-      name,
-      description: first('description') ?? '',
-      price,
-      compareAtPrice: first('compareAtPrice') ?? null,
-      sku: hasOptions ? '' : rows[0].sku,
-      stock: hasOptions ? 0 : rows[0].stock ?? 0,
+    const p = { row: rows[0].rowNo, name, price };
+    if (has('description')) p.description = first('description') ?? '';
+    if (has('compareAtPrice')) p.compareAtPrice = first('compareAtPrice') ?? null;
+    if (has('sku')) p.sku = hasOptions ? '' : rows[0].sku;
+    if (has('stock')) {
+      if (!hasOptions) p.stock = rows[0].stock ?? 0;
       // An empty "Stock" column means "don't track stock" (always available).
-      trackStock: tracked,
-      categoryName: first('category') ?? '',
-      images: first('images') ?? [],
-      featured: first('featured') ?? undefined,
-      active: first('active') ?? undefined,
-      variants: hasOptions
-        ? rows.map((r) => ({ name: r.option, sku: r.sku, price: r.price === price ? null : r.price, stock: r.stock ?? 0 }))
-        : [],
-    });
+      p.trackStock = tracked;
+    }
+    if (has('category')) p.categoryName = first('category') ?? '';
+    if (has('images')) p.images = first('images') ?? [];
+    if (has('featured')) p.featured = first('featured') ?? undefined;
+    if (has('active')) p.active = first('active') ?? undefined;
+    // Options change only with an "Option" column; without it the product keeps its sizes.
+    if (has('option')) {
+      p.variants = hasOptions
+        ? rows.map((r) => {
+            const v = { name: r.option, price: r.price === price ? null : r.price };
+            if (has('sku')) v.sku = r.sku;
+            if (has('stock')) v.stock = r.stock ?? 0;
+            return v;
+          })
+        : [];
+    }
+    products.push(p);
   }
-  return { products, errors };
+  // Optional columns not in the file: shown in the preview as "left as they are".
+  const kept = COLUMNS.filter((c) => !c.required && !has(c.key)).map((c) => t(c.label));
+  return { products, errors, kept };
 }
 
 /** Minimal CSV reader (UTF-8). Detects ";" separators, which Excel uses in many European locales. */

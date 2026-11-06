@@ -104,6 +104,7 @@ for (const [i, [name, cat, price, compare, featured, variants, description]] of 
     featured,
     active: true,
     images,
+    optionName: variants ? t(variants === sizes || cat === 0 ? 'Size' : 'Scent') : '',
     variants: (variants || []).map((v, k) => ({ name: t(v), sku: `SKU-${100 + i}-${v}`, price: null, stock: k === 0 ? 0 : 3 + k * 2 })),
   });
   // Spread creation times so "newest" ordering looks natural.

@@ -167,7 +167,7 @@ export default function OrderPage() {
               <div>
                 <div className="muted small">{t('Payment')}</div>
                 <strong>{paymentName(order.paymentMethod, order)}</strong>
-                <span className={`status status-${order.paymentStatus}`}>{paymentStatusName(order)}</span>
+                {paymentStatusName(order) && <span className={`status status-${order.paymentStatus}`}>{paymentStatusName(order)}</span>}
               </div>
             </div>
             <StatusTimeline status={order.status} order={order} />

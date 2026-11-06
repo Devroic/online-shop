@@ -77,6 +77,25 @@ export function SaveBar({ dirty, saving, onSave, onDiscard, submit, saveLabel })
   );
 }
 
+let unsavedPages = 0;
+
+/** Asks before an action that would lose unsaved changes; true when it may go ahead. */
+export function useConfirmLeave() {
+  const confirm = useConfirm();
+  return useCallback(
+    async () =>
+      unsavedPages === 0 ||
+      confirm({
+        title: t('Leave without saving?'),
+        message: t('Your changes on this page will be lost.'),
+        confirmLabel: t('Leave'),
+        cancelLabel: t('Stay'),
+        danger: true,
+      }),
+    [confirm],
+  );
+}
+
 /**
  * While a page has unsaved changes: leaving it through a link asks first (our own
  * dialog), and closing or reloading the tab gets the browser's warning. Navigations
@@ -84,6 +103,14 @@ export function SaveBar({ dirty, saving, onSave, onDiscard, submit, saveLabel })
  */
 export function useUnsavedGuard(dirty) {
   const confirm = useConfirm();
+  // Counted for actions that leave without a navigation (signing out).
+  useEffect(() => {
+    if (!dirty) return;
+    unsavedPages += 1;
+    return () => {
+      unsavedPages -= 1;
+    };
+  }, [dirty]);
   const blocker = useBlocker(({ currentLocation, nextLocation, historyAction }) => dirty && historyAction !== 'REPLACE' && currentLocation.pathname !== nextLocation.pathname);
   const latest = useRef(blocker);
   latest.current = blocker;

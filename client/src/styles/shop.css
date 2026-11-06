@@ -1189,6 +1189,9 @@
   background: var(--bg);
   text-transform: uppercase;
 }
+.coupon-form input::placeholder {
+  text-transform: none;
+}
 .coupon-applied {
   display: flex;
   align-items: center;
@@ -1704,4 +1707,8 @@
 }
 .confirm-email .grow {
   min-width: 200px;
+}
+.quick-add[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
