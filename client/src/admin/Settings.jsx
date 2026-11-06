@@ -158,8 +158,8 @@ export function Appearance({ s, set, errors, preview, setPreview }) {
         <h3>{t('Light & dark appearance')}</h3>
         <div className="options">
           {[
-            ['light', t('Always light'), ''],
             ['auto', t('Automatic'), t('Follows each visitor’s device, with a light/dark switch in the header')],
+            ['light', t('Always light'), ''],
             ['dark', t('Always dark'), ''],
           ].map(([v, label, hint]) => (
             <label key={v} className={`option ${th.mode === v ? 'active' : ''}`}>
