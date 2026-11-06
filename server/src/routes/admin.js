@@ -229,7 +229,15 @@ router.post('/products/import', async (req, res) => {
   const names = products.map((p) => p.name.trim().toLowerCase());
   const existing = await db().all('SELECT id, name FROM products WHERE lower(trim(name)) = ANY($1)', [names]);
   const byName = new Map(existing.map((p) => [p.name.trim().toLowerCase(), p.id]));
-  if (dryRun) return res.json({ existing: existing.map((p) => p.name) });
+  if (dryRun) {
+    // The current options of each existing product, so the preview can say which ones a
+    // sheet with an "Option" column removes, and that "Stock" alone does not change them.
+    const rows = existing.length
+      ? await db().all('SELECT product_id, name FROM product_variants WHERE product_id = ANY($1::int[]) ORDER BY sort_order, id', [existing.map((p) => p.id)])
+      : [];
+    const options = Object.fromEntries(existing.map((p) => [p.name, rows.filter((r) => r.product_id === p.id).map((r) => r.name)]));
+    return res.json({ existing: existing.map((p) => p.name), options });
+  }
 
   const result = { created: 0, updated: 0, errors: [] };
   const categoryIds = new Map();
@@ -265,7 +273,9 @@ router.post('/products/import', async (req, res) => {
         compareAtPrice: keep(data.compareAtPrice, current?.regularCompareAtPrice, null),
         sku: keep(data.sku, current?.sku, ''),
         stock: keep(data.stock, current?.variants.length ? 0 : current?.stock, 0),
-        trackStock: keep(data.trackStock, current?.trackStock, true),
+        // A new product from a sheet without a "Stock" column is always available
+        // (as an empty "Stock" cell), not created sold out.
+        trackStock: keep(data.trackStock, current?.trackStock, false),
         optionName: keep(data.optionName, current?.optionName, ''),
         categoryId: categoryId ?? current?.categoryId ?? null,
         images: data.images?.length ? data.images : current?.images ?? [],

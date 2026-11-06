@@ -18,4 +18,6 @@ export const one = {
   '{n} rows with problems': '{n} row with problems',
   'At least {n} characters': 'At least {n} character',
   'Up to {n} characters': 'Up to {n} character',
+  '{n} products will lose options. Check the rows in red before importing.': '{n} product will lose options. Check the rows in red before importing.',
+  '{n} options will be removed: {names}': '{n} option will be removed: {names}',
 };

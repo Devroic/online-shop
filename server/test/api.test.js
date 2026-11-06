@@ -318,6 +318,20 @@ test('import with only some columns leaves the other fields of existing products
   const after2 = (await admin.get(`/api/admin/products/${full.id}`).expect(200)).body;
   assert.deepEqual(after2.variants.map((v) => [v.name, v.sku, v.stock]), [['S', 'PT-S', 9], ['M', 'PT-M', 2]]);
   assert.equal(after2.description, 'Soft cotton');
+
+  // The preview's dry run lists the current options, so it can warn about removed ones.
+  const dry = await admin.post('/api/admin/products/import').send({ dryRun: true, products: [item2] }).expect(200);
+  assert.deepEqual(dry.body.options, { 'Partial Tee': ['S', 'M'] });
+});
+
+test('a new product from a sheet without a "Stock" column is always available', async () => {
+  const { parseSheet } = await import('../../client/src/lib/productImport.js');
+  const { row: _row, ...item } = parseSheet([['Name', 'Price'], ['No Stock Column', 9.9]]).products[0];
+  assert.equal(item.trackStock, undefined);
+  assert.equal((await admin.post('/api/admin/products/import').send({ products: [item] }).expect(200)).body.created, 1);
+  const p = (await request(app).get('/api/products?q=no stock column').expect(200)).body.items[0];
+  assert.equal(p.trackStock, false);
+  assert.equal(p.inStock, true);
 });
 
 test('orders remember the visitor language; store pickup starts disabled', async () => {

@@ -29,6 +29,7 @@ export default function ProductImport({ onClose, onDone }) {
   const [step, setStep] = useState('pick'); // pick | preview | importing | done
   const [parsed, setParsed] = useState(null);
   const [existing, setExisting] = useState([]);
+  const [currentOptions, setCurrentOptions] = useState({}); // lowercased name → option names
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -44,13 +45,16 @@ export default function ProductImport({ onClose, onDone }) {
       const p = parseSheet(sheet, t);
       p.errors.sort((a, b) => a.row - b.row);
       if (!p.products.length && !p.errors.length) throw new Error(t('The file is empty'));
-      // Ask which products already exist (they will be updated).
+      // Ask which products already exist (they will be updated) and what options they have.
       const names = [];
+      const opts = {};
       for (let i = 0; i < p.products.length; i += 50) {
         const r = await api.post('/admin/products/import', { dryRun: true, products: p.products.slice(i, i + 50).map(({ row, ...x }) => x) });
         names.push(...r.existing);
+        for (const [name, list] of Object.entries(r.options || {})) opts[name.trim().toLowerCase()] = list;
       }
       setExisting(names.map((n) => n.trim().toLowerCase()));
+      setCurrentOptions(opts);
       setParsed(p);
       setStep('preview');
     } catch (err) {
@@ -83,6 +87,17 @@ export default function ProductImport({ onClose, onDone }) {
 
   const isNew = (p) => !existing.includes(p.name.trim().toLowerCase());
   const newCount = parsed?.products.filter(isNew).length ?? 0;
+  const optionsOf = (p) => (isNew(p) ? [] : currentOptions[p.name.trim().toLowerCase()] || []);
+  // With an "Option" column the sheet is the full list: options it leaves out are deleted.
+  const removedOptions = (p) => {
+    if (!p.variants) return [];
+    const listed = new Set(p.variants.map((v) => v.name.trim().toLowerCase()));
+    return optionsOf(p).filter((name) => !listed.has(name.trim().toLowerCase()));
+  };
+  // Without it, a product with options keeps its per-option stock: the sheet's "Stock" is not used.
+  const stockIgnored = (p) => !p.variants && p.stock !== undefined && optionsOf(p).length > 0;
+  const losingOptions = parsed?.products.filter((p) => removedOptions(p).length).length ?? 0;
+  const ignoringStock = parsed?.products.some(stockIgnored) ?? false;
 
   return (
     <Modal
@@ -144,9 +159,21 @@ export default function ProductImport({ onClose, onDone }) {
             <span className="status status-processing">{t('{n} to update', { n: parsed.products.length - newCount })}</span>
             {parsed.errors.length > 0 && <span className="status status-cancelled">{t('{n} rows with problems', { n: parsed.errors.length })}</span>}
           </div>
+          {losingOptions > 0 && (
+            <div className="import-errors">
+              <p>
+                <AlertCircle size={16} /> {t('{n} products will lose options. Check the rows in red before importing.', { n: losingOptions })}
+              </p>
+            </div>
+          )}
           {parsed.kept.length > 0 && parsed.products.length - newCount > 0 && (
             <p className="notice">
               <Info size={16} /> {t('Not in the file, so they stay as they are on products being updated: {cols}.', { cols: parsed.kept.join(', ') })}
+            </p>
+          )}
+          {ignoringStock && (
+            <p className="notice">
+              <Info size={16} /> {t('Products with options keep their stock per option. To change it, add the “Option” column with one row per option.')}
             </p>
           )}
           {parsed.errors.length > 0 && (
@@ -175,19 +202,37 @@ export default function ProductImport({ onClose, onDone }) {
                 </tr>
               </thead>
               <tbody>
-                {parsed.products.slice(0, 200).map((p) => (
-                  <tr key={p.row}>
-                    <td>
-                      <strong>{p.name}</strong>
-                      {p.variants?.length > 0 && <div className="muted small">{p.variants.map((v) => v.name).join(', ')}</div>}
-                    </td>
-                    <td className="nowrap">{money(p.price)}</td>
-                    {/* "—": not in the file, an existing product keeps its value. */}
-                    <td>{p.trackStock === undefined ? '—' : !p.trackStock ? '∞' : p.variants?.length ? p.variants.reduce((n, v) => n + (v.stock ?? 0), 0) : p.stock}</td>
-                    <td>{p.categoryName || '—'}</td>
-                    <td>{isNew(p) ? <span className="status status-delivered">{t('New')}</span> : <span className="status status-processing">{t('Update')}</span>}</td>
-                  </tr>
-                ))}
+                {parsed.products.slice(0, 200).map((p) => {
+                  const removed = removedOptions(p);
+                  return (
+                    <tr key={p.row}>
+                      <td>
+                        <strong>{p.name}</strong>
+                        {p.variants?.length > 0 && <div className="muted small">{p.variants.map((v) => v.name).join(', ')}</div>}
+                        {removed.length > 0 && (
+                          <div className="field-error">{t('{n} options will be removed: {names}', { n: removed.length, names: removed.join(', ') })}</div>
+                        )}
+                      </td>
+                      <td className="nowrap">{money(p.price)}</td>
+                      {/* "—": not in the file, an existing product keeps its value; a new one is always available. */}
+                      <td>
+                        {stockIgnored(p) ? (
+                          <span className="muted">{t('Per option')}</span>
+                        ) : p.trackStock === undefined ? (
+                          isNew(p) ? '∞' : '—'
+                        ) : !p.trackStock ? (
+                          '∞'
+                        ) : p.variants?.length ? (
+                          p.variants.reduce((n, v) => n + (v.stock ?? 0), 0)
+                        ) : (
+                          p.stock
+                        )}
+                      </td>
+                      <td>{p.categoryName || '—'}</td>
+                      <td>{isNew(p) ? <span className="status status-delivered">{t('New')}</span> : <span className="status status-processing">{t('Update')}</span>}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

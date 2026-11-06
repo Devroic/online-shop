@@ -644,6 +644,16 @@ export default {
   'Keep this window open until it finishes.': 'Μην κλείσετε το παράθυρο μέχρι να ολοκληρωθεί.',
   '{n} products created': ['Δημιουργήθηκε {n} προϊόν', 'Δημιουργήθηκαν {n} προϊόντα'],
   '{n} updated': ['ενημερώθηκε {n}', 'ενημερώθηκαν {n}'],
+  'Not in the file, so they stay as they are on products being updated: {cols}.':
+    'Δεν υπάρχουν στο αρχείο, οπότε μένουν ως έχουν στα προϊόντα που ενημερώνονται: {cols}.',
+  '{n} products will lose options. Check the rows in red before importing.': [
+    '{n} προϊόν θα χάσει επιλογές. Ελέγξτε τις γραμμές με κόκκινο πριν την εισαγωγή.',
+    '{n} προϊόντα θα χάσουν επιλογές. Ελέγξτε τις γραμμές με κόκκινο πριν την εισαγωγή.',
+  ],
+  '{n} options will be removed: {names}': ['Θα αφαιρεθεί {n} επιλογή: {names}', 'Θα αφαιρεθούν {n} επιλογές: {names}'],
+  'Products with options keep their stock per option. To change it, add the “Option” column with one row per option.':
+    'Τα προϊόντα με επιλογές κρατούν το απόθεμα ανά επιλογή. Για να το αλλάξετε, προσθέστε τη στήλη «Επιλογή» με μία γραμμή ανά επιλογή.',
+  'Per option': 'Ανά επιλογή',
   '{n} could not be imported:': ['{n} δεν εισήχθη:', '{n} δεν εισήχθησαν:'],
   'Missing columns: {cols}': 'Λείπουν στήλες: {cols}',
   'Name is missing': 'Λείπει το όνομα',
