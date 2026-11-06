@@ -24,9 +24,9 @@ export const DEFAULT_SETTINGS = {
     text: '#111827',
     radius: 12,
     font: 'Inter',
-    // 'auto' follows the visitor's device and shows a light/dark switch,
-    // 'light' or 'dark' force one look.
-    mode: 'auto',
+    // 'light' (the default) or 'dark' force one look; 'auto' follows the
+    // visitor's device and shows a light/dark switch.
+    mode: 'light',
     // Dark-mode colours. Empty values are derived from the light theme.
     dark: { primary: '', accent: '', background: '', surface: '', text: '' },
   },

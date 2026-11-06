@@ -497,4 +497,5 @@ test('a new shop starts with its texts in the shop language', async () => {
   assert.deepEqual([el.storeName, el.hero.title, el.hero.ctaText], ['Το κατάστημά μου', 'Η νέα συλλογή είναι εδώ', 'Δείτε τα προϊόντα']);
   assert.equal(defaultSettings('en').hero.title, 'New collection is here');
   assert.equal(el.hero.ctaLink, '/products'); // only texts change
+  assert.equal(el.theme.mode, 'light'); // a new shop starts light
 });

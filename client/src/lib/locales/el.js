@@ -584,7 +584,7 @@ export default {
   // Appearance & sign-in
   Auto: 'Αυτόματο',
   'Light & dark appearance': 'Φωτεινή & σκοτεινή εμφάνιση',
-  'Automatic (recommended)': 'Αυτόματα (προτείνεται)',
+  Automatic: 'Αυτόματα',
   'Follows each visitor’s device, with a light/dark switch in the header': 'Ακολουθεί τη συσκευή κάθε επισκέπτη, με διακόπτη φωτεινό/σκοτεινό στην κορυφή',
   'Always light': 'Πάντα φωτεινό',
   'Always dark': 'Πάντα σκοτεινό',
