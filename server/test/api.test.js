@@ -490,3 +490,11 @@ test('language switch is off by default', async () => {
   const { DEFAULT_SETTINGS } = await import('../src/settings.js');
   assert.equal(DEFAULT_SETTINGS.languageSwitch, false);
 });
+
+test('a new shop starts with its texts in the shop language', async () => {
+  const { defaultSettings } = await import('../src/settings.js');
+  const el = defaultSettings('el');
+  assert.deepEqual([el.storeName, el.hero.title, el.hero.ctaText], ['Το κατάστημά μου', 'Η νέα συλλογή είναι εδώ', 'Δείτε τα προϊόντα']);
+  assert.equal(defaultSettings('en').hero.title, 'New collection is here');
+  assert.equal(el.hero.ctaLink, '/products'); // only texts change
+});

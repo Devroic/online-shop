@@ -93,6 +93,12 @@ const strings = {
   'Open in admin': 'Άνοιγμα στη διαχείριση',
   'New message from the contact form': 'Νέο μήνυμα από τη φόρμα επικοινωνίας',
   'New message': 'Νέο μήνυμα',
+  // Default store texts (settings.js), until the owner writes their own.
+  'My Shop': 'Το κατάστημά μου',
+  'Quality products, delivered fast': 'Ποιοτικά προϊόντα, γρήγορη παράδοση',
+  'New collection is here': 'Η νέα συλλογή είναι εδώ',
+  'Discover our latest products, picked with care.': 'Ανακαλύψτε τα νέα μας προϊόντα, επιλεγμένα με φροντίδα.',
+  'Shop now': 'Δείτε τα προϊόντα',
   Size: 'Μέγεθος',
   Scent: 'Άρωμα',
   'Reply to this email to answer {name} directly.': 'Απαντήστε σε αυτό το email και η απάντησή σας θα πάει απευθείας στον αποστολέα ({name}).',

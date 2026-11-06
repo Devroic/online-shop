@@ -1,4 +1,5 @@
 import { db } from './db.js';
+import { translator } from './i18n.js';
 
 // Everything a shop owner can customise from the admin panel (or with
 // `npm run configure`). New keys added here appear automatically in existing
@@ -103,10 +104,27 @@ export function deepMerge(base, patch) {
 let cache = null;
 const TTL_MS = 5000;
 
+/**
+ * The defaults with their texts (store name, tagline, home banner) in the shop's
+ * language, so a new Greek shop does not start with English wording. What the owner
+ * saved always wins over these.
+ */
+export function defaultSettings(lang = DEFAULT_SETTINGS.language) {
+  const t = translator(lang);
+  const d = DEFAULT_SETTINGS;
+  return {
+    ...d,
+    storeName: t(d.storeName),
+    tagline: t(d.tagline),
+    hero: { ...d.hero, title: t(d.hero.title), subtitle: t(d.hero.subtitle), ctaText: t(d.hero.ctaText) },
+  };
+}
+
 export async function getSettings() {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
   const row = await db().one("SELECT value FROM settings WHERE key = 'store'");
-  const value = deepMerge(DEFAULT_SETTINGS, row?.value ?? {});
+  const stored = row?.value ?? {};
+  const value = deepMerge(defaultSettings(stored.language), stored);
   cache = { value, at: Date.now() };
   return value;
 }
