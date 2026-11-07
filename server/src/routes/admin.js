@@ -631,7 +631,8 @@ router.delete('/coupons/:id', async (req, res) => {
 // Two fixed methods: the courier (a price per country, optional cash on delivery)
 // and store pickup (the shop's country only, optional payment at the store).
 // freeOver 0 = no free shipping (empty is saved as 0).
-const rateSchema = z.object({ country: z.enum(COUNTRY_CODES), price: money, freeOver: optMoney.transform((v) => v ?? 0) });
+// Empty (null) price / freeOver = the courier's default; freeOver 0 = no free shipping.
+const rateSchema = z.object({ country: z.enum(COUNTRY_CODES), price: optMoney.transform((v) => v ?? null), freeOver: optMoney.transform((v) => v ?? null) });
 const shippingSchema = z.object({
   id: z.number().int().positive(),
   // Empty: customers see "Courier" / "Store pickup".
@@ -640,12 +641,17 @@ const shippingSchema = z.object({
   active: z.boolean().optional(),
   cod: z.boolean().optional(),
   codFee: money.optional(),
+  // Courier only: used by every country whose own cost / "free over" is empty.
+  defaultPrice: money.optional(),
+  defaultFreeOver: money.optional(),
   rates: z.array(rateSchema).max(COUNTRY_CODES.length).optional(),
 });
 
 const serializeShipping = (m) => ({
   id: m.id, kind: m.kind, name: m.name, description: m.description, active: m.active,
-  cod: m.cod, codFee: m.cod_fee, rates: (m.rates || []).map((r) => ({ ...r, freeOver: r.freeOver ?? 0 })),
+  cod: m.cod, codFee: m.cod_fee,
+  defaultPrice: m.price ?? 0, defaultFreeOver: m.free_over ?? 0,
+  rates: (m.rates || []).map((r) => ({ country: r.country, price: r.price ?? null, freeOver: r.freeOver ?? null })),
 });
 
 const shippingMethods = () => db().all("SELECT * FROM shipping_methods WHERE kind IS NOT NULL ORDER BY kind = 'pickup', id");
@@ -681,6 +687,8 @@ router.put('/shipping', async (req, res) => {
       active: d.active ?? m.active,
       cod: d.cod ?? m.cod,
       cod_fee: courier ? (d.codFee ?? m.cod_fee) : 0,
+      price: courier ? (d.defaultPrice ?? m.price) : 0,
+      free_over: courier ? (d.defaultFreeOver ?? m.free_over ?? 0) : null,
       rates: courier ? rates : [],
     };
   });
@@ -688,8 +696,8 @@ router.put('/shipping', async (req, res) => {
   checkStillSellable(next, (await getSettings()).payments.card.enabled);
   await tx(async (t) => {
     for (const m of next) {
-      await t.query('UPDATE shipping_methods SET name=$1, description=$2, active=$3, cod=$4, cod_fee=$5, rates=$6 WHERE id=$7', [
-        m.name, m.description, m.active, m.cod, m.cod_fee, JSON.stringify(m.rates), m.id,
+      await t.query('UPDATE shipping_methods SET name=$1, description=$2, active=$3, cod=$4, cod_fee=$5, rates=$6, price=$7, free_over=$8 WHERE id=$9', [
+        m.name, m.description, m.active, m.cod, m.cod_fee, JSON.stringify(m.rates), m.price, m.free_over, m.id,
       ]);
     }
   });

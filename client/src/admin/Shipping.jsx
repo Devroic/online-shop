@@ -1,16 +1,71 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { Truck, Store, Trash2, Plus } from 'lucide-react';
+import { centsToInput } from '../lib/format.js';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { COUNTRY_CODES, countryName, sortedCountries } from '../lib/countries.js';
-import { Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
+import { Checkbox, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
 import { errorMessage, useValidation } from '../lib/validation.js';
-import { MoneyInput, PageHeader, SaveBar, SaveButton, Toggle } from './components.jsx';
+import { Modal, MoneyInput, PageHeader, SaveBar, SaveButton, Toggle } from './components.jsx';
 import { Payments, SETTINGS_RULES, SettingsForm } from './Settings.jsx';
+
+// The 27 EU countries, for "add the EU" in one click.
+const EU = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'];
+
+/** Picks several countries at once (search, EU, all); they are added with the default cost. */
+function AddCountries({ available, onAdd, onClose }) {
+  const [q, setQ] = useState('');
+  const [picked, setPicked] = useState([]);
+  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const shown = available.filter((c) => !q.trim() || norm(countryName(c)).includes(norm(q.trim())) || c.toLowerCase() === q.trim().toLowerCase());
+  const toggle = (c) => setPicked((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
+  const pickAll = (codes) => setPicked((list) => [...new Set([...list, ...codes])]);
+  const euLeft = available.filter((c) => EU.includes(c));
+  return (
+    <Modal
+      title={t('Add countries')}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            {t('Cancel')}
+          </button>
+          <button type="button" className="btn btn-primary" disabled={!picked.length} onClick={() => onAdd(picked)}>
+            {t('Add {n} countries', { n: picked.length })}
+          </button>
+        </>
+      }
+    >
+      <p className="muted small">{t('They are added with the default cost and “free over”; you can change any of them afterwards.')}</p>
+      <input className="input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search country…')} autoFocus />
+      <div className="row-gap mt">
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => pickAll(shown)}>
+          {q.trim() ? t('Tick the ones shown') : t('All countries')}
+        </button>
+        {euLeft.length > 0 && (
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => pickAll(euLeft)}>
+            {t('EU countries')}
+          </button>
+        )}
+        {picked.length > 0 && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPicked([])}>
+            {t('Clear')}
+          </button>
+        )}
+      </div>
+      <div className="country-pick mt">
+        {shown.map((c) => (
+          <Checkbox key={c} label={countryName(c)} checked={picked.includes(c)} onChange={() => toggle(c)} />
+        ))}
+        {!shown.length && <p className="muted small">{t('No country found')}</p>}
+      </div>
+    </Modal>
+  );
+}
 
 /** One shipping method (courier or store pickup); the page saves both together. */
 function MethodCard({ form, onChange, errors }) {
@@ -20,6 +75,11 @@ function MethodCard({ form, onChange, errors }) {
   const setRate = (i, patch) => set('rates', form.rates.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   const unused = sortedCountries(COUNTRY_CODES.filter((c) => !form.rates.some((r) => r.country === c)));
   const defaultName = courier ? t('Courier') : t('Store pickup');
+  const [adding, setAdding] = useState(false);
+  // An empty cost / "free over" on a country uses these; the box shows them greyed out.
+  const defaultPrice = centsToInput(form.defaultPrice ?? 0);
+  const defaultFreeOver = centsToInput(form.defaultFreeOver ?? 0);
+  const keepFirstOnly = () => set('rates', form.rates.slice(0, 1));
 
   return (
     <section className={`card ${form.active ? '' : 'dim-card'}`}>
@@ -45,7 +105,22 @@ function MethodCard({ form, onChange, errors }) {
       </div>
 
       {courier && (
-        <FieldWrap label={t('Countries and cost')} hint={t('Customers can only choose these countries. “Free over” 0: no free shipping.')} error={errors.rates}>
+        <div className="grid-2 mt">
+          <FieldWrap label={t('Default cost')} hint={t('For every country below whose cost is empty.')}>
+            <MoneyInput value={form.defaultPrice ?? 0} onChange={(cents) => set('defaultPrice', cents)} />
+          </FieldWrap>
+          <FieldWrap label={t('Free over (default)')} hint={t('0: no free shipping.')}>
+            <MoneyInput value={form.defaultFreeOver ?? 0} onChange={(cents) => set('defaultFreeOver', cents)} />
+          </FieldWrap>
+        </div>
+      )}
+
+      {courier && (
+        <FieldWrap
+          label={t('Countries and cost ({n})', { n: form.rates.length })}
+          hint={t('Customers can only choose these countries. An empty box uses the default above; “free over” 0: no free shipping.')}
+          error={errors.rates}
+        >
           <div className="rates">
             <div className="rates-head muted small">
               <span>{t('Country')}</span>
@@ -56,8 +131,8 @@ function MethodCard({ form, onChange, errors }) {
             {form.rates.map((r, i) => (
               <div key={r.country} className="rates-row">
                 <strong>{countryName(r.country)}</strong>
-                <MoneyInput value={r.price} onChange={(cents) => setRate(i, { price: cents })} aria-label={t('Cost')} />
-                <MoneyInput value={r.freeOver ?? 0} onChange={(cents) => setRate(i, { freeOver: cents })} aria-label={t('Free over')} />
+                <MoneyInput value={r.price} onChange={(cents) => setRate(i, { price: cents })} allowEmpty placeholder={defaultPrice} aria-label={t('Cost')} />
+                <MoneyInput value={r.freeOver} onChange={(cents) => setRate(i, { freeOver: cents })} allowEmpty placeholder={defaultFreeOver} aria-label={t('Free over')} />
                 <button
                   type="button"
                   className="icon-btn"
@@ -69,26 +144,30 @@ function MethodCard({ form, onChange, errors }) {
                 </button>
               </div>
             ))}
-            {unused.length > 0 && (
-              <label className="rates-add">
-                <Plus size={16} />
-                <select
-                  className="input"
-                  value=""
-                  onChange={(e) => e.target.value && set('rates', [...form.rates, { country: e.target.value, price: 0, freeOver: 0 }])}
-                  aria-label={t('Add country')}
-                >
-                  <option value="">{t('Add country…')}</option>
-                  {unused.map((c) => (
-                    <option key={c} value={c}>
-                      {countryName(c)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <div className="row-gap rates-actions">
+              {unused.length > 0 && (
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setAdding(true)}>
+                  <Plus size={16} /> {t('Add countries')}
+                </button>
+              )}
+              {form.rates.length > 1 && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={keepFirstOnly}>
+                  {t('Keep only {country}', { country: countryName(form.rates[0].country) })}
+                </button>
+              )}
+            </div>
           </div>
         </FieldWrap>
+      )}
+      {adding && (
+        <AddCountries
+          available={unused}
+          onClose={() => setAdding(false)}
+          onAdd={(codes) => {
+            set('rates', [...form.rates, ...codes.map((country) => ({ country, price: null, freeOver: null }))]);
+            setAdding(false);
+          }}
+        />
       )}
 
       <div className="pay-block mt">
@@ -123,8 +202,9 @@ function ShippingMethods() {
     if (courier && !courier.rates.length) return v.show({ rates: t('Add at least one country') });
     setBusy(true);
     try {
-      const methods = forms.map(({ id, kind, name, description, active, cod, codFee, rates }) => ({
-        id, name, description, active, cod, codFee, rates: kind === 'courier' ? rates : undefined,
+      const methods = forms.map(({ id, kind, name, description, active, cod, codFee, rates, defaultPrice, defaultFreeOver }) => ({
+        id, name, description, active, cod, codFee,
+        ...(kind === 'courier' ? { rates, defaultPrice, defaultFreeOver } : {}),
       }));
       setData(await api.put('/admin/shipping', { methods }));
       reloadShop();

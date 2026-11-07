@@ -781,5 +781,23 @@ export default {
   '{n} guests': ['{n} επισκέπτης', '{n} επισκέπτες'],
   'First order': 'Πρώτη παραγγελία',
   'Tracking number (optional)': 'Αριθμός αποστολής (προαιρετικό)',
+  'Add countries': 'Προσθήκη χωρών',
+  'Add {n} countries': ['Προσθήκη {n} χώρας', 'Προσθήκη {n} χωρών'],
+  'They are added with the default cost and “free over”; you can change any of them afterwards.':
+    'Προστίθενται με το προεπιλεγμένο κόστος και «Δωρεάν άνω των»· μπορείτε να αλλάξετε όποια θέλετε μετά.',
+  'Search country…': 'Αναζήτηση χώρας…',
+  'Tick the ones shown': 'Επιλογή όσων φαίνονται',
+  'All countries': 'Όλες οι χώρες',
+  'EU countries': 'Χώρες ΕΕ',
+  Clear: 'Καθαρισμός',
+  'No country found': 'Δεν βρέθηκε χώρα',
+  'Default cost': 'Προεπιλεγμένο κόστος',
+  'For every country below whose cost is empty.': 'Για κάθε χώρα παρακάτω που έχει κενό κόστος.',
+  'Free over (default)': 'Δωρεάν άνω των (προεπιλογή)',
+  '0: no free shipping.': '0: χωρίς δωρεάν αποστολή.',
+  'Countries and cost ({n})': 'Χώρες και κόστος ({n})',
+  'Customers can only choose these countries. An empty box uses the default above; “free over” 0: no free shipping.':
+    'Οι πελάτες μπορούν να διαλέξουν μόνο αυτές τις χώρες. Ένα κενό πεδίο παίρνει την προεπιλογή από πάνω· «Δωρεάν άνω των» 0: χωρίς δωρεάν αποστολή.',
+  'Keep only {country}': 'Κράτα μόνο: {country}',
   'The payment will be marked as paid: the money was collected on delivery.': 'Η πληρωμή θα σημειωθεί ως «Πληρώθηκε», αφού τα χρήματα εισπράχθηκαν στην παράδοση.',
 };

@@ -255,6 +255,17 @@ const migrations = [
   `,
   // 11: what a product's options are called ("Size", "Colour"); empty shows "Option".
   `ALTER TABLE products ADD COLUMN option_name TEXT NOT NULL DEFAULT '';`,
+  // 12: the courier has a default cost and "free over" (columns price / free_over); a
+  // country's own price / freeOver may be empty (null) and then uses them. Existing
+  // shops keep their prices: the default cost starts as their first country's, and
+  // a country's empty "free over" (it meant none) becomes 0, which still means none.
+  `
+  UPDATE shipping_methods SET price = COALESCE((rates->0->>'price')::int, 0), free_over = 0 WHERE kind = 'courier';
+  UPDATE shipping_methods SET rates = COALESCE((
+    SELECT jsonb_agg(jsonb_set(r, '{freeOver}', CASE WHEN jsonb_typeof(r->'freeOver') = 'number' THEN r->'freeOver' ELSE '0'::jsonb END))
+    FROM jsonb_array_elements(rates) AS r
+  ), '[]'::jsonb) WHERE kind = 'courier';
+  `,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

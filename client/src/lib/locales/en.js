@@ -12,6 +12,7 @@ export const one = {
   '{n} options': '{n} option',
   '{n} accounts': '{n} account',
   '{n} guests': '{n} guest',
+  'Add {n} countries': 'Add {n} country',
   'registered accounts': 'registered account',
   '{n} products created': '{n} product created',
   'Import {n} products': 'Import {n} product',

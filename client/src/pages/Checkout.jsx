@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { api } from '../lib/api.js';
 import { money } from '../lib/format.js';
-import { countryName, shippingCountries } from '../lib/countries.js';
+import { countryName, deliveryOrder, shippingCountries } from '../lib/countries.js';
 import { t, PAYMENT_METHOD } from '../lib/i18n.js';
 import { Checkbox, EmptyState, Field, FormAlert, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
@@ -198,7 +198,7 @@ export default function Checkout() {
   const pickup = shipping?.kind === 'pickup';
 
   // The courier's countries (its price depends on the country); the address starts on the first.
-  const courierCountries = shipping?.requiresAddress && shipping.countries.length ? shipping.countries : countries;
+  const courierCountries = shipping?.requiresAddress && shipping.countries.length ? deliveryOrder(shipping.countries) : countries;
   useEffect(() => {
     if (shipping?.requiresAddress && !courierCountries.includes(form.country)) setForm((f) => ({ ...f, country: courierCountries[0] }));
     // eslint-disable-next-line react-hooks/exhaustive-deps

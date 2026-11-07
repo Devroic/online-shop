@@ -395,6 +395,31 @@ test('two shipping methods: courier priced per country, pickup; the shop stays s
   await admin.put('/api/admin/settings').send({ payments: { card: { enabled: true } } }).expect(200);
 });
 
+test('courier: countries worldwide, an empty cost or free-over uses the default', async () => {
+  const p = (await admin.post('/api/admin/products').send({ name: 'Default rate test', price: 2000, stock: 50 }).expect(201)).body;
+  const items = [{ productId: p.id, quantity: 1 }];
+  const rates = [
+    { country: 'CY', price: 350, freeOver: 0 }, // own cost, no free shipping
+    { country: 'US', price: null, freeOver: null }, // both from the defaults
+    { country: 'CN', price: 1500, freeOver: null }, // own cost, default free-over
+  ];
+  const saved = (await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, defaultPrice: 900, defaultFreeOver: 3000, rates }] }).expect(200)).body;
+  const courier = saved.find((m) => m.kind === 'courier');
+  assert.deepEqual([courier.defaultPrice, courier.defaultFreeOver], [900, 3000]);
+  assert.deepEqual(courier.rates[1], { country: 'US', price: null, freeOver: null });
+
+  const cost = async (country, quantity = 1) =>
+    (await request(app).post('/api/cart/quote').send({ items: [{ ...items[0], quantity }], shippingMethodId: courierId, country }).expect(200)).body.shippingCost;
+  assert.equal(await cost('US'), 900); // default cost
+  assert.equal(await cost('US', 2), 0); // 40 € ≥ default free-over 30 €
+  assert.equal(await cost('CN'), 1500);
+  assert.equal(await cost('CN', 2), 0);
+  assert.equal(await cost('CY', 5), 350); // 0 = never free
+  const us = await request(app).post('/api/orders').send(checkout({ items, address: { ...address, country: 'US', postalCode: '10001' } })).expect(201);
+  assert.equal(us.body.order.shippingCost, 900);
+  await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, rates: [{ country: 'CY', price: 350, freeOver: 5000 }] }] }).expect(200);
+});
+
 test('categories keep distinct places: new ones go last, the order is saved as a list', async () => {
   const a = (await admin.post('/api/admin/categories').send({ name: 'Order A' }).expect(201)).body;
   const b = (await admin.post('/api/admin/categories').send({ name: 'Order B' }).expect(201)).body;

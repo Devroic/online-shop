@@ -15,8 +15,8 @@ const PAGES = [
 // The two shipping methods every shop has. Store pickup is ready to switch on
 // from the admin, but off by default; the courier starts with the shop's country.
 const SHIPPING = {
-  courier: { description: '2-7 business days', active: true, rates: (country) => [{ country, price: 350, freeOver: 5000 }] },
-  pickup: { description: 'Free', active: false, rates: () => [] },
+  courier: { description: '2-7 business days', active: true, price: 350, freeOver: 5000, rates: (country) => [{ country, price: null, freeOver: null }] },
+  pickup: { description: 'Free', active: false, price: 0, freeOver: null, rates: () => [] },
 };
 
 /** Creates pages, shipping methods and the first admin on a brand-new database. */
@@ -33,8 +33,8 @@ export async function ensureInitialData() {
   for (const [kind, m] of Object.entries(SHIPPING)) {
     if (await db().one('SELECT id FROM shipping_methods WHERE kind = $1', [kind])) continue;
     await db().query(
-      'INSERT INTO shipping_methods (kind, name, description, price, requires_address, active, sort_order, rates) VALUES ($1, $2, $3, 0, $4, $5, $6, $7)',
-      [kind, '', t(m.description), kind === 'courier', m.active, kind === 'courier' ? 0 : 1, JSON.stringify(m.rates(settings.contact.country || 'CY'))],
+      'INSERT INTO shipping_methods (kind, name, description, price, free_over, requires_address, active, sort_order, rates) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+      [kind, '', t(m.description), m.price, m.freeOver, kind === 'courier', m.active, kind === 'courier' ? 0 : 1, JSON.stringify(m.rates(settings.contact.country || 'CY'))],
     );
   }
   if (!(await db().one("SELECT id FROM users WHERE role = 'admin' LIMIT 1"))) {

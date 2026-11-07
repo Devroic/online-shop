@@ -1251,6 +1251,20 @@ input[type='range'] {
   background: var(--text);
 }
 
+/* Shipping: picking several countries at once. */
+.country-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+  border-top: 1px solid var(--border);
+}
+.rates-actions {
+  margin-top: 10px;
+}
+
 /* Orders: date filters with a visible label. */
 .date-filter {
   display: flex;

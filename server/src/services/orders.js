@@ -59,7 +59,15 @@ export function availablePaymentMethods(settings, stripeReady, shipping) {
 export const defaultShippingName = (kind, lang) => translator(lang)(kind === 'pickup' ? 'Store pickup' : 'Courier');
 
 /** The courier's rate for a country: its own, or the first one when the country is not listed. */
-export const courierRate = (method, country) => (method.rates || []).find((r) => r.country === country) || method.rates?.[0] || null;
+/**
+ * The courier's rate for a country (its own, or the first one when the country is not
+ * listed). An empty price / freeOver takes the courier's default (columns price / free_over).
+ */
+export function courierRate(method, country) {
+  const r = (method.rates || []).find((x) => x.country === country) || method.rates?.[0];
+  if (!r) return null;
+  return { country: r.country, price: r.price ?? method.price ?? 0, freeOver: r.freeOver ?? method.free_over ?? 0 };
+}
 
 export function findCoupon(code, conn = db()) {
   if (!code) return null;
