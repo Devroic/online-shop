@@ -186,6 +186,9 @@
   .a-page-head {
     flex-wrap: wrap;
   }
+  .a-page-title {
+    flex-basis: 100%;
+  }
   .a-page-actions {
     flex-shrink: 1;
     justify-content: flex-start;
@@ -414,10 +417,11 @@
 .table tr.dim {
   opacity: 0.55;
 }
-/* Every admin list: click anywhere on a row to open it. The first cell holds the
-   real link/button (stretched over the row); other controls sit above it. */
+/* Every admin list: click anywhere on a row to open it. In tables the first cell
+   holds the real link/button and AdminApp passes clicks on the rest of the row to it
+   (a stretched link does not work there: Safari/iPad ignores position: relative on
+   table rows, so it would cover the whole page). Cards use the stretched link. */
 .table.clickable tbody tr {
-  position: relative;
   cursor: pointer;
 }
 .list-card.clickable {
@@ -439,7 +443,7 @@ button.prod-cell {
   text-align: left;
   cursor: pointer;
 }
-.row-link::after {
+.list-card .row-link::after {
   content: '';
   position: absolute;
   inset: 0;

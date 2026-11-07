@@ -32,6 +32,28 @@ function SignOutButton({ onSignOut }) {
   );
 }
 
+/**
+ * A click anywhere on a row of a `.table.clickable` opens it, through the row's
+ * `.row-link` (its first cell). Clicks on the row's own buttons, inputs and links,
+ * and selecting text, are left alone; Ctrl/Cmd+click opens a link in a new tab.
+ */
+function useClickableRows() {
+  useEffect(() => {
+    const onClick = (e) => {
+      if (e.button !== 0 || e.defaultPrevented) return;
+      const row = e.target.closest?.('.table.clickable tbody tr');
+      if (!row || e.target.closest('a, button, input, select, textarea, label, [role="button"]')) return;
+      if (window.getSelection()?.toString()) return;
+      const link = row.querySelector('.row-link');
+      if (!link) return;
+      if ((e.ctrlKey || e.metaKey) && link.href) window.open(link.href, '_blank', 'noopener');
+      else link.click();
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, []);
+}
+
 export default function AdminApp() {
   const { user, loading, logout } = useAuth();
   const { settings } = useShop();
@@ -47,6 +69,7 @@ export default function AdminApp() {
   useEffect(() => {
     setNavOpen(false);
   }, [location.pathname]);
+  useClickableRows();
   useEffect(() => {
     document.title = `Admin | ${settings.storeName}`;
   }, [location.pathname, settings.storeName]);
