@@ -48,7 +48,7 @@
 - Πάτα **New project**:
   - Name: `margarita`
   - Database password: πάτα **Generate** και κράτα τον στον password manager
-  - Region: **Central EU (Frankfurt)**
+  - Region: **Central EU (Frankfurt)**. Πάντα αυτή: ο server του site τρέχει κι αυτός στη Φρανκφούρτη (`"regions": ["fra1"]` στο `vercel.json`), δίπλα στη βάση. Σε άλλη περιοχή κάθε σελίδα θα αργούσε.
 - Περίμενε 1-2 λεπτά να ετοιμαστεί.
 - Πάτα **Connect** (πάνω στη μέση). Αντέγραψε το **Transaction pooler** connection string (port **6543**):
   - Στο `.env.margarita` → `DATABASE_URL=` (βάλε τον κωδικό της βάσης στη θέση του `[YOUR-PASSWORD]`)
