@@ -451,6 +451,27 @@ test('an unfinished card payment does not block checking out again', async () =>
   assert.equal(kept.body.status, 'pending');
 });
 
+test('a Stripe event only touches the order its session was made for (shared sandbox)', async () => {
+  const { createOrder, updateOrder } = await import('../src/services/orders.js');
+  const { applySession } = await import('../src/services/payments.js');
+  const p = (await admin.post('/api/admin/products').send({ name: 'Shared sandbox', price: 1200, stock: 5 }).expect(201)).body;
+  const order = await createOrder({ ...checkout({ items: [{ productId: p.id, quantity: 1 }] }), paymentMethod: 'card', language: 'el' }, { stripeReady: true });
+  await updateOrder(order.id, { stripeSessionId: 'cs_test_this_shop' }, { actor: 'stripe' });
+  const paidEvent = (sessionId) => ({ id: sessionId, metadata: { orderId: String(order.id) }, payment_status: 'paid', status: 'complete' });
+
+  // Another shop's payment for its own order with the same id: ignored.
+  assert.equal(await applySession(paidEvent('cs_test_other_shop')), null);
+  assert.equal(await applySession({ ...paidEvent('cs_test_other_shop'), payment_status: 'unpaid', status: 'expired' }), null);
+  let now = (await request(app).get(`/api/orders/${order.number}?token=${order.accessToken}`).expect(200)).body.order;
+  assert.deepEqual([now.status, now.paymentStatus], ['pending', 'pending']);
+
+  // This shop's own session: applied.
+  const r = await applySession(paidEvent('cs_test_this_shop'));
+  assert.equal(r.justPaid, true);
+  now = (await request(app).get(`/api/orders/${order.number}?token=${order.accessToken}`).expect(200)).body.order;
+  assert.equal(now.paymentStatus, 'paid');
+});
+
 test('categories keep distinct places: new ones go last, the order is saved as a list', async () => {
   const a = (await admin.post('/api/admin/categories').send({ name: 'Order A' }).expect(201)).body;
   const b = (await admin.post('/api/admin/categories').send({ name: 'Order B' }).expect(201)).body;

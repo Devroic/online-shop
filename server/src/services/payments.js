@@ -49,10 +49,18 @@ export async function createCheckoutSession(order) {
   return session.url;
 }
 
-/** Applies a Checkout Session's state to its order (used by webhook and polling). */
+/**
+ * Applies a Checkout Session's state to its order (used by webhook and polling).
+ * Only to the order that session was made for: several shops may share one Stripe
+ * account (a test sandbox), and Stripe sends every event to every shop's webhook, so
+ * another shop's order 5 must not mark this shop's order 5 as paid. Session ids are
+ * unique across Stripe; anything else is ignored.
+ */
 export async function applySession(session) {
   const id = Number(session.metadata?.orderId || session.client_reference_id);
-  const order = id ? await getOrder({ id }) : null;
+  const row = id ? await db().one('SELECT stripe_session_id FROM orders WHERE id = $1', [id]) : null;
+  if (!row || !session.id || row.stripe_session_id !== session.id) return null;
+  const order = await getOrder({ id });
   if (!order || order.paymentMethod !== 'card') return null;
   if (session.payment_status === 'paid' && order.paymentStatus !== 'paid') {
     // Conditional update: the webhook and the order page may both get here;
