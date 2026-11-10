@@ -43,7 +43,10 @@ export async function createCheckoutSession(order) {
     ],
     success_url: orderUrl(order, '&paid=1'),
     cancel_url: `${config.publicUrl}/checkout?cancelled=${order.number}`,
-    expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+    // The page (and the stock it holds) lasts about 30 minutes, the shortest Stripe allows
+    // (one minute more, so a clock slightly behind Stripe's is never refused). A customer
+    // who comes back sooner releases it at once (see releaseCardOrder).
+    expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
   });
   await updateOrder(order.id, { stripeSessionId: session.id }, { actor: 'stripe' });
   return session.url;
@@ -84,7 +87,7 @@ export async function applySession(session) {
 /**
  * The customer left a card payment unfinished and is checking out again (or came back
  * with "Back" on Stripe). The old unpaid order is cancelled at once, so it gives its
- * stock and coupon back instead of holding them for up to an hour, and its Stripe page
+ * stock and coupon back instead of holding them for up to 30 minutes, and its Stripe page
  * is closed first so it cannot be paid as well.
  * Returns { order, paid } when it was paid in the meantime (then it is kept),
  * { order, released: true } when cancelled, { order, released: false } when left alone

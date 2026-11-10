@@ -117,20 +117,20 @@ function Profile() {
         <Field label={t('Email')} value={user.email} disabled />
         <h3>{t('Default address')}</h3>
         <div className="grid-2">
-          <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={v.errors.country} disabled={countries.length === 1}>
+          <Field as="select" label={t('Country')} autoComplete="shipping country" value={form.country} onChange={set('country')} error={v.errors.country} disabled={countries.length === 1}>
             {countries.map((c) => (
               <option key={c} value={c}>
                 {countryName(c)}
               </option>
             ))}
           </Field>
-          <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={v.errors.city} />
+          <Field label={t('City')} autoComplete="shipping address-level2" value={form.city} onChange={set('city')} error={v.errors.city} />
         </div>
         <div className="grid-2">
-          <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={v.errors.region} />
-          <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={v.errors.postalCode} />
+          <Field label={t('Area (optional)')} autoComplete="shipping address-level3" value={form.region} onChange={set('region')} error={v.errors.region} />
+          <Field label={t('Postal code')} autoComplete="shipping postal-code" value={form.postalCode} onChange={set('postalCode')} error={v.errors.postalCode} />
         </div>
-        <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={v.errors.street} />
+        <Field label={t('Street address')} autoComplete="shipping address-line1" value={form.street} onChange={set('street')} error={v.errors.street} />
         <FormAlert message={v.errors._} />
         <button className="btn btn-primary" disabled={busy}>
           {busy && <Spinner />} {t('Save')}

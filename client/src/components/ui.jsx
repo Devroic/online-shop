@@ -78,8 +78,9 @@ export function FieldWrap({ label, error, hint, htmlFor, className = '', childre
 }
 
 /** Labelled input with inline error. Pass `as="textarea"` or `as="select"`. */
-export function Field({ label, error, hint, as: Tag = 'input', className = '', autoGrow, children, ...props }) {
+export function Field({ label, error, hint, as: Tag = 'input', className = '', autoGrow, children, ...rest }) {
   const id = useId();
+  const props = { name: rest.autoComplete ? rest.autoComplete.split(' ').pop() : undefined, ...rest };
   return (
     <FieldWrap label={label} error={error} hint={hint} htmlFor={id} className={className}>
       {Tag === 'textarea' && autoGrow ? (

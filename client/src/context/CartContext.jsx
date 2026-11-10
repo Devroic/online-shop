@@ -83,7 +83,7 @@ export function CartProvider({ children }) {
   // "Back" on Stripe, or paid but the tab was closed before returning):
   // - paid: the cart is emptied;
   // - still unpaid: it is cancelled at once, so it stops holding the stock in this cart
-  //   (otherwise checking out again would fail for up to an hour);
+  //   (otherwise checking out again would fail for up to 30 minutes);
   // - cancelled or gone: forgotten.
   // Not on that order's own page, which shows the payment as it completes.
   // `stockVersion` changes afterwards so cart and checkout re-check stock.

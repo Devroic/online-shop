@@ -330,7 +330,7 @@ export default function Checkout() {
 
   // Changing the country re-filters the delivery methods above it.
   const countryField = (
-    <Field as="select" label={t('Country')} autoComplete="country" value={form.country} onChange={set('country')} error={errors.country} disabled={courierCountries.length === 1}>
+    <Field as="select" label={t('Country')} autoComplete="shipping country" value={form.country} onChange={set('country')} error={errors.country} disabled={courierCountries.length === 1}>
       {courierCountries.map((c) => (
         <option key={c} value={c}>
           {countryName(c)}
@@ -389,13 +389,13 @@ export default function Checkout() {
               <div className="address-fields">
                 <div className="grid-2">
                   {countryField}
-                  <Field label={t('City')} autoComplete="address-level2" value={form.city} onChange={set('city')} error={errors.city} />
+                  <Field label={t('City')} autoComplete="shipping address-level2" value={form.city} onChange={set('city')} error={errors.city} />
                 </div>
                 <div className="grid-2">
-                  <Field label={t('Area (optional)')} value={form.region} onChange={set('region')} error={errors.region} />
-                  <Field label={t('Postal code')} autoComplete="postal-code" value={form.postalCode} onChange={set('postalCode')} error={errors.postalCode} />
+                  <Field label={t('Area (optional)')} autoComplete="shipping address-level3" value={form.region} onChange={set('region')} error={errors.region} />
+                  <Field label={t('Postal code')} autoComplete="shipping postal-code" value={form.postalCode} onChange={set('postalCode')} error={errors.postalCode} />
                 </div>
-                <Field label={t('Street address')} autoComplete="street-address" value={form.street} onChange={set('street')} error={errors.street} />
+                <Field label={t('Street address')} autoComplete="shipping address-line1" value={form.street} onChange={set('street')} error={errors.street} />
                 {user && <Checkbox label={t('Save this address to my account')} checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} />}
               </div>
             ) : null}
