@@ -16,6 +16,7 @@
     "configure": "npm run configure -w server --",
     "create-admin": "npm run create-admin -w server --",
     "reset-shop": "npm run reset-shop -w server --",
+    "clear-orders": "npm run clear-orders -w server --",
     "test": "npm test -w server",
     "questionnaire": "node scripts/questionnaire/build.mjs"
   },

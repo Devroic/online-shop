@@ -576,3 +576,22 @@ test('a new shop starts with its texts in the shop language', async () => {
   assert.equal(el.hero.ctaLink, '/products'); // only texts change
   assert.equal(el.theme.mode, 'light'); // a new shop starts light
 });
+
+// Last: it deletes every order of the test database.
+test('clearing all orders gives held stock back and starts again at #1001', async () => {
+  const { clearAllOrders } = await import('../src/services/orders.js');
+  const p = (await admin.post('/api/admin/products').send({ name: 'Clear test', price: 1000, stock: 10 }).expect(201)).body;
+  const items = (quantity) => [{ productId: p.id, quantity }];
+  await request(app).post('/api/orders').send(checkout({ items: items(3) })).expect(201); // holds 3
+  const cancelled = (await request(app).post('/api/orders').send(checkout({ items: items(2) })).expect(201)).body.order;
+  await admin.put(`/api/admin/orders/${cancelled.id}`).send({ status: 'cancelled', paymentStatus: 'pending' }).expect(200); // gave its 2 back
+  assert.equal(await stockOf(p.id), 7);
+
+  const done = await clearAllOrders();
+  assert.ok(done.orders >= 2);
+  assert.equal(await stockOf(p.id), 10); // only the 3 still held came back
+  assert.equal((await db().one('SELECT COUNT(*)::int AS n FROM orders')).n, 0);
+  assert.equal((await db().one('SELECT COALESCE(SUM(used_count), 0)::int AS n FROM coupons')).n, 0);
+  const next = (await request(app).post('/api/orders').send(checkout({ items: items(1) })).expect(201)).body.order;
+  assert.equal(next.number, '1001');
+});

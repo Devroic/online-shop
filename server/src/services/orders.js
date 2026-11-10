@@ -423,3 +423,34 @@ export async function updateOrder(id, patch, { actor = 'admin' } = {}) {
   });
   return found ? getOrder({ id }) : null;
 }
+
+/**
+ * Deletes every order (with its items and history), for handing a tested shop to the
+ * client. Orders that still hold stock (not cancelled or returned) give it back first,
+ * coupon uses go back to 0, and numbering starts again at #1001.
+ * Returns what it did: { orders, items, restocked }.
+ */
+export async function clearAllOrders() {
+  return tx(async (t) => {
+    const held = await t.all(
+      `SELECT i.product_id, i.variant_id, i.quantity FROM order_items i JOIN orders o ON o.id = i.order_id
+       WHERE o.status <> ALL($1::text[])`,
+      [STOCK_BACK],
+    );
+    for (const it of held) {
+      if (it.variant_id) {
+        await t.query(
+          'UPDATE product_variants SET stock = stock + $1 WHERE id = $2 AND product_id IN (SELECT id FROM products WHERE track_stock)',
+          [it.quantity, it.variant_id],
+        );
+      } else if (it.product_id) {
+        await t.query('UPDATE products SET stock = stock + $1 WHERE id = $2 AND track_stock', [it.quantity, it.product_id]);
+      }
+    }
+    const { orders } = await t.one('SELECT COUNT(*)::int AS orders FROM orders');
+    const { items } = await t.one('SELECT COUNT(*)::int AS items FROM order_items');
+    await t.query('UPDATE coupons SET used_count = 0');
+    await t.query('TRUNCATE order_events, order_items, orders RESTART IDENTITY');
+    return { orders, items, restocked: held.reduce((n, it) => n + it.quantity, 0) };
+  });
+}

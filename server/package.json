@@ -11,6 +11,7 @@
     "configure": "node src/scripts/configure.js",
     "create-admin": "node src/scripts/create-admin.js",
     "reset-shop": "node src/scripts/reset-shop.js",
+    "clear-orders": "node src/scripts/clear-orders.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
