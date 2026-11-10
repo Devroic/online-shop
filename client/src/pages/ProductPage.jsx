@@ -184,8 +184,13 @@ export default function ProductPage() {
           <div className="stock-line">
             {!canBuy ? (
               <span className="stock out">{t('Sold out')}</span>
-            ) : lowStock && !allInCart ? (
-              <span className="stock low">{t('Only {n} left', { n: available })}</span>
+            ) : allInCart ? (
+              <span className="stock low">{t('All available pieces are already in your cart.')}</span>
+            ) : lowStock ? (
+              <span className="stock low">
+                {t('Only {n} left', { n: available })}
+                {inCart > 0 && ` · ${t('{n} in your cart', { n: inCart })}`}
+              </span>
             ) : (
               <span className="stock in">
                 <Check size={16} /> {t('In stock')}
@@ -200,7 +205,6 @@ export default function ProductPage() {
             </button>
           </div>
 
-          {allInCart && <p className="muted small">{t('All available pieces are already in your cart.')}</p>}
 
           <ul className="product-perks">
             <li>

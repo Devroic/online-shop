@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CreditCard, Banknote, Lock, Tag, X, ChevronDown, ShoppingBag, Info } from 'lucide-react';
-import { rememberCardOrder, useCart } from '../context/CartContext.jsx';
+import { forgetCardOrder, pendingCardOrder, rememberCardOrder, useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { api } from '../lib/api.js';
@@ -298,14 +298,25 @@ export default function Checkout() {
         notes: form.notes,
         saveAddress: !!user && saveAddress,
         acceptTerms: true,
+        // An earlier card payment from this browser that was left unfinished: the server
+        // cancels it first, so its stock does not block this order.
+        replaceOrder: pendingCardOrder() || undefined,
       });
+      // That earlier order turned out to be paid: no new order, go to it.
+      if (res.alreadyPaid) {
+        forgetCardOrder();
+        clear();
+        navigate(`/order/${res.order.number}?token=${res.order.accessToken}`, { replace: true });
+        return;
+      }
       if (res.redirectUrl) {
-        // The cart is kept in case the customer cancels on Stripe; the order page
-        // empties it once this order comes back paid.
-        rememberCardOrder(res.order.number);
+        // The cart is kept in case the customer gives up on Stripe; it is emptied once
+        // this order comes back paid (see CartContext).
+        rememberCardOrder(res.order);
         window.location.assign(res.redirectUrl);
         return;
       }
+      forgetCardOrder();
       clear();
       navigate(`/order/${res.order.number}?token=${res.order.accessToken}&new=1`, { replace: true });
     } catch (err) {

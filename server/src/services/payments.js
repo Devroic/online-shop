@@ -73,6 +73,39 @@ export async function applySession(session) {
   return { order, justPaid: false };
 }
 
+/**
+ * The customer left a card payment unfinished and is checking out again (or came back
+ * with "Back" on Stripe). The old unpaid order is cancelled at once, so it gives its
+ * stock and coupon back instead of holding them for up to an hour, and its Stripe page
+ * is closed first so it cannot be paid as well.
+ * Returns { order, paid } when it was paid in the meantime (then it is kept),
+ * { order, released: true } when cancelled, { order, released: false } when left alone
+ * (not a pending card order, or Stripe could not be reached: better than a double payment).
+ */
+export async function releaseCardOrder(order) {
+  if (order.paymentMethod !== 'card' || order.paymentStatus !== 'pending' || order.status !== 'pending') {
+    return { order, released: false, paid: order.paymentStatus === 'paid' };
+  }
+  const s = getStripe();
+  const row = await db().one('SELECT stripe_session_id FROM orders WHERE id = $1', [order.id]);
+  if (s && row?.stripe_session_id) {
+    try {
+      const session = await s.checkout.sessions.retrieve(row.stripe_session_id);
+      if (session.status === 'open') {
+        await s.checkout.sessions.expire(session.id);
+      } else if (session.payment_status === 'paid') {
+        const result = await applySession(session);
+        return { order: result?.order ?? order, paid: true, justPaid: !!result?.justPaid };
+      }
+    } catch (err) {
+      console.error('[stripe] could not close the old payment page:', err.message);
+      return { order, released: false };
+    }
+  }
+  const cancelled = await updateOrder(order.id, { status: 'cancelled', paymentStatus: 'failed' }, { actor: 'customer' });
+  return { order: cancelled, released: true };
+}
+
 /** If the webhook hasn't arrived yet, ask Stripe directly. */
 export async function refreshCardPayment(order) {
   const s = getStripe();

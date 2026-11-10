@@ -6,7 +6,7 @@ import { getSettings } from '../settings.js';
 import { requireUser } from '../auth.js';
 import { HttpError, notFound, validate } from '../utils.js';
 import { createOrder, getOrder, serializeOrder, updateOrder } from '../services/orders.js';
-import { createCheckoutSession, refreshCardPayment, stripeReady } from '../services/payments.js';
+import { createCheckoutSession, refreshCardPayment, releaseCardOrder, stripeReady } from '../services/payments.js';
 import { background, sendAdminNewOrder, sendOrderConfirmation } from '../email.js';
 import { addressSchema, phoneSchema } from './auth.js';
 import { config } from '../config.js';
@@ -37,17 +37,39 @@ const checkoutSchema = z.object({
   notes: z.string().trim().max(1000).optional().default(''),
   saveAddress: z.boolean().optional(),
   acceptTerms: z.literal(true, { message: 'accept_terms' }),
+  // This browser's earlier card order that was never paid (see releaseCardOrder).
+  replaceOrder: z.object({ number: z.string().max(40), token: z.string().max(200) }).optional(),
 });
+
+const tokenSchema = z.object({ token: z.string().max(200) });
+
+/** The order, only for whoever holds its secret link token. */
+async function orderByToken(number, token) {
+  const order = await getOrder({ number: String(number) });
+  return order && token && token === order.accessToken ? order : null;
+}
 
 export function notifyNewOrder(order) {
   return background(Promise.all([sendOrderConfirmation(order), sendAdminNewOrder(order)]));
 }
 
 router.post('/', checkoutLimiter, async (req, res) => {
-  const data = validate(checkoutSchema, req.body);
+  const { replaceOrder, ...data } = validate(checkoutSchema, req.body);
   const settings = await getSettings();
   if (settings.checkout.requirePhone && !data.phone) {
     throw new HttpError(400, 'Validation failed', { phone: 'required' });
+  }
+  // Checking out again after leaving a card payment: the old order lets go of its stock
+  // first, so it does not block this one. If it was paid meanwhile, nothing new is created.
+  if (replaceOrder) {
+    const previous = await orderByToken(replaceOrder.number, replaceOrder.token);
+    if (previous) {
+      const released = await releaseCardOrder(previous);
+      if (released.paid) {
+        if (released.justPaid) notifyNewOrder(released.order);
+        return res.json({ order: released.order, alreadyPaid: true });
+      }
+    }
   }
   const order = await createOrder({ ...data, language: requestLanguage(req, settings) }, { user: req.user, stripeReady: stripeReady() });
 
@@ -80,6 +102,16 @@ router.post('/lookup', checkoutLimiter, async (req, res) => {
   const order = await getOrder({ number: number.replace(/^#/, '') });
   if (!order || order.email.toLowerCase() !== email.toLowerCase()) throw notFound('Order not found');
   res.json({ number: order.number, token: order.accessToken });
+});
+
+/** "Back" on the Stripe page: the unpaid order is cancelled at once and gives its stock back. */
+router.post('/:number/release', checkoutLimiter, async (req, res) => {
+  const { token } = validate(tokenSchema, req.body);
+  const order = await orderByToken(req.params.number, token);
+  if (!order) throw notFound('Order not found');
+  const result = await releaseCardOrder(order);
+  if (result.justPaid) notifyNewOrder(result.order);
+  res.json({ status: result.order.status, paymentStatus: result.order.paymentStatus });
 });
 
 /** Order page: visible to its owner, an admin, or anyone holding the secret link token. */

@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext.jsx';
  * snapshot in sync with real prices and reports stock problems.
  */
 export function useQuote({ couponCode, shippingMethodId, paymentMethod, country, enabled = true } = {}) {
-  const { payload, items, syncFromQuote } = useCart();
+  const { payload, items, syncFromQuote, stockVersion } = useCart();
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(false);
   const body = JSON.stringify({ items: payload, couponCode: couponCode || undefined, shippingMethodId, paymentMethod, country });
@@ -35,7 +35,7 @@ export function useQuote({ couponCode, shippingMethodId, paymentMethod, country,
     }, 250);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [body, enabled]);
+  }, [body, enabled, stockVersion]);
 
   const problemFor = (key) => quote?.problems.find((p) => p.key === key);
   return { quote, loading, problemFor };

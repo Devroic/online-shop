@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './AuthContext.jsx';
+import { api } from '../lib/api.js';
 
 const CartContext = createContext(null);
 const KEY = 'shop.cart.v1';
@@ -15,27 +16,43 @@ function read() {
 
 export const lineKey = (productId, variantId) => `${productId}:${variantId ?? ''}`;
 
-// Card orders leave the site for Stripe before the cart can be emptied. The order
-// number is kept for this tab so the order page can empty the cart on return.
-const CARD_ORDER_KEY = 'shop.cardOrder';
+// A card order leaves the site for Stripe before the cart can be emptied. Its number and
+// link token are kept in localStorage (closing the tab does not lose them) until it is
+// paid, which empties the cart, or given up, which cancels it so it frees its stock.
+const CARD_ORDER_KEY = 'shop.cardOrder.v2';
 
-export function rememberCardOrder(number) {
+export function rememberCardOrder(order) {
   try {
-    sessionStorage.setItem(CARD_ORDER_KEY, String(number));
+    localStorage.setItem(CARD_ORDER_KEY, JSON.stringify({ number: String(order.number), token: order.accessToken }));
   } catch {
     /* storage blocked: the cart simply stays */
   }
 }
 
+/** This browser's card order that has not come back paid yet: { number, token } or null. */
+export function pendingCardOrder() {
+  try {
+    const o = JSON.parse(localStorage.getItem(CARD_ORDER_KEY) || 'null');
+    return o?.number && o?.token ? o : null;
+  } catch {
+    return null;
+  }
+}
+
+export function forgetCardOrder() {
+  try {
+    localStorage.removeItem(CARD_ORDER_KEY);
+  } catch {
+    /* nothing to forget */
+  }
+}
+
 /** True once per remembered card order, when it comes back paid. */
 export function takePaidCardOrder(number) {
-  try {
-    if (sessionStorage.getItem(CARD_ORDER_KEY) !== String(number)) return false;
-    sessionStorage.removeItem(CARD_ORDER_KEY);
-    return true;
-  } catch {
-    return false;
-  }
+  const o = pendingCardOrder();
+  if (!o || o.number !== String(number)) return false;
+  forgetCardOrder();
+  return true;
 }
 
 /**
@@ -60,6 +77,42 @@ export function CartProvider({ children }) {
     const onStorage = (e) => e.key === KEY && setItems(read());
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Back on the site with a card order that never came back paid (tab closed on Stripe,
+  // "Back" on Stripe, or paid but the tab was closed before returning):
+  // - paid: the cart is emptied;
+  // - still unpaid: it is cancelled at once, so it stops holding the stock in this cart
+  //   (otherwise checking out again would fail for up to an hour);
+  // - cancelled or gone: forgotten.
+  // Not on that order's own page, which shows the payment as it completes.
+  // `stockVersion` changes afterwards so cart and checkout re-check stock.
+  const [stockVersion, setStockVersion] = useState(0);
+  useEffect(() => {
+    const o = pendingCardOrder();
+    if (!o || window.location.pathname === `/order/${o.number}`) return;
+    const q = `?token=${encodeURIComponent(o.token)}`;
+    api
+      .get(`/orders/${encodeURIComponent(o.number)}${q}`)
+      .then(async ({ order }) => {
+        if (order.paymentStatus === 'paid') {
+          if (takePaidCardOrder(o.number)) setItems([]);
+          return;
+        }
+        if (order.status === 'pending') {
+          const r = await api.post(`/orders/${encodeURIComponent(o.number)}/release`, { token: o.token });
+          if (r.paymentStatus === 'paid') {
+            if (takePaidCardOrder(o.number)) setItems([]);
+            return;
+          }
+          if (r.status !== 'cancelled') return; // Stripe unreachable: try again next visit
+        }
+        forgetCardOrder();
+        setStockVersion((v) => v + 1);
+      })
+      .catch((err) => {
+        if (err.status === 404) forgetCardOrder();
+      });
   }, []);
 
   /** `max`: the stock when known; the line never goes above it (the server checks again). */
@@ -128,11 +181,12 @@ export function CartProvider({ children }) {
       clear,
       syncFromQuote,
       drawerOpen,
+      stockVersion,
       openDrawer: () => setDrawerOpen(true),
       closeDrawer: () => setDrawerOpen(false),
       payload: items.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity })),
     }),
-    [items, add, setQuantity, remove, clear, syncFromQuote, drawerOpen],
+    [items, add, setQuantity, remove, clear, syncFromQuote, drawerOpen, stockVersion],
   );
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

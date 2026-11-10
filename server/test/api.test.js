@@ -420,6 +420,37 @@ test('courier: countries worldwide, an empty cost or free-over uses the default'
   await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, rates: [{ country: 'CY', price: 350, freeOver: 5000 }] }] }).expect(200);
 });
 
+test('an unfinished card payment does not block checking out again', async () => {
+  const { createOrder } = await import('../src/services/orders.js');
+  const p = (await admin.post('/api/admin/products').send({ name: 'Last piece', price: 1500, stock: 1 }).expect(201)).body;
+  const items = [{ productId: p.id, quantity: 1 }];
+  // The customer went to the card payment page (the order now holds the last piece)...
+  const first = await createOrder({ ...checkout({ items }), paymentMethod: 'card', language: 'el' }, { stripeReady: true });
+  assert.equal(await stockOf(p.id), 0);
+  // ...then checked out again: without the old order it would fail for lack of stock.
+  await request(app).post('/api/orders').send(checkout({ items })).expect(409);
+  const again = await request(app)
+    .post('/api/orders')
+    .send(checkout({ items, replaceOrder: { number: first.number, token: first.accessToken } }))
+    .expect(201);
+  assert.equal(await stockOf(p.id), 0); // held by the new order
+  const old = (await request(app).get(`/api/orders/${first.number}?token=${first.accessToken}`).expect(200)).body.order;
+  assert.deepEqual([old.status, old.paymentStatus], ['cancelled', 'failed']);
+  assert.ok(again.body.order.number !== first.number);
+
+  // "Back" on Stripe: the order is cancelled straight away and the piece is free again.
+  await admin.put(`/api/admin/orders/${again.body.order.id}`).send({ status: 'cancelled', paymentStatus: 'pending' }).expect(200);
+  const second = await createOrder({ ...checkout({ items }), paymentMethod: 'card', language: 'el' }, { stripeReady: true });
+  await request(app).post(`/api/orders/${second.number}/release`).send({ token: 'wrong' }).expect(404);
+  const released = await request(app).post(`/api/orders/${second.number}/release`).send({ token: second.accessToken }).expect(200);
+  assert.equal(released.body.status, 'cancelled');
+  assert.equal(await stockOf(p.id), 1);
+  // A paid or cash order is never cancelled this way.
+  const cash = (await request(app).post('/api/orders').send(checkout({ items })).expect(201)).body.order;
+  const kept = await request(app).post(`/api/orders/${cash.number}/release`).send({ token: cash.accessToken }).expect(200);
+  assert.equal(kept.body.status, 'pending');
+});
+
 test('categories keep distinct places: new ones go last, the order is saved as a list', async () => {
   const a = (await admin.post('/api/admin/categories').send({ name: 'Order A' }).expect(201)).body;
   const b = (await admin.post('/api/admin/categories').send({ name: 'Order B' }).expect(201)).body;

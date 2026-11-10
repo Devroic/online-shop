@@ -782,6 +782,7 @@ export default {
   'First order': 'Πρώτη παραγγελία',
   'Tracking number (optional)': 'Αριθμός αποστολής (προαιρετικό)',
   'Add countries': 'Προσθήκη χωρών',
+  '{n} in your cart': '{n} στο καλάθι σας',
   'Add {n} countries': ['Προσθήκη {n} χώρας', 'Προσθήκη {n} χωρών'],
   'They are added with the default cost and “free over”; you can change any of them afterwards.':
     'Προστίθενται με το προεπιλεγμένο κόστος και «Δωρεάν άνω των»· μπορείτε να αλλάξετε όποια θέλετε μετά.',
