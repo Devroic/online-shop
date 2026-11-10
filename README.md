@@ -1,9 +1,12 @@
 # Online Shop
 
-A complete online shop for small businesses, customised per client (name, logo, colours, font,
-light/dark appearance, products, shipping, payments, pages) **without code changes**. One repository
-serves every client: each client is a separate Vercel project with its own Supabase database, so a
-`git push` to `main` updates all shops at once.
+**A ready-made online shop template for any business that wants to sell online.** Each client gets
+their own shop, set up to fit what they sell and how they work: name, logo, colours, font,
+light/dark appearance, products and options, shipping countries and costs, payment methods and
+pages, all configured **without code changes**. Live example: [worstgentcg.com](https://www.worstgentcg.com).
+
+One repository serves every client: each client is a separate Vercel project with its own Supabase
+database, so a `git push` to `main` updates all shops at once.
 
 | | |
 |---|---|
