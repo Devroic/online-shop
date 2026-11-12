@@ -1,7 +1,9 @@
 // Shrinks photos in the browser before upload: phone pictures of 5-10 MB
 // become ~150-300 KB WebP files. Keeps uploads fast and under the hosting
 // request-size limit. SVG and GIF (animation) are sent unchanged.
-export async function resizeImage(file, maxSize = 1600, quality = 0.85) {
+// `type`: 'image/webp' for photos; 'image/png' for logos, which also go into emails
+// (Outlook for Windows does not show WebP).
+export async function resizeImage(file, maxSize = 1600, quality = 0.85, type = 'image/webp') {
   if (!file.type.startsWith('image/') || file.type === 'image/svg+xml' || file.type === 'image/gif') return file;
   let bitmap;
   try {
@@ -17,7 +19,9 @@ export async function resizeImage(file, maxSize = 1600, quality = 0.85) {
   canvas.height = h;
   canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
-  if (!blob || blob.size >= file.size) return file;
-  return new File([blob], file.name.replace(/\.\w+$/, '') + '.webp', { type: 'image/webp' });
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+  if (!blob) return file;
+  // A PNG logo is kept even if larger than the original: the format is the point.
+  if (type === 'image/webp' && blob.size >= file.size) return file;
+  return new File([blob], file.name.replace(/\.\w+$/, '') + (type === 'image/png' ? '.png' : '.webp'), { type });
 }

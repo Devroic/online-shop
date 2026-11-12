@@ -64,12 +64,34 @@ export function background(promise) {
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+/**
+ * The logo's address for an email, or null: only PNG, JPG and GIF, which every inbox
+ * shows (WebP is missing in Outlook for Windows, SVG in Gmail). A path stored by local
+ * uploads ("/uploads/…") becomes a full link.
+ */
+export function emailLogoUrl(settings) {
+  const url = String(settings.logoUrl || '').trim();
+  if (!/\.(png|jpe?g|gif)(\?.*)?$/i.test(url)) return null;
+  return url.startsWith('/') ? `${config.publicUrl}${url}` : url;
+}
+
+/** Top of every email: the shop's logo on white with a line in its colour, or its name on its colour. */
+export function emailHeader(settings) {
+  const color = esc(settings.theme.primary);
+  const logo = emailLogoUrl(settings);
+  if (logo) {
+    return `<div style="background:#fff;padding:20px 24px;border-bottom:3px solid ${color}">
+        <a href="${esc(config.publicUrl)}" style="text-decoration:none"><img src="${esc(logo)}" alt="${esc(settings.storeName)}" height="48" style="display:block;height:48px;width:auto;max-width:240px;border:0;color:#111;font-size:20px;font-weight:bold"></a>
+      </div>`;
+  }
+  return `<div style="background:${color};color:#fff;padding:20px 24px;font-size:20px;font-weight:bold">${esc(settings.storeName)}</div>`;
+}
+
 function layout(settings, body) {
-  const color = settings.theme.primary;
   return `<!doctype html><html><body style="margin:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111">
   <div style="max-width:560px;margin:0 auto;padding:24px">
     <div style="background:#fff;border-radius:12px;overflow:hidden">
-      <div style="background:${esc(color)};color:#fff;padding:20px 24px;font-size:20px;font-weight:bold">${esc(settings.storeName)}</div>
+      ${emailHeader(settings)}
       <div style="padding:24px;line-height:1.5">${body}</div>
     </div>
     ${footer(settings)}

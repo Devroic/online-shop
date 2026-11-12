@@ -595,3 +595,18 @@ test('clearing all orders gives held stock back and starts again at #1001', asyn
   const next = (await request(app).post('/api/orders').send(checkout({ items: items(1) })).expect(201)).body.order;
   assert.equal(next.number, '1001');
 });
+
+test('emails show the shop logo when every inbox can display it', async () => {
+  const { emailHeader, emailLogoUrl } = await import('../src/email.js');
+  const base = { storeName: 'Shop & Co', theme: { primary: '#111827' } };
+  const png = 'https://cdn.example.com/shop/logo.png';
+  assert.equal(emailLogoUrl({ ...base, logoUrl: png }), png);
+  assert.ok(emailHeader({ ...base, logoUrl: png }).includes(`<img src="${png}" alt="Shop &amp; Co"`));
+  // WebP (Outlook) and SVG (Gmail) are not shown everywhere: the name is used instead.
+  for (const logoUrl of ['', 'https://cdn.example.com/logo.webp', 'https://cdn.example.com/logo.svg']) {
+    assert.equal(emailLogoUrl({ ...base, logoUrl }), null);
+    assert.ok(emailHeader({ ...base, logoUrl }).includes('>Shop &amp; Co</div>'));
+  }
+  // Local uploads are stored as a path: the email gets a full link.
+  assert.match(emailLogoUrl({ ...base, logoUrl: '/uploads/logo.png' }), /^https?:\/\/.+\/uploads\/logo\.png$/);
+});

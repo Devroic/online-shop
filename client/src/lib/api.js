@@ -37,7 +37,7 @@ export const api = {
     const urls = [];
     for (const f of files) {
       const fd = new FormData();
-      fd.append('files', await resizeImage(f, kind === 'logo' ? 600 : 1600));
+      fd.append('files', kind === 'logo' ? await resizeImage(f, 600, 0.92, 'image/png') : await resizeImage(f, 1600));
       urls.push(...(await request('POST', '/admin/uploads', fd)).urls);
     }
     return { urls };
