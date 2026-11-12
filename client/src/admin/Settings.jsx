@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Info } from 'lucide-react';
+import { CreditCard, Info } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
@@ -309,9 +309,18 @@ export function Payments({ s, set, errors, meta, pages }) {
     <>
       <section className="card">
         <h3>{t('Payment methods')}</h3>
+        {/* Card payments are always on once Stripe is set up; which methods (Apple Pay,
+            Google Pay, PayPal…) customers see is chosen in the Stripe Dashboard. */}
         <div className="pay-block">
-          <Toggle checked={s.payments.card.enabled} onChange={(v) => set('payments.card.enabled', v)} label={t('Credit / debit card')} hint={t('Via Stripe. Money goes straight to your Stripe account.')} />
-          {s.payments.card.enabled && !meta.stripeConfigured && (
+          <div className="row-gap">
+            <CreditCard size={20} />
+            <div className="grow">
+              <strong>{t('Card, Apple Pay, Google Pay (Stripe)')}</strong>
+              <div className="muted small">{t('Money goes straight to your Stripe account. More methods (e.g. PayPal) are turned on in the Stripe Dashboard.')}</div>
+            </div>
+            <span className={`status ${meta.stripeConfigured ? 'status-delivered' : 'status-cancelled'}`}>{meta.stripeConfigured ? t('Active') : t('Not set up')}</span>
+          </div>
+          {!meta.stripeConfigured && (
             <p className="notice small">
               <Info size={16} /> {t('Stripe keys are not configured on the server yet, so card payments are hidden from customers.')}
             </p>

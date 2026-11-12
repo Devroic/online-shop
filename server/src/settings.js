@@ -64,11 +64,6 @@ export const DEFAULT_SETTINGS = {
     instagram: '',
     tiktok: '',
   },
-  // Card (Stripe) is on by default. Cash (on delivery / at the store) is set per
-  // shipping method, in Admin → Shipping.
-  payments: {
-    card: { enabled: true },
-  },
   checkout: {
     requirePhone: true,
     allowGuest: true,

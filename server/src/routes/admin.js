@@ -665,11 +665,11 @@ router.get('/shipping', async (_req, res) => {
 
 /**
  * The shop must keep a way to deliver and a way to pay: at least one shipping
- * method on, and card payments on or cash allowed by an active method.
+ * method on, and card payments (Stripe set up) or cash allowed by an active method.
  */
-export function checkStillSellable(methods, cardEnabled) {
+export function checkStillSellable(methods, cardReady) {
   if (!methods.some((m) => m.active)) throw badRequest('Validation failed', { active: 'last_shipping' });
-  if (!cardEnabled && !methods.some((m) => m.active && m.cod)) throw badRequest('Validation failed', { cod: 'last_payment' });
+  if (!cardReady && !methods.some((m) => m.active && m.cod)) throw badRequest('Validation failed', { cod: 'last_payment' });
 }
 
 /**
@@ -714,7 +714,7 @@ router.put('/shipping', async (req, res) => {
     return i < 0 ? m : apply(m, patches[i], i);
   });
   const added = patches.map((d, i) => (d.id ? null : apply(blank, { rates: [], ...d }, i))).filter(Boolean);
-  checkStillSellable([...kept, ...added], (await getSettings()).payments.card.enabled);
+  checkStillSellable([...kept, ...added], stripeReady());
   await tx(async (t) => {
     if (removed.length) await t.query("DELETE FROM shipping_methods WHERE kind = 'delivery' AND id = ANY($1::int[])", [removed]);
     for (const m of kept) {
@@ -858,11 +858,6 @@ const settingsSchema = z
       .partial(),
     contact: z.object({ email: optEmail, phone: z.string().trim().max(60).refine((s) => !s || isPhone(s), { message: 'phone' }), address: z.string().max(300), country: z.enum(COUNTRY_CODES), city: z.string().max(100), region: z.string().max(100), postalCode: z.string().trim().max(20).refine((s) => !s || isPostalCode(s), { message: 'postal_code' }), hours: z.string().max(300) }).partial(),
     social: z.object({ facebook: optUrl, instagram: optUrl, tiktok: optUrl }).partial(),
-    payments: z
-      .object({
-        card: z.object({ enabled: z.boolean() }).partial(),
-      })
-      .partial(),
     checkout: z
       .object({
         requirePhone: z.boolean(),
@@ -880,8 +875,6 @@ const settingsSchema = z
 
 router.put('/settings', async (req, res) => {
   const patch = validate(settingsSchema, req.body);
-  // Turning card payments off must leave cash with an active shipping method.
-  if (patch.payments?.card?.enabled === false) checkStillSellable(await shippingMethods(), false);
   res.json(await updateSettings(patch));
 });
 

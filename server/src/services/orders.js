@@ -49,7 +49,8 @@ export const paymentStepAllowed = (paymentMethod, before, next) =>
  */
 export function availablePaymentMethods(settings, stripeReady, shipping) {
   const out = [];
-  if (settings.payments.card.enabled && stripeReady) out.push('card');
+  // Every shop takes cards through Stripe once its keys are set; there is no switch.
+  if (stripeReady) out.push('card');
   const cash = Array.isArray(shipping) ? shipping.some((m) => m.active && m.cod) : shipping?.cod;
   if (cash) out.push('cod');
   return out;

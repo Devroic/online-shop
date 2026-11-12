@@ -208,12 +208,6 @@ test('guest orders join an account only after the email is confirmed', async () 
   await user.get('/api/admin/stats').expect(403);
 });
 
-test('default payment settings: card on; cash is set per shipping method', async () => {
-  const { DEFAULT_SETTINGS } = await import('../src/settings.js');
-  assert.deepEqual(Object.keys(DEFAULT_SETTINGS.payments), ['card']);
-  assert.equal(DEFAULT_SETTINGS.payments.card.enabled, true);
-});
-
 test('settings are public except notification email', async () => {
   await admin.put('/api/admin/settings').send({ storeName: 'Acme', notifications: { orderEmail: 'secret@acme.dev' } }).expect(200);
   const res = await request(app).get('/api/settings').expect(200);
@@ -385,14 +379,12 @@ test('two shipping methods: courier priced per country, pickup; the shop stays s
   assert.equal(picked.body.order.address, null);
   assert.equal(picked.body.order.shippingCost, 0);
 
-  // Never all shipping off, and never no way to pay (with card payments off, some method must take cash).
+  // Never all shipping off, and never no way to pay (without Stripe set up, some method must take cash).
   await admin.put('/api/admin/shipping').send({ methods: [{ id: pickupId, name: 'Pickup', active: false }] }).expect(200);
   const last = await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, name: 'Courier', active: false, cod: true, rates }] }).expect(400);
   assert.equal(last.body.details.active, 'last_shipping');
-  await admin.put('/api/admin/settings').send({ payments: { card: { enabled: false } } }).expect(200); // courier still takes cash
   const nopay = await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, name: 'Courier', cod: false, rates }] }).expect(400);
   assert.equal(nopay.body.details.cod, 'last_payment');
-  await admin.put('/api/admin/settings').send({ payments: { card: { enabled: true } } }).expect(200);
 });
 
 test('courier: countries worldwide, an empty cost or free-over uses the default', async () => {
@@ -647,4 +639,13 @@ test('emails show the shop logo when every inbox can display it', async () => {
   }
   // Local uploads are stored as a path: the email gets a full link.
   assert.match(emailLogoUrl({ ...base, logoUrl: '/uploads/logo.png' }), /^https?:\/\/.+\/uploads\/logo\.png$/);
+});
+
+test('card payments are on whenever Stripe is set up; cash comes from the shipping methods', async () => {
+  const { availablePaymentMethods } = await import('../src/services/orders.js');
+  const { getSettings } = await import('../src/settings.js');
+  const settings = await getSettings();
+  assert.deepEqual(availablePaymentMethods(settings, true, [{ active: true, cod: false }]), ['card']);
+  assert.deepEqual(availablePaymentMethods(settings, true, [{ active: true, cod: true }]), ['card', 'cod']);
+  assert.deepEqual(availablePaymentMethods(settings, false, [{ active: true, cod: false }]), []);
 });
