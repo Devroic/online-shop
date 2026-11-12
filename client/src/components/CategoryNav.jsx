@@ -5,10 +5,11 @@ import { t } from '../lib/i18n.js';
 
 const GAP = 4; // .main-nav gap
 const MORE_WIDTH = 130; // room kept for the "More" button when not everything fits
+const BREATHING = 32; // free space always left before the search box, so the last link never touches it
 
 /** How many categories fit next to "All products" in `width`; when not all do, room is kept for "More". */
 export function fitCount(width, allWidth, catWidths) {
-  const room = width - allWidth;
+  const room = width - allWidth - BREATHING;
   if (catWidths.reduce((a, b) => a + b, 0) <= room) return catWidths.length;
   let used = 0;
   let n = 0;
