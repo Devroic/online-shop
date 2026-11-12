@@ -1058,6 +1058,50 @@ input[type='range'] {
   opacity: 0.75;
 }
 
+/* Shipping methods: the header opens and closes the card. */
+.ship-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ship-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ship-toggle strong {
+  display: block;
+  font-size: 1.1rem;
+}
+.ship-summary {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.ship-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.ship-chevron.open {
+  transform: rotate(180deg);
+}
+.ship-body {
+  margin-top: 14px;
+}
+.ship-tools {
+  justify-content: flex-end;
+}
+
 .filter-chip {
   display: inline-flex;
   align-items: center;

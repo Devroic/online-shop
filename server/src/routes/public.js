@@ -18,13 +18,16 @@ export async function publicSettings() {
   const s = await getSettings();
   const { notifications, ...rest } = s;
   const oauthReady = !!(config.supabase.url && config.supabase.anonKey);
-  // The courier's countries (the first is preselected); none when only store pickup is on.
-  const methods = await db().all('SELECT kind, active, cod, rates, description FROM shipping_methods WHERE kind IS NOT NULL');
-  const courier = methods.find((m) => m.kind === 'courier' && m.active);
-  const deliveryCountries = courier ? courier.rates.map((r) => r.country) : [];
-  // Default text of the home page's delivery box: the courier's description, or store pickup only.
+  // Countries of the active delivery methods (the courier's first one is preselected);
+  // none when only store pickup is on.
+  const methods = await db().all(
+    "SELECT kind, active, cod, rates, description FROM shipping_methods WHERE kind IS NOT NULL ORDER BY kind = 'pickup', kind <> 'courier', id",
+  );
+  const deliveries = methods.filter((m) => m.kind !== 'pickup' && m.active);
+  const deliveryCountries = [...new Set(deliveries.flatMap((m) => m.rates.map((r) => r.country)))];
+  // Default text of the home page's delivery box: the first delivery's description, or store pickup only.
   const pickup = methods.find((m) => m.kind === 'pickup' && m.active);
-  const deliveryNote = courier ? courier.description : pickup ? 'pickup' : '';
+  const deliveryNote = deliveries.length ? deliveries[0].description : pickup ? 'pickup' : '';
   return {
     ...rest,
     deliveryCountries,

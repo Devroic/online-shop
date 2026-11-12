@@ -83,7 +83,7 @@ Backups run nightly from GitHub Actions; see [restoring a backup](scripts/restor
 - Catalog with case- and accent-insensitive search (also Greek typed in Latin letters, e.g. "koupa"), categories, price filter, sorting
 - Product page: swipeable gallery with arrows, options (size/colour…) with their own name, stock and price, low-stock notice, related products
 - Cart re-checks prices and stock on the server, never lets you add more than is in stock; "€X more for free shipping" bar
-- One-page checkout, guest checkout, coupons, courier or store pickup, card or cash; address autofill on phones
+- One-page checkout, guest checkout, coupons, courier, store pickup or the shop's own delivery methods, card or cash; address autofill on phones
 - Unfinished card payments don't block the customer: coming back cancels the old order and frees its stock at once (otherwise after 30 minutes)
 - Accounts with order history, saved address, password reset; guest orders join the account once the email is confirmed
 - Light appearance by default; optionally always dark or following the device, with a switch
@@ -97,7 +97,7 @@ Backups run nightly from GitHub Actions; see [restoring a backup](scripts/restor
 - Bulk import/update from Excel (.xlsx/.csv) with a template and preview; columns left out of the file keep their values
 - Categories, coupons, contact messages, customers (accounts and guests), admins
 - Pages: home page banner, announcement and info boxes, text pages
-- Shipping & payments: courier with a default cost and per-country prices for any country, free shipping over an amount, store pickup, cash on delivery with fee
+- Shipping & payments: courier plus any delivery methods the shop adds (e.g. lockers), each with a default cost and per-country prices for any country, free shipping over an amount; store pickup; cash on delivery with fee
 - Appearance: logo, colours (light & dark) with live preview, font
 - Store details: name, contact, order emails, stock, SEO
 - Warns before leaving a page with unsaved changes

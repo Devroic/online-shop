@@ -184,6 +184,8 @@ export default {
   Checkout: 'Ολοκλήρωση αγοράς',
   'Add {amount} more for free shipping': 'Προσθέστε ακόμα {amount} για δωρεάν αποστολή',
   'You get free shipping!': 'Έχετε δωρεάν αποστολή!',
+  '{country}: add {amount} more for free shipping': '{country}: προσθέστε ακόμα {amount} για δωρεάν αποστολή',
+  '{country}: you get free shipping!': '{country}: έχετε δωρεάν αποστολή!',
   'Please fix the items marked above to continue.': 'Διορθώστε τα επισημασμένα προϊόντα για να συνεχίσετε.',
 
   // Checkout
@@ -214,7 +216,6 @@ export default {
   'Pay at the store': 'Πληρωμή στο κατάστημα',
   'The customer pays the courier in cash.': 'Ο πελάτης πληρώνει τον courier με μετρητά.',
   'The customer pays when collecting the order.': 'Ο πελάτης πληρώνει όταν παραλαμβάνει την παραγγελία.',
-  'Courier or store pickup, at least one on.': 'Courier ή παραλαβή από το κατάστημα, τουλάχιστον ένα ενεργό.',
   'Cash on delivery and paying at the store are set on each shipping method, in the Shipping tab.': 'Η αντικαταβολή και η πληρωμή στο κατάστημα ρυθμίζονται σε κάθε τρόπο αποστολής, στην καρτέλα Αποστολές.',
   'Delivers to': 'Χώρες αποστολής',
   'Customers in these countries see this method at checkout.': 'Οι πελάτες σε αυτές τις χώρες βλέπουν αυτόν τον τρόπο αποστολής στο checkout.',
@@ -238,6 +239,8 @@ export default {
   'Remove code': 'Αφαίρεση κουπονιού',
   'Cash on delivery fee': 'Χρέωση αντικαταβολής',
   'Free over {amount}': 'Δωρεάν άνω των {amount}',
+  'Delivers only to: {countries}': 'Αποστολή μόνο σε: {countries}',
+  '{list} and {n} more': '{list} και {n} ακόμα',
   'Please sign in to checkout': 'Συνδεθείτε για να ολοκληρώσετε την αγορά',
   'Some items in your cart changed. Please review your order.': 'Κάποια προϊόντα στο καλάθι άλλαξαν. Ελέγξτε την παραγγελία σας.',
   'Card payment is unavailable right now. Please choose another payment method.':
@@ -800,5 +803,16 @@ export default {
   'Customers can only choose these countries. An empty box uses the default above; “free over” 0: no free shipping.':
     'Οι πελάτες μπορούν να διαλέξουν μόνο αυτές τις χώρες. Ένα κενό πεδίο παίρνει την προεπιλογή από πάνω· «Δωρεάν άνω των» 0: χωρίς δωρεάν αποστολή.',
   'Keep only {country}': 'Κράτα μόνο: {country}',
+  'Courier, store pickup and your own methods; at least one on.': 'Courier, παραλαβή από το κατάστημα και δικοί σας τρόποι· τουλάχιστον ένας ενεργός.',
+  'Add shipping method': 'Προσθήκη τρόπου αποστολής',
+  'New shipping method': 'Νέος τρόπος αποστολής',
+  'Name shown to customers': 'Όνομα που βλέπουν οι πελάτες',
+  'e.g. BOX NOW lockers': 'π.χ. BOX NOW lockers',
+  'Remove {name}': 'Διαγραφή: {name}',
+  'Not offered': 'Ανενεργός',
+  '{n} countries': ['{n} χώρα', '{n} χώρες'],
+  'from {amount}': 'από {amount}',
+  'Expand all': 'Άνοιγμα όλων',
+  'Collapse all': 'Κλείσιμο όλων',
   'The payment will be marked as paid: the money was collected on delivery.': 'Η πληρωμή θα σημειωθεί ως «Πληρώθηκε», αφού τα χρήματα εισπράχθηκαν στην παράδοση.',
 };

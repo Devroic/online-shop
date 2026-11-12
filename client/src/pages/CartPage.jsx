@@ -4,12 +4,11 @@ import { useCart } from '../context/CartContext.jsx';
 import { money } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { EmptyState, useTitle } from '../components/ui.jsx';
-import { CartLine, FreeShippingBar } from '../components/CartDrawer.jsx';
-import { useQuote } from '../components/useQuote.js';
+import { CartLine, FreeShippingBar, useCartQuote } from '../components/CartDrawer.jsx';
 
 export default function CartPage() {
   const { items, setQuantity, remove, subtotal } = useCart();
-  const { quote, problemFor } = useQuote();
+  const { quote, problemFor, country } = useCartQuote();
   useTitle(t('Cart'));
 
   if (!items.length) {
@@ -43,7 +42,7 @@ export default function CartPage() {
           </Link>
         </div>
         <aside className="card summary sticky">
-          <FreeShippingBar quote={quote} subtotal={subtotal} />
+          <FreeShippingBar quote={quote} subtotal={subtotal} country={country} />
           <div className="summary-row">
             <span>{t('Subtotal')}</span>
             <span>{money(subtotal)}</span>

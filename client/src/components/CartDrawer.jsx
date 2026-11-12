@@ -2,23 +2,51 @@ import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingBag, Trash2, X, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext.jsx';
+import { useShop } from '../context/ShopContext.jsx';
 import { money } from '../lib/format.js';
+import { countryName, customerCountry } from '../lib/countries.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { t, tx } from '../lib/i18n.js';
 import { EmptyState, QuantityStepper } from './ui.jsx';
 import { problemText, useQuote } from './useQuote.js';
 
-/** Progress towards the cheapest free-shipping threshold, if any. */
-export function FreeShippingBar({ quote, subtotal }) {
-  const thresholds = quote?.shippingOptions.filter((m) => m.freeOver != null && m.requiresAddress).map((m) => m.freeOver) ?? [];
-  if (!thresholds.length) return null;
-  const target = Math.min(...thresholds);
+/** The cart's quote, priced for the customer's country when it is known (see customerCountry). */
+export function useCartQuote(opts = {}) {
+  const { user } = useAuth();
+  const { settings } = useShop();
+  const country = customerCountry(user, settings);
+  return { country, ...useQuote({ ...opts, country: country || undefined }) };
+}
+
+/**
+ * Progress towards the cheapest free-shipping threshold, if any, for `country` (the
+ * customer's, when known; otherwise the shop's first country). When the shop delivers
+ * to several countries the bar names the country, since others may differ.
+ */
+export function FreeShippingBar({ quote, subtotal, country }) {
+  const { settings } = useShop();
+  // A method that does not deliver to the customer's country is priced for its own first
+  // country by the server: it says nothing about this customer.
+  const offers = quote?.shippingOptions.filter((m) => m.freeOver != null && m.requiresAddress && (!country || m.country === country)) ?? [];
+  if (!offers.length) return null;
+  const best = offers.reduce((a, b) => (b.freeOver < a.freeOver ? b : a));
+  const target = best.freeOver;
   const current = (subtotal ?? quote.subtotal) - quote.discount;
   const left = target - current;
+  const place = (settings.deliveryCountries?.length ?? 0) > 1 && best.country ? countryName(best.country) : null;
+  let text;
+  if (place) {
+    text = left > 0
+      ? tx('{country}: add {amount} more for free shipping', { country: place, amount: <b>{money(left)}</b> })
+      : t('{country}: you get free shipping!', { country: place });
+  } else {
+    text = left > 0 ? tx('Add {amount} more for free shipping', { amount: <b>{money(left)}</b> }) : t('You get free shipping!');
+  }
   return (
     <div className="free-ship">
       <div className="free-ship-text">
         <Truck size={16} />
-        {left > 0 ? <span>{tx('Add {amount} more for free shipping', { amount: <b>{money(left)}</b> })}</span> : <span>{t('You get free shipping!')}</span>}
+        <span>{text}</span>
       </div>
       <div className="free-ship-track">
         <div style={{ width: `${Math.min(100, (current / target) * 100)}%` }} />
@@ -54,7 +82,7 @@ export function CartLine({ line, problem, onQuantity, onRemove }) {
 
 export default function CartDrawer() {
   const { items, drawerOpen, closeDrawer, setQuantity, remove, subtotal } = useCart();
-  const { quote, problemFor } = useQuote({ enabled: drawerOpen });
+  const { quote, problemFor, country } = useCartQuote({ enabled: drawerOpen });
   const location = useLocation();
 
   useEffect(() => {
@@ -96,7 +124,7 @@ export default function CartDrawer() {
           </div>
         ) : (
           <>
-            <FreeShippingBar quote={quote} subtotal={subtotal} />
+            <FreeShippingBar quote={quote} subtotal={subtotal} country={country} />
             <div className="sheet-body">
               {items.map((l) => (
                 <CartLine key={l.key} line={l} problem={problemFor(l.key)} onQuantity={(q) => setQuantity(l.key, q)} onRemove={() => remove(l.key)} />

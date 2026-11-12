@@ -420,6 +420,44 @@ test('courier: countries worldwide, an empty cost or free-over uses the default'
   await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, rates: [{ country: 'CY', price: 350, freeOver: 5000 }] }] }).expect(200);
 });
 
+test('added delivery methods: own countries and costs, removable; courier and pickup stay', async () => {
+  const p = (await admin.post('/api/admin/products').send({ name: 'Locker test', price: 1000, stock: 50 }).expect(201)).body;
+  const items = [{ productId: p.id, quantity: 1 }];
+  const ids = async () => (await admin.get('/api/admin/shipping').expect(200)).body;
+  const [courier, pickup] = await ids();
+
+  // A new method needs a name and at least one country.
+  const noName = await admin.put('/api/admin/shipping').send({ methods: [{ rates: [{ country: 'CY' }] }] }).expect(400);
+  assert.equal(noName.body.details['methods.0.name'], 'required');
+  const noCountry = await admin.put('/api/admin/shipping').send({ methods: [{ name: 'Lockers', rates: [] }] }).expect(400);
+  assert.equal(noCountry.body.details['methods.0.rates'], 'required');
+
+  const box = { name: 'Lockers', description: '1-2 days', cod: true, defaultPrice: 250, defaultFreeOver: 0, rates: [{ country: 'CY' }, { country: 'GR', price: 400 }] };
+  const list = (await admin.put('/api/admin/shipping').send({ methods: [box, { ...box, name: 'Second' }] }).expect(200)).body;
+  assert.deepEqual(list.map((m) => m.kind), ['courier', 'delivery', 'delivery', 'pickup']);
+  const [lockers, second] = list.slice(1, 3);
+  assert.equal(lockers.name, 'Lockers');
+
+  // Customers see it after the courier, priced for their country; settings list its countries too.
+  const quote = (await request(app).post('/api/cart/quote').send({ items, shippingMethodId: lockers.id, country: 'GR' }).expect(200)).body;
+  assert.deepEqual(quote.shippingOptions.map((m) => m.name), ['Courier', 'Lockers', 'Second']);
+  assert.equal(quote.shippingCost, 400);
+  const settings = (await request(app).get('/api/settings').expect(200)).body.settings;
+  assert.ok(settings.deliveryCountries.includes('GR'));
+  const order = await request(app).post('/api/orders').send(checkout({ items, shippingMethodId: lockers.id, address: { ...address, country: 'GR', postalCode: '10431' } })).expect(201);
+  assert.deepEqual([order.body.order.shippingName, order.body.order.shippingCost], ['Lockers', 400]);
+  await request(app).post('/api/orders').send(checkout({ items, shippingMethodId: lockers.id, address: { ...address, country: 'IT' } })).expect(400);
+
+  // The courier and store pickup cannot be removed, the added ones can; old orders keep their shipping.
+  const fixed = await admin.put('/api/admin/shipping').send({ methods: [], removed: [courier.id] }).expect(400);
+  assert.equal(fixed.body.details.removed, 'fixed_method');
+  await admin.put('/api/admin/shipping').send({ methods: [], removed: [pickup.id] }).expect(400);
+  const left = (await admin.put('/api/admin/shipping').send({ methods: [], removed: [lockers.id, second.id] }).expect(200)).body;
+  assert.deepEqual(left.map((m) => m.kind), ['courier', 'pickup']);
+  const kept = await db().one('SELECT shipping_name, shipping_cost FROM orders WHERE number = $1', [order.body.order.number]);
+  assert.deepEqual([kept.shipping_name, kept.shipping_cost], ['Lockers', 400]);
+});
+
 test('an unfinished card payment does not block checking out again', async () => {
   const { createOrder } = await import('../src/services/orders.js');
   const p = (await admin.post('/api/admin/products').send({ name: 'Last piece', price: 1500, stock: 1 }).expect(201)).body;

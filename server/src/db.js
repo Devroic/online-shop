@@ -266,6 +266,12 @@ const migrations = [
     FROM jsonb_array_elements(rates) AS r
   ), '[]'::jsonb) WHERE kind = 'courier';
   `,
+  // 13: besides the courier and store pickup (one each, never removed) a shop can add its
+  // own delivery methods (kind "delivery", e.g. lockers), each priced per country like the courier.
+  `
+  DROP INDEX IF EXISTS shipping_methods_kind;
+  CREATE UNIQUE INDEX shipping_methods_kind ON shipping_methods (kind) WHERE kind IN ('courier', 'pickup');
+  `,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { api } from '../lib/api.js';
 import { money } from '../lib/format.js';
-import { countryName, deliveryOrder, shippingCountries } from '../lib/countries.js';
+import { countryName, customerCountry, deliveryOrder, rememberCountry, shippingCountries } from '../lib/countries.js';
 import { t, PAYMENT_METHOD } from '../lib/i18n.js';
 import { Checkbox, EmptyState, Field, FormAlert, Spinner, useTitle } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
@@ -141,6 +141,12 @@ function Summary({ items, quote, loading, coupon, setCoupon, problemFor }) {
   );
 }
 
+/** "Greece, Germany, France and 4 more": a method's countries, short enough for one line. */
+function countryList(codes) {
+  const names = deliveryOrder(codes).map(countryName);
+  return names.length > 3 ? t('{list} and {n} more', { list: names.slice(0, 3).join(', '), n: names.length - 3 }) : names.join(', ');
+}
+
 export default function Checkout() {
   const { items, payload, clear } = useCart();
   const { user } = useAuth();
@@ -158,7 +164,8 @@ export default function Checkout() {
     city: '',
     postalCode: '',
     region: '',
-    country: countries[0],
+    // The country of the last checkout (the cart was priced for it), else the shop's first.
+    country: customerCountry(null, settings) || countries[0],
     notes: '',
   });
   const [coupon, setCoupon] = useState('');
@@ -203,6 +210,10 @@ export default function Checkout() {
     if (shipping?.requiresAddress && !courierCountries.includes(form.country)) setForm((f) => ({ ...f, country: courierCountries[0] }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shipping?.id, courierCountries.join()]);
+  // The cart shows free shipping for this country next time.
+  useEffect(() => {
+    if (shipping?.requiresAddress && form.country) rememberCountry(form.country);
+  }, [shipping?.requiresAddress, form.country]);
 
   // Card is shop-wide; cash depends on the shipping method (on delivery, or at the store for pickup).
   const payOptions = settings.paymentMethods.filter((m) => m === 'card' || (m === 'cod' && (!shipping || shipping.cod)));
@@ -372,17 +383,27 @@ export default function Checkout() {
               <span className="step-num">2</span> {t('Delivery')}
             </h2>
             <div className="options">
-              {methods.map((m) => (
-                <label key={m.id} className={`option ${m.id === shippingMethodId ? 'active' : ''}`}>
-                  <input type="radio" name="shipping" checked={m.id === shippingMethodId} onChange={() => setShippingMethodId(m.id)} />
-                  <div className="grow">
-                    <strong>{m.name}</strong>
-                    {m.description && <div className="muted small">{m.description}</div>}
-                    {m.freeOver != null && m.cost > 0 && <div className="muted small">{t('Free over {amount}', { amount: money(m.freeOver) })}</div>}
-                  </div>
-                  <span className="option-price">{m.cost ? money(m.cost) : t('Free')}</span>
-                </label>
-              ))}
+              {methods.map((m) => {
+                // A method that does not deliver to the chosen country is priced by the server
+                // for its own first country: say where it goes instead of a price that does not
+                // apply. Choosing it switches the country to one of its own.
+                const elsewhere = m.requiresAddress && m.countries.length > 0 && !m.countries.includes(form.country);
+                return (
+                  <label key={m.id} className={`option ${m.id === shippingMethodId ? 'active' : ''}`}>
+                    <input type="radio" name="shipping" checked={m.id === shippingMethodId} onChange={() => setShippingMethodId(m.id)} />
+                    <div className="grow">
+                      <strong>{m.name}</strong>
+                      {m.description && <div className="muted small">{m.description}</div>}
+                      {elsewhere ? (
+                        <div className="muted small">{t('Delivers only to: {countries}', { countries: countryList(m.countries) })}</div>
+                      ) : (
+                        m.freeOver != null && m.cost > 0 && <div className="muted small">{t('Free over {amount}', { amount: money(m.freeOver) })}</div>
+                      )}
+                    </div>
+                    {!elsewhere && <span className="option-price">{m.cost ? money(m.cost) : t('Free')}</span>}
+                  </label>
+                );
+              })}
               {!quote && <Spinner />}
             </div>
             {shipping?.requiresAddress ? (

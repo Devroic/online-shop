@@ -628,20 +628,22 @@ router.delete('/coupons/:id', async (req, res) => {
 
 /* -------------------------------------------------------------- shipping */
 
-// Two fixed methods: the courier (a price per country, optional cash on delivery)
-// and store pickup (the shop's country only, optional payment at the store).
-// freeOver 0 = no free shipping (empty is saved as 0).
-// Empty (null) price / freeOver = the courier's default; freeOver 0 = no free shipping.
+// The courier and store pickup are always there (they can be renamed or switched off);
+// the shop can add its own delivery methods ("delivery", e.g. lockers), which work like
+// the courier: a price per country and optional cash on delivery. Store pickup is the
+// shop's country only, with optional payment at the store.
+// Empty (null) price / freeOver = the method's default; freeOver 0 = no free shipping.
 const rateSchema = z.object({ country: z.enum(COUNTRY_CODES), price: optMoney.transform((v) => v ?? null), freeOver: optMoney.transform((v) => v ?? null) });
 const shippingSchema = z.object({
-  id: z.number().int().positive(),
+  // Missing: a new delivery method.
+  id: z.number().int().positive().optional(),
   // Empty: customers see "Courier" / "Store pickup".
   name: z.string().trim().max(100).optional(),
   description: z.string().max(500).optional(),
   active: z.boolean().optional(),
   cod: z.boolean().optional(),
   codFee: money.optional(),
-  // Courier only: used by every country whose own cost / "free over" is empty.
+  // Not for pickup: used by every country whose own cost / "free over" is empty.
   defaultPrice: money.optional(),
   defaultFreeOver: money.optional(),
   rates: z.array(rateSchema).max(COUNTRY_CODES.length).optional(),
@@ -654,7 +656,8 @@ const serializeShipping = (m) => ({
   rates: (m.rates || []).map((r) => ({ country: r.country, price: r.price ?? null, freeOver: r.freeOver ?? null })),
 });
 
-const shippingMethods = () => db().all("SELECT * FROM shipping_methods WHERE kind IS NOT NULL ORDER BY kind = 'pickup', id");
+// Courier first, then the added methods in the order they were added, store pickup last.
+const shippingMethods = () => db().all("SELECT * FROM shipping_methods WHERE kind IS NOT NULL ORDER BY kind = 'pickup', kind <> 'courier', id");
 
 router.get('/shipping', async (_req, res) => {
   res.json((await shippingMethods()).map(serializeShipping));
@@ -669,36 +672,61 @@ export function checkStillSellable(methods, cardEnabled) {
   if (!cardEnabled && !methods.some((m) => m.active && m.cod)) throw badRequest('Validation failed', { cod: 'last_payment' });
 }
 
-/** Saves both methods together, so switching one off and the other on is one change. */
+/**
+ * Saves all methods together, so switching one off and another on is one change.
+ * `methods` without an id are new delivery methods; `removed` lists added methods to
+ * delete (the courier and store pickup can only be switched off). Orders keep the
+ * shipping name and cost they were placed with.
+ * Errors on a method's field come back as "methods.<index>.<field>".
+ */
 router.put('/shipping', async (req, res) => {
-  const { methods: patches } = validate(z.object({ methods: z.array(shippingSchema).min(1).max(2) }), req.body);
+  const { methods: patches, removed = [] } = validate(
+    z.object({ methods: z.array(shippingSchema).max(50), removed: z.array(z.number().int().positive()).max(50).optional() }),
+    req.body,
+  );
   const methods = await shippingMethods();
-  const next = methods.map((m) => {
-    const d = patches.find((x) => x.id === m.id);
-    if (!d) return m;
-    const courier = m.kind === 'courier';
+  if (patches.some((d) => d.id && !methods.some((m) => m.id === d.id))) throw notFound();
+  if (removed.some((id) => methods.find((m) => m.id === id)?.kind !== 'delivery')) throw badRequest('Validation failed', { removed: 'fixed_method' });
+
+  const apply = (m, d, i) => {
+    const rated = m.kind !== 'pickup';
     // Fields left out keep their current value.
-    if (courier && d.rates && !d.rates.length) throw badRequest('Validation failed', { rates: 'required' });
-    const rates = courier && d.rates ? d.rates.filter((r, i, all) => all.findIndex((x) => x.country === r.country) === i) : m.rates;
+    if (rated && d.rates && !d.rates.length) throw badRequest('Validation failed', { [`methods.${i}.rates`]: 'required' });
+    const rates = rated && d.rates ? d.rates.filter((r, j, all) => all.findIndex((x) => x.country === r.country) === j) : m.rates;
+    const name = d.name ?? m.name;
+    // An added method has no default name to fall back on.
+    if (m.kind === 'delivery' && !name.trim()) throw badRequest('Validation failed', { [`methods.${i}.name`]: 'required' });
     return {
       ...m,
-      name: d.name ?? m.name,
+      name,
       description: d.description ?? m.description,
       active: d.active ?? m.active,
       cod: d.cod ?? m.cod,
-      cod_fee: courier ? (d.codFee ?? m.cod_fee) : 0,
-      price: courier ? (d.defaultPrice ?? m.price) : 0,
-      free_over: courier ? (d.defaultFreeOver ?? m.free_over ?? 0) : null,
-      rates: courier ? rates : [],
+      cod_fee: rated ? (d.codFee ?? m.cod_fee) : 0,
+      price: rated ? (d.defaultPrice ?? m.price) : 0,
+      free_over: rated ? (d.defaultFreeOver ?? m.free_over ?? 0) : null,
+      rates: rated ? rates : [],
     };
+  };
+  const blank = { kind: 'delivery', name: '', description: '', active: true, cod: false, cod_fee: 0, price: 0, free_over: 0, rates: [] };
+  const kept = methods.filter((m) => !removed.includes(m.id)).map((m) => {
+    const i = patches.findIndex((x) => x.id === m.id);
+    return i < 0 ? m : apply(m, patches[i], i);
   });
-  if (patches.some((d) => !methods.some((m) => m.id === d.id))) throw notFound();
-  checkStillSellable(next, (await getSettings()).payments.card.enabled);
+  const added = patches.map((d, i) => (d.id ? null : apply(blank, { rates: [], ...d }, i))).filter(Boolean);
+  checkStillSellable([...kept, ...added], (await getSettings()).payments.card.enabled);
   await tx(async (t) => {
-    for (const m of next) {
+    if (removed.length) await t.query("DELETE FROM shipping_methods WHERE kind = 'delivery' AND id = ANY($1::int[])", [removed]);
+    for (const m of kept) {
       await t.query('UPDATE shipping_methods SET name=$1, description=$2, active=$3, cod=$4, cod_fee=$5, rates=$6, price=$7, free_over=$8 WHERE id=$9', [
         m.name, m.description, m.active, m.cod, m.cod_fee, JSON.stringify(m.rates), m.price, m.free_over, m.id,
       ]);
+    }
+    for (const m of added) {
+      await t.query(
+        'INSERT INTO shipping_methods (kind, name, description, active, cod, cod_fee, rates, price, free_over, requires_address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE)',
+        [m.kind, m.name, m.description, m.active, m.cod, m.cod_fee, JSON.stringify(m.rates), m.price, m.free_over],
+      );
     }
   });
   res.json((await shippingMethods()).map(serializeShipping));

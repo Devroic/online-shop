@@ -50,6 +50,34 @@ export const shippingCountries = (settings) => {
   return list.length ? deliveryOrder(list) : ['CY'];
 };
 
+// The country last chosen at checkout, so the cart and the next checkout start on it.
+const COUNTRY_KEY = 'shop.country';
+
+/** Remembers the delivery country chosen at checkout (nothing is lost if storage is blocked). */
+export function rememberCountry(code) {
+  try {
+    localStorage.setItem(COUNTRY_KEY, code);
+  } catch {
+    /* private mode: the shop's first country is used next time */
+  }
+}
+
+/**
+ * The customer's delivery country before checkout: the signed-in customer's saved
+ * address, else the one chosen at the last checkout; only a country the shop delivers
+ * to. null: not known (the cart then shows the shop's first country).
+ */
+export function customerCountry(user, settings) {
+  const served = shippingCountries(settings);
+  let saved = null;
+  try {
+    saved = localStorage.getItem(COUNTRY_KEY);
+  } catch {
+    /* storage blocked */
+  }
+  return [user?.address?.country, saved].find((c) => c && served.includes(c)) || null;
+}
+
 /** The shop's address on one line, e.g. "Ermou 10, Akaki, 2728 Nicosia, Κύπρος"; '' when it has none. Same as the server's. */
 export function shopAddress(contact) {
   if (!contact) return '';

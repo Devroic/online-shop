@@ -58,9 +58,8 @@ export function availablePaymentMethods(settings, stripeReady, shipping) {
 /** "Courier" / "Store pickup" (translated) when the shop left the name empty. */
 export const defaultShippingName = (kind, lang) => translator(lang)(kind === 'pickup' ? 'Store pickup' : 'Courier');
 
-/** The courier's rate for a country: its own, or the first one when the country is not listed. */
 /**
- * The courier's rate for a country (its own, or the first one when the country is not
+ * The rate of the courier or an added delivery method for a country (its own, or the first one when the country is not
  * listed). An empty price / freeOver takes the courier's default (columns price / free_over).
  */
 export function courierRate(method, country) {
@@ -161,8 +160,8 @@ export async function quoteCart({ items = [], couponCode, shippingMethodId, paym
     }
   }
 
-  // Courier first, then store pickup. The courier's cost depends on the delivery country.
-  const methods = await conn.all("SELECT * FROM shipping_methods WHERE active AND kind IS NOT NULL ORDER BY kind = 'pickup', id");
+  // Courier, added methods, then store pickup. A delivery's cost depends on the country.
+  const methods = await conn.all("SELECT * FROM shipping_methods WHERE active AND kind IS NOT NULL ORDER BY kind = 'pickup', kind <> 'courier', id");
   const afterDiscount = subtotal - discount;
   const shippingOptions = methods.map((m) => {
     const pickup = m.kind === 'pickup';
