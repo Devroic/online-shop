@@ -1771,3 +1771,22 @@
 .chips-sub .chip {
   font-size: 0.85rem;
 }
+
+/* Phone menu: a category with subcategories has an arrow that opens them. */
+.mobile-group {
+  display: flex;
+  flex-direction: column;
+}
+.mobile-row {
+  display: flex;
+  align-items: center;
+}
+.mobile-row a {
+  flex: 1;
+}
+.mobile-chevron {
+  transition: transform 0.15s;
+}
+.mobile-chevron.open {
+  transform: rotate(180deg);
+}

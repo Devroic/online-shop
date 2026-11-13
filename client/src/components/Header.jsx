@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
+import { ChevronDown, Menu, Moon, Search, ShoppingBag, Sun, User, X } from 'lucide-react';
 import { useShop } from '../context/ShopContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -88,6 +88,41 @@ export function LanguageSwitch({ className = '' }) {
   );
 }
 
+/**
+ * A category in the phone menu. Its name goes to the whole category; the arrow next to it
+ * opens its subcategories, already open when the current page is one of them.
+ */
+function MobileCategory({ category: c }) {
+  const { pathname } = useLocation();
+  const children = c.children || [];
+  const [open, setOpen] = useState(() => children.some((s) => pathname === `/category/${s.slug}`));
+  if (!children.length) return <NavLink to={`/category/${c.slug}`}>{c.name}</NavLink>;
+  return (
+    <div className="mobile-group">
+      <div className="mobile-row">
+        <NavLink to={`/category/${c.slug}`} end>
+          {c.name}
+        </NavLink>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={open ? t('Hide subcategories of {name}', { name: c.name }) : t('Show subcategories of {name}', { name: c.name })}
+        >
+          <ChevronDown size={18} className={`mobile-chevron ${open ? 'open' : ''}`} />
+        </button>
+      </div>
+      {open &&
+        children.map((s) => (
+          <NavLink key={s.id} to={`/category/${s.slug}`} className="mobile-sub">
+            {s.name}
+          </NavLink>
+        ))}
+    </div>
+  );
+}
+
 export default function Header() {
   const { categories } = useShop();
   const { count, openDrawer } = useCart();
@@ -169,16 +204,9 @@ export default function Header() {
           <NavLink to="/products" end>
             {t('All products')}
           </NavLink>
-          {categories.map((c) => [
-            <NavLink key={c.id} to={`/category/${c.slug}`} end={c.children?.length > 0}>
-              {c.name}
-            </NavLink>,
-            ...(c.children || []).map((s) => (
-              <NavLink key={s.id} to={`/category/${s.slug}`} className="mobile-sub">
-                {s.name}
-              </NavLink>
-            )),
-          ])}
+          {categories.map((c) => (
+            <MobileCategory key={c.id} category={c} />
+          ))}
           <hr />
           <NavLink to={user ? '/account' : '/login'}>{user ? t('My account') : t('Sign in')}</NavLink>
           <NavLink to="/track">{t('Track order')}</NavLink>
