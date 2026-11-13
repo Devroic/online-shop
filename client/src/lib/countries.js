@@ -64,8 +64,9 @@ export function rememberCountry(code) {
 
 /**
  * The customer's delivery country before checkout: the signed-in customer's saved
- * address, else the one chosen at the last checkout; only a country the shop delivers
- * to. null: not known (the cart then shows the shop's first country).
+ * address, else the one they chose at a previous checkout, else the country they are
+ * visiting from (settings.visitorCountry); only a country the shop delivers to.
+ * null: not known (the cart then shows the shop's first country).
  */
 export function customerCountry(user, settings) {
   const served = shippingCountries(settings);
@@ -75,7 +76,7 @@ export function customerCountry(user, settings) {
   } catch {
     /* storage blocked */
   }
-  return [user?.address?.country, saved].find((c) => c && served.includes(c)) || null;
+  return [user?.address?.country, saved, settings?.visitorCountry].find((c) => c && served.includes(c)) || null;
 }
 
 /** The shop's address on one line, e.g. "Ermou 10, Akaki, 2728 Nicosia, Κύπρος"; '' when it has none. Same as the server's. */

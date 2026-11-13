@@ -197,7 +197,11 @@ export default function Checkout() {
   // Courier and/or store pickup, whichever the shop has on.
   const methods = quote?.shippingOptions || [];
   useEffect(() => {
-    if (quote && !methods.some((m) => m.id === shippingMethodId)) setShippingMethodId(methods[0]?.id ?? null);
+    if (quote && !methods.some((m) => m.id === shippingMethodId)) {
+      // The first method that delivers to the customer's country, else the first one.
+      const serves = methods.find((m) => m.requiresAddress && m.countries.includes(form.country));
+      setShippingMethodId((serves || methods[0])?.id ?? null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quote, shippingMethodId]);
 
@@ -210,10 +214,6 @@ export default function Checkout() {
     if (shipping?.requiresAddress && !courierCountries.includes(form.country)) setForm((f) => ({ ...f, country: courierCountries[0] }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shipping?.id, courierCountries.join()]);
-  // The cart shows free shipping for this country next time.
-  useEffect(() => {
-    if (shipping?.requiresAddress && form.country) rememberCountry(form.country);
-  }, [shipping?.requiresAddress, form.country]);
 
   // Card is shop-wide; cash depends on the shipping method (on delivery, or at the store for pickup).
   const payOptions = settings.paymentMethods.filter((m) => m === 'card' || (m === 'cod' && (!shipping || shipping.cod)));
@@ -273,6 +273,8 @@ export default function Checkout() {
   const set = (k) => (e) => {
     v.clear(k);
     setForm((f) => ({ ...f, [k]: e.target.value }));
+    // The cart and the next checkout start on the country the customer picked.
+    if (k === 'country') rememberCountry(e.target.value);
   };
 
   const submit = async (e) => {
@@ -313,6 +315,8 @@ export default function Checkout() {
         // cancels it first, so its stock does not block this order.
         replaceOrder: pendingCardOrder() || undefined,
       });
+      // Next time the cart and checkout start on the country this order went to.
+      if (res.order?.address?.country) rememberCountry(res.order.address.country);
       // That earlier order turned out to be paid: no new order, go to it.
       if (res.alreadyPaid) {
         forgetCardOrder();

@@ -363,6 +363,13 @@ test('two shipping methods: courier priced per country, pickup; the shop stays s
   await admin.put('/api/admin/shipping').send({ methods: [{ id: courierId, name: '', cod: true, rates }] }).expect(200);
   const pub = await request(app).get('/api/settings').expect(200);
   assert.deepEqual(pub.body.settings.deliveryCountries, ['CY', 'GR']);
+  // The visitor's country (from Vercel) is offered only where the shop delivers; never cached.
+  assert.equal(pub.body.settings.visitorCountry, null);
+  assert.match(pub.headers['cache-control'], /private/);
+  const fromGreece = await request(app).get('/api/settings').set('x-vercel-ip-country', 'gr').expect(200);
+  assert.equal(fromGreece.body.settings.visitorCountry, 'GR');
+  const fromItaly = await request(app).get('/api/settings').set('x-vercel-ip-country', 'IT').expect(200);
+  assert.equal(fromItaly.body.settings.visitorCountry, null);
   const quote = await request(app).post('/api/cart/quote').send({ items, shippingMethodId: courierId, country: 'GR' }).expect(200);
   assert.equal(quote.body.shippingCost, 800);
   assert.equal(quote.body.shipping.name, 'Courier');

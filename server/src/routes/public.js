@@ -39,10 +39,23 @@ export async function publicSettings() {
   };
 }
 
-router.get('/settings', async (_req, res) => {
+/**
+ * The visitor's country from the address they connect from (Vercel adds it to every
+ * request), when the shop delivers there; null elsewhere and locally. Only a first
+ * guess for the cart and checkout: the customer can always choose another country.
+ */
+export function visitorCountry(req, deliveryCountries) {
+  const code = String(req.get('x-vercel-ip-country') || '').toUpperCase();
+  return deliveryCountries.includes(code) ? code : null;
+}
+
+router.get('/settings', async (req, res) => {
   const pages = await db().all('SELECT slug, title, show_in_footer FROM pages ORDER BY sort_order, title');
+  const settings = await publicSettings();
+  // Differs per visitor (visitorCountry), so never shared from a cache.
+  res.set('Cache-Control', 'private, no-cache');
   res.json({
-    settings: await publicSettings(),
+    settings: { ...settings, visitorCountry: visitorCountry(req, settings.deliveryCountries) },
     pages: pages.map((p) => ({ slug: p.slug, title: p.title, showInFooter: p.show_in_footer })),
   });
 });
