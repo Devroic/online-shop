@@ -203,7 +203,7 @@ const importSchema = z.object({
         stock: z.number().int().min(0).max(1_000_000).optional(),
         trackStock: z.boolean().optional(),
         images: z.array(z.url().max(1000)).max(20).optional(),
-        categoryName: z.string().trim().max(100).optional().default(''),
+        categoryName: z.string().trim().max(210).optional().default(''), // "Category" or "Category > Subcategory"
         featured: z.boolean().optional(),
         active: z.boolean().optional(),
         discountPercent: z.number().int().min(0).max(90).optional(),
@@ -224,6 +224,24 @@ const importSchema = z.object({
  * Products are matched by name: existing ones are updated, others created.
  * Missing categories are created. `dryRun` only reports which names exist.
  */
+/**
+ * The category named in an import row: "Pokémon" or, for a subcategory,
+ * "Pokémon > Singles". Missing ones are created; a single name matches a
+ * top-level category first, then any subcategory with that name.
+ */
+async function importCategory(text) {
+  const blank = { description: '', image: null, active: true };
+  const [parentName, childName] = text.split('>').map((s) => s.trim()).filter(Boolean);
+  const findTop = (name) => db().one('SELECT id FROM categories WHERE search_name = $1 AND parent_id IS NULL ORDER BY id LIMIT 1', [normalizeSearch(name)]);
+  if (!childName) {
+    const found = (await findTop(parentName)) || (await db().one('SELECT id FROM categories WHERE search_name = $1 ORDER BY id LIMIT 1', [normalizeSearch(parentName)]));
+    return found?.id ?? (await saveCategory(null, { ...blank, name: parentName })).id;
+  }
+  const parentId = (await findTop(parentName))?.id ?? (await saveCategory(null, { ...blank, name: parentName })).id;
+  const child = await db().one('SELECT id FROM categories WHERE search_name = $1 AND parent_id = $2', [normalizeSearch(childName), parentId]);
+  return child?.id ?? (await saveCategory(null, { ...blank, name: childName, parentId })).id;
+}
+
 router.post('/products/import', async (req, res) => {
   const { products, dryRun } = validate(importSchema, req.body);
   const names = products.map((p) => p.name.trim().toLowerCase());
@@ -247,11 +265,7 @@ router.post('/products/import', async (req, res) => {
       let categoryId = null;
       if (categoryName) {
         const key = normalizeSearch(categoryName);
-        if (!categoryIds.has(key)) {
-          const found = await db().one('SELECT id FROM categories WHERE search_name = $1', [key]);
-          const id = found?.id ?? (await saveCategory(null, { name: categoryName, description: '', image: null, sortOrder: 0, active: true })).id;
-          categoryIds.set(key, id);
-        }
+        if (!categoryIds.has(key)) categoryIds.set(key, await importCategory(categoryName));
         categoryId = categoryIds.get(key);
       }
       const id = byName.get(item.name.trim().toLowerCase()) ?? null;
@@ -337,7 +351,11 @@ router.post('/products/discount', async (req, res) => {
   if (!ids?.length && !categoryId) throw badRequest('Choose products or a category', { ids: 'required' });
   const r = ids?.length
     ? await db().query('UPDATE products SET discount_percent = $1, updated_at = now() WHERE id = ANY($2)', [percent, ids])
-    : await db().query('UPDATE products SET discount_percent = $1, updated_at = now() WHERE category_id = $2', [percent, categoryId]);
+    : // A top-level category includes the products of its subcategories.
+      await db().query(
+        'UPDATE products SET discount_percent = $1, updated_at = now() WHERE category_id IN (SELECT id FROM categories WHERE id = $2 OR parent_id = $2)',
+        [percent, categoryId],
+      );
   res.json({ updated: r.rowCount });
 });
 
@@ -359,17 +377,41 @@ const categorySchema = z.object({
   image: z.string().max(1000).nullish(),
   sortOrder: z.number().int().optional(),
   active: z.boolean().default(true),
+  // A top-level category this one belongs to; empty: a top-level category itself.
+  parentId: z.number().int().positive().nullish(),
 });
 
 router.get('/categories', async (_req, res) => {
   const rows = await db().all(
-    'SELECT c.*, (SELECT COUNT(*)::int FROM products p WHERE p.category_id = c.id) AS product_count FROM categories c ORDER BY sort_order, name',
+    `SELECT c.*, (SELECT COUNT(*)::int FROM products p JOIN categories x ON x.id = p.category_id
+                   WHERE x.id = c.id OR x.parent_id = c.id) AS product_count
+     FROM categories c ORDER BY sort_order, name`,
   );
   res.json(rows.map(serializeCategory));
 });
 
+/**
+ * Subcategories are one level deep: the parent must be a top-level category, and a
+ * category that has subcategories cannot itself become one.
+ */
+async function checkParent(id, parentId, conn) {
+  if (!parentId) return null;
+  if (parentId === id) throw badRequest('Validation failed', { parentId: 'parent_self' });
+  const parent = await conn.one('SELECT id, name, parent_id FROM categories WHERE id = $1', [parentId]);
+  if (!parent) throw badRequest('Validation failed', { parentId: 'required' });
+  if (parent.parent_id) throw badRequest('Validation failed', { parentId: 'parent_is_subcategory' });
+  if (id && (await conn.one('SELECT 1 AS x FROM categories WHERE parent_id = $1 LIMIT 1', [id]))) {
+    throw badRequest('Validation failed', { parentId: 'has_subcategories' });
+  }
+  return parent;
+}
+
 export async function saveCategory(id, data, conn = db()) {
-  const slug = await uniqueSlug(conn, 'categories', slugify(data.slug || data.name), id);
+  const parent = await checkParent(id, data.parentId ?? null, conn);
+  // A subcategory's address names its parent too ("pokemon-singles"), so "Singles" can
+  // exist under several categories.
+  const base = data.slug || (parent ? `${parent.name} ${data.name}` : data.name);
+  const slug = await uniqueSlug(conn, 'categories', slugify(base), id);
   // Without a position: keep the current one, or go last for a new category.
   if (data.sortOrder == null) {
     const row = id
@@ -377,14 +419,14 @@ export async function saveCategory(id, data, conn = db()) {
       : await conn.one('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM categories');
     data = { ...data, sortOrder: row?.n ?? 0 };
   }
-  const vals = [data.name, slug, data.description, data.image ?? null, data.sortOrder, data.active, normalizeSearch(data.name)];
+  const vals = [data.name, slug, data.description, data.image ?? null, data.sortOrder, data.active, normalizeSearch(data.name), parent?.id ?? null];
   const row = id
     ? await conn.one(
-        'UPDATE categories SET name=$1, slug=$2, description=$3, image=$4, sort_order=$5, active=$6, search_name=$7 WHERE id=$8 RETURNING *',
+        'UPDATE categories SET name=$1, slug=$2, description=$3, image=$4, sort_order=$5, active=$6, search_name=$7, parent_id=$8 WHERE id=$9 RETURNING *',
         [...vals, id],
       )
     : await conn.one(
-        'INSERT INTO categories (name, slug, description, image, sort_order, active, search_name) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+        'INSERT INTO categories (name, slug, description, image, sort_order, active, search_name, parent_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
         vals,
       );
   return serializeCategory(row);
@@ -412,7 +454,12 @@ router.patch('/categories/:id', async (req, res) => {
   res.json(serializeCategory(row));
 });
 router.delete('/categories/:id', async (req, res) => {
-  if (!(await db().query('DELETE FROM categories WHERE id = $1', [Number(req.params.id)])).rowCount) throw notFound();
+  const id = Number(req.params.id);
+  // Its subcategories would lose their place: they are moved or deleted first.
+  if (await db().one('SELECT 1 AS x FROM categories WHERE parent_id = $1 LIMIT 1', [id])) {
+    throw badRequest('Validation failed', { _: 'has_subcategories' });
+  }
+  if (!(await db().query('DELETE FROM categories WHERE id = $1', [id])).rowCount) throw notFound();
   res.json({ ok: true });
 });
 

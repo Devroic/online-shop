@@ -6,6 +6,8 @@ export function serializeCategory(c) {
     id: c.id,
     name: c.name,
     slug: c.slug,
+    // null: a top-level category; otherwise the top-level category it belongs to.
+    parentId: c.parent_id ?? null,
     description: c.description,
     image: c.image,
     sortOrder: c.sort_order,
@@ -70,7 +72,13 @@ function serializeProduct(p, images, variants) {
     featured: p.featured,
     active: p.active,
     categoryId: p.category_id,
-    category: p.category_slug ? { name: p.category_name, slug: p.category_slug } : null,
+    category: p.category_slug
+      ? {
+          name: p.category_name,
+          slug: p.category_slug,
+          parent: p.parent_category_slug ? { name: p.parent_category_name, slug: p.parent_category_slug } : null,
+        }
+      : null,
     images: images.map((i) => i.url),
     optionName: p.option_name || '',
     variants: vs,
@@ -79,8 +87,12 @@ function serializeProduct(p, images, variants) {
   };
 }
 
-const BASE = `SELECT p.*, c.name AS category_name, c.slug AS category_slug FROM products p
-  LEFT JOIN categories c ON c.id = p.category_id`;
+// A product's category and, for a subcategory, the top-level category it belongs to (pc).
+const JOINS = `LEFT JOIN categories c ON c.id = p.category_id
+  LEFT JOIN categories pc ON pc.id = c.parent_id`;
+const BASE = `SELECT p.*, c.name AS category_name, c.slug AS category_slug,
+  pc.name AS parent_category_name, pc.slug AS parent_category_slug FROM products p
+  ${JOINS}`;
 
 const SORTS = {
   newest: 'p.created_at DESC, p.id DESC',
@@ -122,27 +134,38 @@ export async function listProducts(
 ) {
   const where = [];
   const { list, p } = params();
-  if (!admin) where.push('p.active', '(c.id IS NULL OR c.active)');
+  // A hidden category hides its products, and a hidden parent those of its subcategories.
+  if (!admin) where.push('p.active', '(c.id IS NULL OR (c.active AND (pc.id IS NULL OR pc.active)))');
   if (q) {
     // Accent/case-insensitive: search_text is stored normalised. Each word must match.
     for (const word of normalizeSearch(q).trim().split(/\s+/).slice(0, 6)) {
       const clean = word.replace(/[%_\\]/g, '');
       const like = p(`%${clean}%`);
-      const match = [`p.search_text LIKE ${like}`, `c.search_name LIKE ${like}`];
+      const match = [`p.search_text LIKE ${like}`, `c.search_name LIKE ${like}`, `pc.search_name LIKE ${like}`];
       // Greek typed in Latin letters ("koupa" finds "Κούπα"): both sides are folded the same way.
       if (isLatin(clean)) {
         const f = foldGreeklish(clean);
         for (const form of f.endsWith('o') ? [f, `${f.slice(0, -1)}u`] : [f]) {
           const folded = p(`%${form}%`);
-          match.push(`${sqlFoldGreek('p.search_text')} LIKE ${folded}`, `${sqlFoldGreek("COALESCE(c.search_name, '')")} LIKE ${folded}`);
+          match.push(
+            `${sqlFoldGreek('p.search_text')} LIKE ${folded}`,
+            `${sqlFoldGreek("COALESCE(c.search_name, '')")} LIKE ${folded}`,
+            `${sqlFoldGreek("COALESCE(pc.search_name, '')")} LIKE ${folded}`,
+          );
         }
       }
       where.push(`(${match.join(' OR ')})`);
     }
   }
+  // A top-level category also lists the products of its subcategories.
   if (category) {
-    if (/^\d+$/.test(String(category))) where.push(`p.category_id = ${p(Number(category))}`);
-    else where.push(`c.slug = ${p(category)}`);
+    if (/^\d+$/.test(String(category))) {
+      const id = p(Number(category));
+      where.push(`(c.id = ${id} OR c.parent_id = ${id})`);
+    } else {
+      const slug = p(category);
+      where.push(`(c.slug = ${slug} OR pc.slug = ${slug})`);
+    }
   }
   // Compared with the price after discount (price × (100 − %) / 100, kept in whole numbers).
   if (minPrice != null && minPrice !== '') where.push(`p.price * (100 - p.discount_percent) >= ${p(Math.round(Number(minPrice)) * 100)}`);
@@ -155,7 +178,7 @@ export async function listProducts(
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const { n: total } = await db().one(
-    `SELECT COUNT(*)::int AS n FROM products p LEFT JOIN categories c ON c.id = p.category_id ${whereSql}`,
+    `SELECT COUNT(*)::int AS n FROM products p ${JOINS} ${whereSql}`,
     list,
   );
   const rows = await db().all(

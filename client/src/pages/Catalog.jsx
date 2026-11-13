@@ -20,10 +20,13 @@ const SORTS = [
 
 export default function Catalog() {
   const { slug } = useParams();
-  const { categories } = useShop();
+  const { categories, allCategories } = useShop();
   const [params, setParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const category = slug ? categories.find((c) => c.slug === slug) : null;
+  const category = slug ? allCategories.find((c) => c.slug === slug) : null;
+  // The top-level category being browsed (the category itself, or its parent), with its subcategories.
+  const top = category ? categories.find((c) => c.id === (category.parentId || category.id)) : null;
+  const parent = category?.parentId ? top : null;
 
   const q = params.get('q') || '';
   const sort = params.get('sort') || 'featured';
@@ -52,7 +55,17 @@ export default function Catalog() {
 
   return (
     <div className="container">
-      <Breadcrumbs items={category ? [{ label: t('Products'), to: '/products' }, { label: category.name }] : [{ label: t('Products') }]} />
+      <Breadcrumbs
+        items={
+          category
+            ? [
+                { label: t('Products'), to: '/products' },
+                ...(parent ? [{ label: parent.name, to: `/category/${parent.slug}` }] : []),
+                { label: category.name },
+              ]
+            : [{ label: t('Products') }]
+        }
+      />
       <div className="catalog-head">
         <div>
           <h1>{title}</h1>
@@ -66,11 +79,23 @@ export default function Catalog() {
           {t('All')}
         </Link>
         {categories.map((c) => (
-          <Link key={c.id} to={`/category/${c.slug}${qs({ q })}`} className={`chip ${slug === c.slug ? 'active' : ''}`}>
+          <Link key={c.id} to={`/category/${c.slug}${qs({ q })}`} className={`chip ${top?.id === c.id ? 'active' : ''}`}>
             {c.name}
           </Link>
         ))}
       </div>
+      {top?.children.length > 0 && (
+        <div className="chips chips-sub" role="list" aria-label={t('Subcategories')}>
+          <Link to={`/category/${top.slug}${qs({ q })}`} className={`chip ${category.id === top.id ? 'active' : ''}`}>
+            {t('All')}
+          </Link>
+          {top.children.map((c) => (
+            <Link key={c.id} to={`/category/${c.slug}${qs({ q })}`} className={`chip ${category.id === c.id ? 'active' : ''}`}>
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="toolbar">
         <button className={`btn btn-outline btn-sm ${activeFilters ? 'has-count' : ''}`} onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen}>

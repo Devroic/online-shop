@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Folder, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Folder, ArrowUp, ArrowDown, CornerDownRight } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useFetch } from '../lib/useFetch.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Spinner } from '../components/ui.jsx';
-import { rules, useValidation } from '../lib/validation.js';
+import { errorMessage, rules, useValidation } from '../lib/validation.js';
+import { categoryTree, treeOrder } from '../lib/categories.js';
 import { ImageUploader, Modal, PageHeader, Toggle, useConfirm } from './components.jsx';
 
-function CategoryModal({ category, onClose, onSaved }) {
+/**
+ * Add or edit a category. `all` is every category, for the "Belongs to" list: only
+ * top-level ones can hold subcategories, and a category with subcategories stays top-level.
+ */
+function CategoryModal({ category, parentId = null, all, onClose, onSaved }) {
   const confirm = useConfirm();
-  const [form, setForm] = useState(category || { name: '', slug: '', description: '', image: null, active: true });
+  const [form, setForm] = useState(category || { name: '', slug: '', description: '', image: null, active: true, parentId });
+  const hasChildren = !!category && all.some((c) => c.parentId === category.id);
+  const parents = all.filter((c) => !c.parentId && c.id !== category?.id);
   const v = useValidation();
   const { errors } = v;
   const [busy, setBusy] = useState(false);
@@ -31,7 +38,7 @@ function CategoryModal({ category, onClose, onSaved }) {
     if (!ok) return;
     setBusy(true);
     try {
-      const body = { name: form.name, slug: form.slug || undefined, description: form.description, image: form.image, active: form.active };
+      const body = { name: form.name, slug: form.slug || undefined, description: form.description, image: form.image, active: form.active, parentId: form.parentId || null };
       if (category) await api.put(`/admin/categories/${category.id}`, body);
       else await api.post('/admin/categories', body);
       toast.success(t('Saved'));
@@ -42,14 +49,19 @@ function CategoryModal({ category, onClose, onSaved }) {
     }
   };
   const remove = async () => {
+    if (hasChildren) return v.show({ _: errorMessage('has_subcategories') });
     if (!(await confirm({ title: t('Delete this category?'), message: t('Its products will stay, without a category.'), confirmLabel: t('Delete'), danger: true }))) return;
-    await api.del(`/admin/categories/${category.id}`);
-    onSaved();
+    try {
+      await api.del(`/admin/categories/${category.id}`);
+      onSaved();
+    } catch (err) {
+      v.fail(err);
+    }
   };
 
   return (
     <Modal
-      title={category ? t('Edit category') : t('New category')}
+      title={category ? t('Edit category') : form.parentId ? t('New subcategory') : t('New category')}
       onClose={onClose}
       footer={
         <>
@@ -68,6 +80,22 @@ function CategoryModal({ category, onClose, onSaved }) {
       }
     >
       <Field label={t('Name')} value={form.name} onChange={(e) => set('name', e.target.value)} error={errors.name} autoFocus />
+      <Field
+        as="select"
+        label={t('Belongs to')}
+        value={form.parentId || ''}
+        onChange={(e) => set('parentId', e.target.value ? Number(e.target.value) : null)}
+        disabled={hasChildren}
+        hint={hasChildren ? t('It has subcategories, so it stays a main category.') : t('Choose a category to make this one its subcategory.')}
+        error={errors.parentId}
+      >
+        <option value="">{t('— Main category —')}</option>
+        {parents.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </Field>
       <Field as="textarea" rows={3} label={t('Description (optional)')} value={form.description} onChange={(e) => set('description', e.target.value)} error={errors.description} />
       <FieldWrap label={t('Image (optional)')} error={errors.image}>
         <ImageUploader multiple={false} value={form.image ? [form.image] : []} onChange={(list) => set('image', list[0] || null)} />
@@ -98,13 +126,21 @@ export default function Categories() {
     }
   };
 
-  /** Swaps a category with its neighbour and saves the whole order. */
-  const move = async (i, step) => {
-    const list = [...data];
-    [list[i], list[i + step]] = [list[i + step], list[i]];
-    setData(list);
+  // Main categories, each followed by its subcategories; arrows move a row among its siblings.
+  const rows = data ? treeOrder(data) : [];
+  const siblingsOf = (c) => rows.filter((x) => (x.parentId || null) === (c.parentId || null));
+
+  /** Swaps a category with its neighbour (among its siblings) and saves the whole order. */
+  const move = async (c, step) => {
+    const sibs = siblingsOf(c);
+    const i = sibs.findIndex((x) => x.id === c.id);
+    const other = sibs[i + step];
+    // Swap the two in the flat list, then keep it in tree order.
+    const list = data.map((x) => (x.id === c.id ? other : x.id === other.id ? c : x));
+    const ordered = treeOrder(list);
+    setData(ordered);
     try {
-      await api.put('/admin/categories/order', { ids: list.map((c) => c.id) });
+      await api.put('/admin/categories/order', { ids: ordered.map((x) => x.id) });
       reloadShop();
     } catch {
       toast.error(t('Something went wrong. Please try again.'));
@@ -140,16 +176,27 @@ export default function Categories() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((c, i) => (
-                  <tr key={c.id} className={c.active ? '' : 'dim'}>
+                {rows.map((c) => {
+                  const sibs = siblingsOf(c);
+                  const i = sibs.findIndex((x) => x.id === c.id);
+                  return (
+                  <tr key={c.id} className={`${c.active ? '' : 'dim'} ${c.parentId ? 'sub-row' : ''}`}>
                     <td>
-                      <button type="button" className="prod-cell row-link" onClick={() => setEditing(c)}>
-                        {c.image ? <img src={c.image} alt="" /> : <span className="thumb-empty" />}
-                        <span>
-                          <strong>{c.name}</strong>
-                          <span className="muted small">/category/{c.slug}</span>
-                        </span>
-                      </button>
+                      <div className="cat-cell">
+                        {c.parentId && <CornerDownRight size={16} className="muted cat-branch" aria-hidden="true" />}
+                        <button type="button" className="prod-cell row-link" onClick={() => setEditing(c)}>
+                          {c.image ? <img src={c.image} alt="" /> : <span className="thumb-empty" />}
+                          <span>
+                            <strong>{c.name}</strong>
+                            <span className="muted small">/category/{c.slug}</span>
+                          </span>
+                        </button>
+                        {!c.parentId && (
+                          <button type="button" className="btn btn-ghost btn-sm cat-add-sub" onClick={() => setEditing({ parentId: c.id })}>
+                            <Plus size={14} /> {t('Subcategory')}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <Link to={`/admin/products?category=${c.id}`} className="link-btn">
@@ -160,15 +207,16 @@ export default function Categories() {
                       <Toggle checked={c.active} onChange={() => setVisible(c, !c.active)} label="" />
                     </td>
                     <td className="num nowrap">
-                      <button className="icon-btn" onClick={() => move(i, -1)} disabled={i === 0} aria-label={t('Move up')}>
+                      <button className="icon-btn" onClick={() => move(c, -1)} disabled={i === 0} aria-label={t('Move up')}>
                         <ArrowUp size={16} />
                       </button>
-                      <button className="icon-btn" onClick={() => move(i, 1)} disabled={i === data.length - 1} aria-label={t('Move down')}>
+                      <button className="icon-btn" onClick={() => move(c, 1)} disabled={i === sibs.length - 1} aria-label={t('Move down')}>
                         <ArrowDown size={16} />
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -177,6 +225,8 @@ export default function Categories() {
       {editing && (
         <CategoryModal
           category={editing.id ? editing : null}
+          parentId={editing.parentId ?? null}
+          all={data || []}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

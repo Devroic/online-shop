@@ -31,7 +31,13 @@ export function errorMessage(code) {
     case 'last_shipping':
       return t('Keep at least one shipping method on');
     case 'last_payment':
-      return t('Customers need a way to pay: keep card payments on, or cash on an active shipping method');
+      return t('Customers need a way to pay: set up Stripe for card payments, or allow cash on an active shipping method');
+    case 'parent_self':
+      return t('A category cannot belong to itself');
+    case 'parent_is_subcategory':
+      return t('Choose a main category: subcategories go one level deep');
+    case 'has_subcategories':
+      return t('This category has subcategories: move or delete them first');
     case 'country':
       return t('We do not deliver to this country');
     case 'return_not_delivered':

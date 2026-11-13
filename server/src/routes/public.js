@@ -62,8 +62,12 @@ router.get('/settings', async (req, res) => {
 
 router.get('/categories', async (_req, res) => {
   const rows = await db().all(
-    `SELECT c.*, (SELECT COUNT(*)::int FROM products p WHERE p.category_id = c.id AND p.active) AS product_count
-     FROM categories c WHERE c.active ORDER BY c.sort_order, c.name`,
+    // A subcategory shows only when its parent does; a parent counts its subcategories' products too.
+    `SELECT c.*, (SELECT COUNT(*)::int FROM products p JOIN categories x ON x.id = p.category_id
+                   WHERE p.active AND (x.id = c.id OR x.parent_id = c.id)) AS product_count
+     FROM categories c
+     WHERE c.active AND (c.parent_id IS NULL OR EXISTS (SELECT 1 FROM categories pc WHERE pc.id = c.parent_id AND pc.active))
+     ORDER BY c.sort_order, c.name`,
   );
   res.json(rows.map(serializeCategory));
 });

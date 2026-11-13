@@ -62,17 +62,39 @@ export default function CategoryNav({ categories }) {
       <div ref={measureRef} className="main-nav-measure" aria-hidden="true">
         <span>{t('All products')}</span>
         {categories.map((c) => (
-          <span key={c.id}>{c.name}</span>
+          <span key={c.id}>
+            {c.name}
+            {c.children?.length > 0 && <ChevronDown size={14} />}
+          </span>
         ))}
       </div>
       <NavLink to="/products" end>
         {t('All products')}
       </NavLink>
-      {categories.slice(0, count).map((c) => (
-        <NavLink key={c.id} to={`/category/${c.slug}`}>
-          {c.name}
-        </NavLink>
-      ))}
+      {categories.slice(0, count).map((c) =>
+        c.children?.length ? (
+          // Opens on hover or keyboard focus; the name itself goes to the whole category.
+          <div key={c.id} className="nav-drop">
+            <NavLink to={`/category/${c.slug}`} aria-haspopup="true">
+              {c.name} <ChevronDown size={14} />
+            </NavLink>
+            <div className="nav-drop-list">
+              <NavLink to={`/category/${c.slug}`} end>
+                {t('View all')}
+              </NavLink>
+              {c.children.map((s) => (
+                <NavLink key={s.id} to={`/category/${s.slug}`}>
+                  {s.name}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <NavLink key={c.id} to={`/category/${c.slug}`}>
+            {c.name}
+          </NavLink>
+        ),
+      )}
       {rest.length > 0 && (
         <div className="nav-more">
           <button type="button" className={`nav-more-btn ${open ? 'active' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
@@ -80,11 +102,16 @@ export default function CategoryNav({ categories }) {
           </button>
           {open && (
             <div className="nav-more-list">
-              {rest.map((c) => (
+              {rest.map((c) => [
                 <NavLink key={c.id} to={`/category/${c.slug}`}>
                   {c.name}
-                </NavLink>
-              ))}
+                </NavLink>,
+                ...(c.children || []).map((s) => (
+                  <NavLink key={s.id} to={`/category/${s.slug}`} className="nav-sub">
+                    {s.name}
+                  </NavLink>
+                )),
+              ])}
             </div>
           )}
         </div>

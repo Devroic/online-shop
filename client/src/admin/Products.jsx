@@ -11,6 +11,7 @@ import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinne
 import { rules, useValidation } from '../lib/validation.js';
 import { ImageUploader, Modal, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle, useConfirm } from './components.jsx';
 import ProductImport from './ProductImport.jsx';
+import { treeOrder } from '../lib/categories.js';
 
 function StockCell({ product, onSaved }) {
   const [value, setValue] = useState(String(product.stock));
@@ -116,9 +117,9 @@ export function ProductList() {
         <SearchInput value={q} onChange={(v) => update({ q: v })} placeholder={t('Search by name or code…')} />
         <select className="input" value={category} onChange={(e) => update({ category: e.target.value })}>
           <option value="">{t('All categories')}</option>
-          {categories.map((c) => (
+          {treeOrder(categories).map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {c.parentId ? `\u00a0\u00a0\u21b3 ${c.name}` : c.name}
             </option>
           ))}
         </select>
@@ -196,7 +197,7 @@ export function ProductList() {
                         <span>
                           <strong>{p.name}</strong>
                           <span className="muted small">
-                            {p.category?.name || t('No category')}
+                            {p.category ? (p.category.parent ? `${p.category.parent.name} › ${p.category.name}` : p.category.name) : t('No category')}
                             {p.variants.length > 0 && ` · ${t('{n} options', { n: p.variants.length })}`}
                           </span>
                         </span>
@@ -620,9 +621,9 @@ export function ProductEdit() {
             <h3>{t('Organisation')}</h3>
             <Field as="select" label={t('Category')} value={form.categoryId || ''} onChange={(e) => set('categoryId', e.target.value ? Number(e.target.value) : null)}>
               <option value="">{t('No category')}</option>
-              {categories.map((c) => (
+              {treeOrder(categories).map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {c.parentId ? `\u00a0\u00a0\u21b3 ${c.name}` : c.name}
                 </option>
               ))}
             </Field>

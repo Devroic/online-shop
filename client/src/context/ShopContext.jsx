@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api.js';
+import { categoryTree } from '../lib/categories.js';
 import { configureFormat } from '../lib/format.js';
 import { LANGUAGES, setLanguage } from '../lib/i18n.js';
 import { applyTheme, onSystemAppearanceChange, resolveAppearance, setAppearancePref } from '../lib/theme.js';
@@ -69,6 +70,10 @@ export function ShopProvider({ children }) {
   const value = useMemo(
     () => ({
       ...state,
+      // Menus, footer and home show the top-level categories (each with its `children`);
+      // pages that look a category up by address use the flat `allCategories`.
+      categories: categoryTree(state.categories),
+      allCategories: state.categories,
       reload: load,
       appearance,
       language,

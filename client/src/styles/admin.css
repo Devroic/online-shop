@@ -1368,3 +1368,24 @@ input[type='range'] {
     min-width: 0;
   }
 }
+
+/* Categories: subcategories sit under their parent, indented. */
+.cat-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cat-cell .prod-cell {
+  flex: 1;
+  min-width: 0;
+}
+.sub-row .cat-cell {
+  padding-left: 12px;
+}
+.cat-branch {
+  flex: none;
+}
+.cat-add-sub {
+  flex: none;
+  white-space: nowrap;
+}

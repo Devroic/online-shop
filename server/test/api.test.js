@@ -656,3 +656,68 @@ test('card payments are on whenever Stripe is set up; cash comes from the shippi
   assert.deepEqual(availablePaymentMethods(settings, true, [{ active: true, cod: true }]), ['card', 'cod']);
   assert.deepEqual(availablePaymentMethods(settings, false, [{ active: true, cod: false }]), []);
 });
+
+test('subcategories: one level, listed with their parent, hidden with it, moved before delete', async () => {
+  const cat = async (body, code = 201) => (await admin.post('/api/admin/categories').send(body).expect(code)).body;
+  const tcg = await cat({ name: 'Trading cards' });
+  const singles = await cat({ name: 'Singles', parentId: tcg.id });
+  assert.equal(singles.parentId, tcg.id);
+  assert.equal(singles.slug, 'trading-cards-singles');
+  // One level only: no subcategory under a subcategory, and a parent cannot become one.
+  const deep = await cat({ name: 'Rare', parentId: singles.id }, 400);
+  assert.equal(deep.details.parentId, 'parent_is_subcategory');
+  const other = await cat({ name: 'Other' });
+  const moved = await admin.put(`/api/admin/categories/${tcg.id}`).send({ name: 'Trading cards', parentId: other.id }).expect(400);
+  assert.equal(moved.body.details.parentId, 'has_subcategories');
+
+  const inParent = (await admin.post('/api/admin/products').send({ name: 'Booster box', price: 9000, stock: 2, categoryId: tcg.id }).expect(201)).body;
+  const inChild = (await admin.post('/api/admin/products').send({ name: 'Charizard single', price: 5000, stock: 1, categoryId: singles.id }).expect(201)).body;
+
+  // The parent's page lists both; the subcategory only its own. Products know their parent.
+  const names = async (category) => (await request(app).get(`/api/products?category=${category}`).expect(200)).body.items.map((p) => p.name).sort();
+  assert.deepEqual(await names(tcg.slug), ['Booster box', 'Charizard single']);
+  assert.deepEqual(await names(singles.slug), ['Charizard single']);
+  const { product } = (await request(app).get(`/api/products/${inChild.slug}`).expect(200)).body;
+  assert.deepEqual(product.category.parent, { name: 'Trading cards', slug: 'trading-cards' });
+  const pub = (await request(app).get('/api/categories').expect(200)).body;
+  assert.equal(pub.find((c) => c.id === tcg.id).productCount, 2);
+  // Searching the parent's name finds the subcategory's products.
+  const found = (await request(app).get('/api/products?q=trading').expect(200)).body.items.map((p) => p.name);
+  assert.ok(found.includes('Charizard single'));
+
+  // A discount on the parent reaches the subcategory.
+  await admin.post('/api/admin/products/discount').send({ categoryId: tcg.id, percent: 10 }).expect(200);
+  assert.equal((await db().one('SELECT discount_percent FROM products WHERE id = $1', [inChild.id])).discount_percent, 10);
+
+  // Hiding the parent hides the subcategory and its products.
+  await admin.patch(`/api/admin/categories/${tcg.id}`).send({ active: false }).expect(200);
+  assert.ok(!(await request(app).get('/api/categories').expect(200)).body.some((c) => c.id === singles.id));
+  assert.deepEqual(await names(singles.slug), []);
+  await admin.patch(`/api/admin/categories/${tcg.id}`).send({ active: true }).expect(200);
+
+  // A parent with subcategories is not deleted; once they are gone it is.
+  const del = await admin.delete(`/api/admin/categories/${tcg.id}`).expect(400);
+  assert.equal(del.body.details._, 'has_subcategories');
+  await admin.delete(`/api/admin/categories/${singles.id}`).expect(200);
+  await admin.delete(`/api/admin/categories/${tcg.id}`).expect(200);
+  await admin.delete(`/api/admin/categories/${other.id}`).expect(200);
+  for (const p of [inParent, inChild]) await admin.delete(`/api/admin/products/${p.id}`).expect(200);
+});
+
+test('import: "Category > Subcategory" creates and reuses the pair', async () => {
+  const send = (products) => admin.post('/api/admin/products/import').send({ products }).expect(200);
+  await send([
+    { name: 'Import sub 1', price: 100, stock: 1, categoryName: 'Figures > Anime' },
+    { name: 'Import sub 2', price: 100, stock: 1, categoryName: 'figures > anime' },
+    { name: 'Import top', price: 100, stock: 1, categoryName: 'Figures' },
+  ]);
+  const rows = await db().all(
+    "SELECT p.name, c.name AS cat, pc.name AS parent FROM products p JOIN categories c ON c.id = p.category_id LEFT JOIN categories pc ON pc.id = c.parent_id WHERE p.name IN ('Import sub 1', 'Import sub 2', 'Import top') ORDER BY p.name",
+  );
+  assert.deepEqual(rows.map((r) => [r.name, r.cat, r.parent]), [
+    ['Import sub 1', 'Anime', 'Figures'],
+    ['Import sub 2', 'Anime', 'Figures'],
+    ['Import top', 'Figures', null],
+  ]);
+  assert.equal((await db().one("SELECT COUNT(*)::int AS n FROM categories WHERE name IN ('Figures', 'Anime')")).n, 2);
+});

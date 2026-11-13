@@ -132,6 +132,7 @@ export default function ProductPage() {
       <Breadcrumbs
         items={[
           { label: t('Products'), to: '/products' },
+          ...(product.category?.parent ? [{ label: product.category.parent.name, to: `/category/${product.category.parent.slug}` }] : []),
           ...(product.category ? [{ label: product.category.name, to: `/category/${product.category.slug}` }] : []),
           { label: product.name },
         ]}

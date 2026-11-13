@@ -272,6 +272,12 @@ const migrations = [
   DROP INDEX IF EXISTS shipping_methods_kind;
   CREATE UNIQUE INDEX shipping_methods_kind ON shipping_methods (kind) WHERE kind IN ('courier', 'pickup');
   `,
+  // 14: subcategories, one level deep: a category may belong to a top-level one. A parent
+  // with subcategories cannot be deleted (the admin moves or deletes them first).
+  `
+  ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT;
+  CREATE INDEX idx_categories_parent ON categories(parent_id);
+  `,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

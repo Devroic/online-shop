@@ -169,11 +169,16 @@ export default function Header() {
           <NavLink to="/products" end>
             {t('All products')}
           </NavLink>
-          {categories.map((c) => (
-            <NavLink key={c.id} to={`/category/${c.slug}`}>
+          {categories.map((c) => [
+            <NavLink key={c.id} to={`/category/${c.slug}`} end={c.children?.length > 0}>
               {c.name}
-            </NavLink>
-          ))}
+            </NavLink>,
+            ...(c.children || []).map((s) => (
+              <NavLink key={s.id} to={`/category/${s.slug}`} className="mobile-sub">
+                {s.name}
+              </NavLink>
+            )),
+          ])}
           <hr />
           <NavLink to={user ? '/account' : '/login'}>{user ? t('My account') : t('Sign in')}</NavLink>
           <NavLink to="/track">{t('Track order')}</NavLink>
