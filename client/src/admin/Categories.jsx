@@ -38,7 +38,7 @@ function CategoryModal({ category, parentId = null, all, onClose, onSaved }) {
     if (!ok) return;
     setBusy(true);
     try {
-      const body = { name: form.name, slug: form.slug || undefined, description: form.description, image: form.image, active: form.active, parentId: form.parentId || null };
+      const body = { name: form.name, slug: form.slug || undefined, description: form.description, image: form.parentId ? null : form.image, active: form.active, parentId: form.parentId || null };
       if (category) await api.put(`/admin/categories/${category.id}`, body);
       else await api.post('/admin/categories', body);
       toast.success(t('Saved'));
@@ -97,9 +97,12 @@ function CategoryModal({ category, parentId = null, all, onClose, onSaved }) {
         ))}
       </Field>
       <Field as="textarea" rows={3} label={t('Description (optional)')} value={form.description} onChange={(e) => set('description', e.target.value)} error={errors.description} />
-      <FieldWrap label={t('Image (optional)')} error={errors.image}>
-        <ImageUploader multiple={false} value={form.image ? [form.image] : []} onChange={(list) => set('image', list[0] || null)} />
-      </FieldWrap>
+      {/* Only main categories show a picture (the home page tiles); a subcategory has none. */}
+      {!form.parentId && (
+        <FieldWrap label={t('Image (optional)')} hint={t('Shown on the home page.')} error={errors.image}>
+          <ImageUploader multiple={false} value={form.image ? [form.image] : []} onChange={(list) => set('image', list[0] || null)} />
+        </FieldWrap>
+      )}
       <div className="grid-2">
         <Field label={t('URL')} value={form.slug} onChange={(e) => set('slug', e.target.value)} placeholder={t('Generated from the name')} error={errors.slug} />
       </div>
@@ -185,7 +188,7 @@ export default function Categories() {
                       <div className="cat-cell">
                         {c.parentId && <CornerDownRight size={16} className="muted cat-branch" aria-hidden="true" />}
                         <button type="button" className="prod-cell row-link" onClick={() => setEditing(c)}>
-                          {c.image ? <img src={c.image} alt="" /> : <span className="thumb-empty" />}
+                          {!c.parentId && (c.image ? <img src={c.image} alt="" /> : <span className="thumb-empty" />)}
                           <span>
                             <strong>{c.name}</strong>
                             <span className="muted small">/category/{c.slug}</span>

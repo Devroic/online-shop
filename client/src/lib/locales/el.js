@@ -205,6 +205,7 @@ export default {
   'This category has subcategories: move or delete them first': 'Η κατηγορία έχει υποκατηγορίες: μετακίνησέ τες ή διάγραψέ τες πρώτα',
   'New subcategory': 'Νέα υποκατηγορία',
   'Belongs to': 'Ανήκει σε',
+  'Shown on the home page.': 'Εμφανίζεται στην αρχική σελίδα.',
   'Show subcategories of {name}': 'Εμφάνιση υποκατηγοριών: {name}',
   'Hide subcategories of {name}': 'Απόκρυψη υποκατηγοριών: {name}',
   'It has subcategories, so it stays a main category.': 'Έχει υποκατηγορίες, οπότε μένει κύρια κατηγορία.',
