@@ -761,3 +761,14 @@ test('visitor statistics: page views counted without IP, bots and admin left out
   await request(app).get('/api/admin/analytics').expect(401);
   await admin.delete(`/api/admin/products/${p.id}`).expect(200);
 });
+
+test('admin product list filters by visibility', async () => {
+  const shown = (await admin.post('/api/admin/products').send({ name: 'Vis filter shown', price: 100, stock: 1 }).expect(201)).body;
+  const hidden = (await admin.post('/api/admin/products').send({ name: 'Vis filter hidden', price: 100, stock: 1, active: false }).expect(201)).body;
+  const names = async (visibility) =>
+    (await admin.get(`/api/admin/products?q=vis%20filter${visibility ? `&visibility=${visibility}` : ''}`).expect(200)).body.items.map((p) => p.name).sort();
+  assert.deepEqual(await names(''), ['Vis filter hidden', 'Vis filter shown']);
+  assert.deepEqual(await names('visible'), ['Vis filter shown']);
+  assert.deepEqual(await names('hidden'), ['Vis filter hidden']);
+  for (const p of [shown, hidden]) await admin.delete(`/api/admin/products/${p.id}`).expect(200);
+});

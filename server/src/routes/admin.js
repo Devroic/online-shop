@@ -124,7 +124,7 @@ const productSchema = z.object({
 router.get('/products', async (req, res) => {
   const { limit, page, offset } = paginate(req.query, { defaultLimit: 50, maxLimit: 200 });
   const { items, total } = await listProducts(
-    { q: req.query.q, category: req.query.category, sort: req.query.sort || 'newest', limit, offset },
+    { q: req.query.q, category: req.query.category, visibility: req.query.visibility, sort: req.query.sort || 'newest', limit, offset },
     { admin: true },
   );
   res.json({ items, total, page, pages: Math.ceil(total / limit) });

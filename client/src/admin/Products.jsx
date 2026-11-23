@@ -61,8 +61,10 @@ export function ProductList() {
   const categories = useFetch('/admin/categories').data || [];
   const q = params.get('q') || '';
   const category = params.get('category') || '';
+  // '' = all, 'visible' = shown in the shop, 'hidden' = switched off.
+  const visibility = ['visible', 'hidden'].includes(params.get('visibility')) ? params.get('visibility') : '';
   const page = Number(params.get('page') || 1);
-  const { data, setData, loading, reload } = useFetch(`/admin/products${qs({ q, category, page })}`);
+  const { data, setData, loading, reload } = useFetch(`/admin/products${qs({ q, category, visibility, page })}`);
   const toast = useToast();
   const { reload: reloadShop } = useShop();
   const [importing, setImporting] = useState(false);
@@ -122,6 +124,11 @@ export function ProductList() {
               {c.parentId ? `\u00a0\u00a0\u21b3 ${c.name}` : c.name}
             </option>
           ))}
+        </select>
+        <select className="input" value={visibility} onChange={(e) => update({ visibility: e.target.value })} aria-label={t('Visibility')}>
+          <option value="">{t('All products')}</option>
+          <option value="visible">{t('Visible only')}</option>
+          <option value="hidden">{t('Hidden only')}</option>
         </select>
         <button className="btn btn-outline" onClick={() => setDiscounting(true)} disabled={!selected.length && !currentCategory}>
           <Percent size={16} /> {t('Discount')}

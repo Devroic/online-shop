@@ -129,13 +129,16 @@ export const foldGreeklish = (w) =>
  * skips the out-of-stock filter.
  */
 export async function listProducts(
-  { q, category, minPrice, maxPrice, inStock, featured, sort = 'featured', limit = 24, offset = 0, ids },
+  { q, category, minPrice, maxPrice, inStock, featured, visibility, sort = 'featured', limit = 24, offset = 0, ids },
   { admin = false, hideOutOfStock = false } = {},
 ) {
   const where = [];
   const { list, p } = params();
   // A hidden category hides its products, and a hidden parent those of its subcategories.
   if (!admin) where.push('p.active', '(c.id IS NULL OR (c.active AND (pc.id IS NULL OR pc.active)))');
+  // Admin list: only products shown in the shop, or only the hidden ones (their own switch).
+  if (admin && visibility === 'visible') where.push('p.active');
+  if (admin && visibility === 'hidden') where.push('NOT p.active');
   if (q) {
     // Accent/case-insensitive: search_text is stored normalised. Each word must match.
     for (const word of normalizeSearch(q).trim().split(/\s+/).slice(0, 6)) {
