@@ -206,6 +206,8 @@ export default {
   'New subcategory': 'Νέα υποκατηγορία',
   'Belongs to': 'Ανήκει σε',
   Visitors: 'Επισκέπτες',
+  Overview: 'Επισκόπηση',
+  Sales: 'Πωλήσεις',
   'Visitors per day': 'Επισκέπτες ανά ημέρα',
   'Page views': 'Προβολές σελίδων',
   'Conversion rate': 'Ποσοστό μετατροπής',

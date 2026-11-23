@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { TrendingUp, ShoppingCart, Users, Package, AlertTriangle, Eye, Percent, UserRound } from 'lucide-react';
 import { useFetch } from '../lib/useFetch.js';
 import { money, date, dateTime } from '../lib/format.js';
@@ -100,7 +100,7 @@ function ShareList({ title, rows, name, total }) {
  */
 function Visitors({ days }) {
   const { data } = useFetch(`/admin/analytics?days=${days}`);
-  if (!data) return null;
+  if (!data) return <PageLoader />;
   if (!data.since) {
     return (
       <section className="card">
@@ -163,8 +163,57 @@ function Visitors({ days }) {
   );
 }
 
+const VIEWS = [
+  ['overview', 'Overview'],
+  ['sales', 'Sales'],
+  ['visitors', 'Visitors'],
+];
+
+/**
+ * Admin → Dashboard, in three tabs: an overview (what needs doing), sales and
+ * visitors. The tab and the period live in the address (?view=…&days=…), so the
+ * dashboard stays the selected menu item and a reload keeps the same view.
+ */
 export default function Dashboard() {
-  const [days, setDays] = useState(30);
+  const [params, setParams] = useSearchParams();
+  const view = VIEWS.some(([v]) => v === params.get('view')) ? params.get('view') : 'overview';
+  const days = [7, 30, 90].includes(Number(params.get('days'))) ? Number(params.get('days')) : 30;
+  const go = (patch) => {
+    const next = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(patch)) next.set(k, String(v));
+    if (next.get('view') === 'overview') next.delete('view');
+    if (next.get('days') === '30') next.delete('days');
+    setParams(next, { replace: true });
+  };
+
+  return (
+    <>
+      <PageHeader
+        title={t('Dashboard')}
+        actions={
+          <div className="seg">
+            {[7, 30, 90].map((d) => (
+              <button key={d} className={d === days ? 'active' : ''} onClick={() => go({ days: d })}>
+                {t('{n} days', { n: d })}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <nav className="tabs">
+        {VIEWS.map(([v, label]) => (
+          <button key={v} type="button" className={v === view ? 'active' : ''} onClick={() => go({ view: v })} aria-current={v === view ? 'page' : undefined}>
+            {t(label)}
+          </button>
+        ))}
+      </nav>
+      {view === 'visitors' ? <Visitors days={days} /> : <SalesViews view={view} days={days} />}
+    </>
+  );
+}
+
+/** The overview and sales tabs, which share the shop's order statistics. */
+function SalesViews({ view, days }) {
   const { data } = useFetch(`/admin/stats?days=${days}`);
   if (!data) return <PageLoader />;
 
@@ -176,20 +225,37 @@ export default function Dashboard() {
     [Users, t('Customers'), data.customers, t('registered accounts', { n: data.customers })],
   ];
 
+  if (view === 'sales') {
+    return (
+      <>
+        <div className="a-grid">
+          <section className="card">
+            <h3>{t('Revenue')}</h3>
+            <BarChart series={data.series} value={(d) => d.revenue} tip={revenueTip} label={t('Revenue per day')} />
+          </section>
+          <section className="card">
+            <h3>{t('Best sellers')}</h3>
+            {data.topProducts.length ? (
+              <ol className="rank">
+                {data.topProducts.map((p) => (
+                  <li key={`${p.id}-${p.name}`}>
+                    <span className="grow">{p.name}</span>
+                    <span className="muted small">×{p.quantity}</span>
+                    <strong>{money(p.revenue)}</strong>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">{t('No sales in this period yet.')}</p>
+            )}
+          </section>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <PageHeader
-        title={t('Dashboard')}
-        actions={
-          <div className="seg">
-            {[7, 30, 90].map((d) => (
-              <button key={d} className={d === days ? 'active' : ''} onClick={() => setDays(d)}>
-                {t('{n} days', { n: d })}
-              </button>
-            ))}
-          </div>
-        }
-      />
       <div className="stat-grid">
         {cards.map(([Icon, label, value, sub]) => (
           <div key={label} className="card stat">
@@ -207,31 +273,6 @@ export default function Dashboard() {
           <ShoppingCart size={18} /> {t('{n} orders waiting to be processed', { n: data.statusCounts.pending })} →
         </Link>
       )}
-
-      <div className="a-grid">
-        <section className="card">
-          <h3>{t('Revenue')}</h3>
-          <BarChart series={data.series} value={(d) => d.revenue} tip={revenueTip} label={t('Revenue per day')} />
-        </section>
-        <section className="card">
-          <h3>{t('Best sellers')}</h3>
-          {data.topProducts.length ? (
-            <ol className="rank">
-              {data.topProducts.map((p) => (
-                <li key={`${p.id}-${p.name}`}>
-                  <span className="grow">{p.name}</span>
-                  <span className="muted small">×{p.quantity}</span>
-                  <strong>{money(p.revenue)}</strong>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="muted">{t('No sales in this period yet.')}</p>
-          )}
-        </section>
-      </div>
-
-      <Visitors days={days} />
 
       <div className="a-grid">
         <section className="card">
