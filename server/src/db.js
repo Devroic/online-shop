@@ -278,6 +278,20 @@ const migrations = [
   ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT;
   CREATE INDEX idx_categories_parent ON categories(parent_id);
   `,
+  // 15: the shop's own visitor statistics (see services/analytics.js): one row per page
+  // view, no IP address; `visitor` is a hash that changes every day.
+  `
+  CREATE TABLE page_views (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    path TEXT NOT NULL,
+    visitor TEXT NOT NULL,
+    country TEXT NOT NULL DEFAULT '',
+    device TEXT NOT NULL DEFAULT 'desktop',
+    source TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX idx_page_views_created ON page_views(created_at);
+  `,
 ];
 
 /** Wraps a pg client/pool or PGlite instance in one small interface. */

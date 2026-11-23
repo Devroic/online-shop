@@ -9,6 +9,7 @@ import { badRequest, isPhone, isPostalCode, normalizeSearch, notFound, paginate,
 import { getProduct, listProducts, productSearchText, serializeCategory } from '../services/catalog.js';
 import { ORDER_STATUSES, PAYMENT_STATUSES, getOrder, paymentStepAllowed, serializeOrder, statusPairAllowed, updateOrder } from '../services/orders.js';
 import { stripeReady } from '../services/payments.js';
+import { visitorStats } from '../services/analytics.js';
 import { deleteFile, saveFile, storageMode, upload } from '../storage.js';
 import { background, emailConfigured, sendRefundNotice, sendStatusUpdate } from '../email.js';
 
@@ -75,6 +76,12 @@ router.get('/stats', async (req, res) => {
     customers: (await q("SELECT COUNT(*)::int AS n FROM users WHERE role = 'customer'")).n,
     products: (await q('SELECT COUNT(*)::int AS n FROM products')).n,
   });
+});
+
+/** Visitor statistics for the dashboard (the shop's own counting, see services/analytics.js). */
+router.get('/analytics', async (req, res) => {
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
+  res.json(await visitorStats(days));
 });
 
 /* --------------------------------------------------------------- uploads */

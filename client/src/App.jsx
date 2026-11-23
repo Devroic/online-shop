@@ -4,6 +4,7 @@ import { useShop } from './context/ShopContext.jsx';
 import { t } from './lib/i18n.js';
 import Layout from './components/Layout.jsx';
 import { PageLoader } from './components/ui.jsx';
+import { trackView } from './lib/analytics.js';
 import Home from './pages/Home.jsx';
 import Catalog from './pages/Catalog.jsx';
 import ProductPage from './pages/ProductPage.jsx';
@@ -27,6 +28,7 @@ function ScrollToTop() {
   // would treat a returned value as the effect's cleanup function.
   useEffect(() => {
     window.scrollTo(0, 0);
+    trackView(pathname);
   }, [pathname]);
   return null;
 }

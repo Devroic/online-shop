@@ -1389,3 +1389,50 @@ input[type='range'] {
   flex: none;
   white-space: nowrap;
 }
+
+/* Dashboard → visitors. */
+@media (min-width: 700px) {
+  .stat-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.share-grid {
+  display: grid;
+  gap: 20px 32px;
+  margin-bottom: 20px;
+}
+@media (min-width: 800px) {
+  .share-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.share h4 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+.share ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.share li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.share li > :not(.share-bar) {
+  position: relative;
+}
+.share-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-radius: 6px;
+}

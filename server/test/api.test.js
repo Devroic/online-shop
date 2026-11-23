@@ -721,3 +721,43 @@ test('import: "Category > Subcategory" creates and reuses the pair', async () =>
   ]);
   assert.equal((await db().one("SELECT COUNT(*)::int AS n FROM categories WHERE name IN ('Figures', 'Anime')")).n, 2);
 });
+
+test('visitor statistics: page views counted without IP, bots and admin left out', async () => {
+  const { deviceOf, sourceOf } = await import('../src/services/analytics.js');
+  assert.equal(deviceOf('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'), 'mobile');
+  assert.equal(deviceOf('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)'), 'tablet');
+  assert.equal(deviceOf('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130'), 'desktop');
+  assert.equal(sourceOf('https://www.google.com/', 'shop.test'), 'Google');
+  assert.equal(sourceOf('https://l.instagram.com/?u=x', 'shop.test'), 'Instagram');
+  assert.equal(sourceOf('https://www.shop.test/products', 'shop.test'), '');
+  assert.equal(sourceOf('', 'shop.test'), '');
+
+  const p = (await admin.post('/api/admin/products').send({ name: 'Viewed product', price: 1000, stock: 5 }).expect(201)).body;
+  const phone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148';
+  const view = (body, ua = phone, country = 'GR') =>
+    request(app).post('/api/track').set('User-Agent', ua).set('x-vercel-ip-country', country).send(body).expect(204);
+  await view({ path: '/', referrer: 'https://www.google.com/search?q=cards' });
+  await view({ path: `/product/${p.slug}` });
+  await view({ path: `/product/${p.slug}` });
+  await view({ path: '/order/1042?token=secret' });
+  await view({ path: '/admin/orders' }); // not counted
+  await view({ path: '/' }, 'Googlebot/2.1 (+http://www.google.com/bot.html)'); // not counted
+  await view({ path: 'not-a-path' }); // ignored, still 204
+  await view({ path: '/' }, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130', 'CY');
+
+  const rows = await db().all('SELECT path, country, device, source, visitor FROM page_views ORDER BY id');
+  assert.ok(!rows.some((r) => r.path.startsWith('/admin') || r.path.includes('token')));
+  assert.ok(rows.some((r) => r.path === '/order/[number]'));
+  assert.ok(rows.every((r) => /^[0-9a-f]{16}$/.test(r.visitor)));
+
+  const stats = (await admin.get('/api/admin/analytics?days=7').expect(200)).body;
+  assert.equal(stats.views, 5);
+  assert.equal(stats.visitors, 2); // the phone and the computer, once each today
+  assert.equal(stats.series.length, 7);
+  assert.deepEqual(stats.topProducts.map((x) => [x.name, x.views]), [['Viewed product', 2]]);
+  assert.deepEqual(stats.sources.find((s) => s.key === 'Google')?.visitors, 1);
+  assert.deepEqual(stats.devices.map((d) => d.key).sort(), ['desktop', 'mobile']);
+  assert.ok(stats.countries.some((c) => c.key === 'GR'));
+  await request(app).get('/api/admin/analytics').expect(401);
+  await admin.delete(`/api/admin/products/${p.id}`).expect(200);
+});

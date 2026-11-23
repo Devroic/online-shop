@@ -91,7 +91,7 @@ Backups run nightly from GitHub Actions; see [restoring a backup](scripts/restor
 - Responsive from small phones to tablets and desktop
 
 **Admin**
-- Dashboard: revenue, chart, best sellers, low stock
+- Dashboard: revenue, chart, best sellers, low stock; visitors, page views, conversion rate, most viewed products, sources, countries and devices (own counting, no cookies, no IP addresses stored)
 - Orders: status tabs, search, date filters, quick status changes (with an email choice and tracking number), refunds and returns, print, CSV export
 - Products: drag & drop photos (resized to WebP in the browser), options, percentage discounts (one product, ticked ones or a whole category), stock
 - Bulk import/update from Excel (.xlsx/.csv) with a template and preview; columns left out of the file keep their values

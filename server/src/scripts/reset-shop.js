@@ -18,7 +18,7 @@ const TABLES = [
   'order_items', 'order_events', 'orders',
   'product_images', 'product_variants', 'products', 'categories',
   'coupons', 'messages', 'pages', 'shipping_methods',
-  'password_resets', 'email_verifications', 'users', 'settings',
+  'password_resets', 'email_verifications', 'users', 'settings', 'page_views',
 ];
 
 const confirmed = process.argv.includes('--yes');

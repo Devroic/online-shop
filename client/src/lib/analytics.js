@@ -17,3 +17,34 @@ export function cleanPageView(event) {
   const path = url.pathname.replace(/^\/order\/[^/]+/, '/order/[number]');
   return { ...event, url: `${url.origin}${path}` };
 }
+
+let lastPath = null;
+
+/**
+ * Counts a page view for the shop's own statistics (Admin → Dashboard). Only the
+ * page's path is sent, never its query or #; where the visitor came from is sent
+ * with the first page of a visit only. Never throws and never slows the page.
+ */
+export function trackView(pathname) {
+  if (pathname === lastPath || pathname === '/admin' || pathname.startsWith('/admin/')) return;
+  lastPath = pathname;
+  let referrer = '';
+  try {
+    if (!sessionStorage.getItem('shop.visit')) {
+      sessionStorage.setItem('shop.visit', '1');
+      referrer = document.referrer || '';
+    }
+  } catch {
+    /* storage blocked: the source is simply unknown */
+  }
+  try {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: pathname, referrer }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* an old browser: no count */
+  }
+}

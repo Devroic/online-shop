@@ -10,6 +10,7 @@ import { getProduct, listProducts, relatedProducts, serializeCategory } from '..
 import { availablePaymentMethods, quoteCart } from '../services/orders.js';
 import { stripeReady } from '../services/payments.js';
 import { background, sendContactMessage } from '../email.js';
+import { recordView } from '../services/analytics.js';
 
 const router = Router();
 
@@ -58,6 +59,33 @@ router.get('/settings', async (req, res) => {
     settings: { ...settings, visitorCountry: visitorCountry(req, settings.deliveryCountries) },
     pages: pages.map((p) => ({ slug: p.slug, title: p.title, showInFooter: p.show_in_footer })),
   });
+});
+
+/**
+ * A page view from the shop, for the visitor statistics on the admin dashboard.
+ * Always answers 204: a failed count must never bother the visitor.
+ */
+const trackLimiter = rateLimit({ windowMs: 60 * 1000, limit: config.isTest ? 10000 : 120, standardHeaders: false, legacyHeaders: false });
+const trackSchema = z.object({
+  path: z.string().max(500).regex(/^\//),
+  referrer: z.string().max(1000).optional().default(''),
+});
+router.post('/track', trackLimiter, async (req, res) => {
+  const parsed = trackSchema.safeParse(req.body);
+  if (parsed.success) {
+    try {
+      await recordView({
+        ...parsed.data,
+        ip: req.ip,
+        userAgent: req.get('user-agent') || '',
+        country: String(req.get('x-vercel-ip-country') || '').toUpperCase(),
+        host: req.hostname,
+      });
+    } catch (err) {
+      console.error('Page view not recorded:', err.message);
+    }
+  }
+  res.status(204).end();
 });
 
 router.get('/categories', async (_req, res) => {
