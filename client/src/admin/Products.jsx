@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useShop } from '../context/ShopContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { ImageUploader, Modal, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle, useConfirm } from './components.jsx';
+import { ImageUploader, Modal, MoneyInput, PageHeader, SaveBar, SaveButton, SearchInput, Toggle, useConfirm, SortTh } from './components.jsx';
 import ProductImport from './ProductImport.jsx';
 import { treeOrder } from '../lib/categories.js';
 
@@ -64,7 +64,8 @@ export function ProductList() {
   // '' = all, 'visible' = shown in the shop, 'hidden' = switched off.
   const visibility = ['visible', 'hidden'].includes(params.get('visibility')) ? params.get('visibility') : '';
   const page = Number(params.get('page') || 1);
-  const { data, setData, loading, reload } = useFetch(`/admin/products${qs({ q, category, visibility, page })}`);
+  const sort = params.get('sort') || '';
+  const { data, setData, loading, reload } = useFetch(`/admin/products${qs({ q, category, visibility, sort, page })}`);
   const toast = useToast();
   const { reload: reloadShop } = useShop();
   const [importing, setImporting] = useState(false);
@@ -185,11 +186,21 @@ export function ProductList() {
                       aria-label={t('Select all on this page')}
                     />
                   </th>
-                  <th>{t('Product')}</th>
-                  <th>{t('Price')}</th>
-                  <th>{t('Stock')}</th>
-                  <th>{t('Featured')}</th>
-                  <th>{t('Visible')}</th>
+                  <SortTh field="name" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Product')}
+                  </SortTh>
+                  <SortTh field="price" desc sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Price')}
+                  </SortTh>
+                  <SortTh field="stock" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Stock')}
+                  </SortTh>
+                  <SortTh field="featured" desc sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Featured')}
+                  </SortTh>
+                  <SortTh field="active" desc sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Visible')}
+                  </SortTh>
                 </tr>
               </thead>
               <tbody>

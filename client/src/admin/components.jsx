@@ -1,11 +1,33 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
-import { Upload, X, GripVertical, ImagePlus, Check } from 'lucide-react';
+import { Upload, X, GripVertical, ImagePlus, Check, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { CURRENCY_SYMBOL, centsToInput, parseMoney } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { useShop } from '../context/ShopContext.jsx';
 import { Spinner } from '../components/ui.jsx';
+
+/**
+ * A table header that sorts its list. `sort` is the list's current sort ("total" or
+ * "-total"); a click goes ascending → descending → the list's usual order. Numbers and
+ * dates (`desc`) start with the largest / newest, which is usually what is wanted.
+ */
+export function SortTh({ field, sort, onSort, desc = false, className = '', children }) {
+  const active = sort === field || sort === `-${field}`;
+  const down = sort === `-${field}`;
+  const first = desc ? `-${field}` : field;
+  const second = desc ? field : `-${field}`;
+  const next = !active ? first : sort === first ? second : '';
+  const Icon = !active ? ChevronsUpDown : down ? ArrowDown : ArrowUp;
+  return (
+    <th className={className} aria-sort={active ? (down ? 'descending' : 'ascending') : undefined}>
+      <button type="button" className={`th-sort ${active ? 'active' : ''}`} onClick={() => onSort(next)}>
+        {children}
+        <Icon size={14} aria-hidden="true" />
+      </button>
+    </th>
+  );
+}
 
 export function PageHeader({ title, subtitle, actions }) {
   return (

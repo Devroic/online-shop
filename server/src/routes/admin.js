@@ -5,7 +5,7 @@ import { db, tx } from '../db.js';
 import { config } from '../config.js';
 import { getSettings, updateSettings } from '../settings.js';
 import { requireAdmin, publicUser } from '../auth.js';
-import { badRequest, isPhone, isPostalCode, normalizeSearch, notFound, paginate, params, slugify, uniqueSlug, validate } from '../utils.js';
+import { badRequest, isPhone, isPostalCode, normalizeSearch, notFound, paginate, params, slugify, sortOrder, uniqueSlug, validate } from '../utils.js';
 import { getProduct, listProducts, productSearchText, serializeCategory } from '../services/catalog.js';
 import { ORDER_STATUSES, PAYMENT_STATUSES, getOrder, paymentStepAllowed, serializeOrder, statusPairAllowed, updateOrder } from '../services/orders.js';
 import { stripeReady } from '../services/payments.js';
@@ -487,13 +487,22 @@ function orderFilters(query) {
   return { sql: where.length ? `WHERE ${where.join(' AND ')}` : '', list, p };
 }
 
+// Columns the order list can be sorted by; the status follows the order's life, not the alphabet.
+const ORDER_COLUMNS = {
+  order: 'o.created_at',
+  customer: 'lower(o.customer_name)',
+  payment: 'o.payment_status',
+  status: "CASE o.status WHEN 'pending' THEN 1 WHEN 'processing' THEN 2 WHEN 'shipped' THEN 3 WHEN 'delivered' THEN 4 WHEN 'returned' THEN 5 ELSE 6 END",
+  total: 'o.total',
+};
+
 router.get('/orders', async (req, res) => {
   const { limit, page, offset } = paginate(req.query, { defaultLimit: 25, maxLimit: 200 });
   const { sql, list, p } = orderFilters(req.query);
   const { n: total } = await db().one(`SELECT COUNT(*)::int AS n FROM orders o ${sql}`, list);
   const rows = await db().all(
     `SELECT o.*, (SELECT SUM(quantity)::int FROM order_items WHERE order_id = o.id) AS item_count
-     FROM orders o ${sql} ORDER BY o.created_at DESC, o.id DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
+     FROM orders o ${sql} ORDER BY ${sortOrder(req.query.sort, ORDER_COLUMNS, 'o.created_at DESC')}, o.id DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
     list,
   );
   // How many orders each status tab holds, with the same search/date/customer filters.
@@ -571,6 +580,19 @@ router.put('/orders/:id', async (req, res) => {
 
 /* ------------------------------------------------------------- customers */
 
+const GUEST_COLUMNS = {
+  customer: 'lower((array_agg(o.customer_name ORDER BY o.created_at DESC))[1])',
+  orders: 'COUNT(*)',
+  spent: "COALESCE(SUM(o.total) FILTER (WHERE o.status NOT IN ('cancelled', 'returned')), 0)",
+  joined: 'MIN(o.created_at)',
+};
+const CUSTOMER_COLUMNS = {
+  customer: 'lower(u.name)',
+  orders: 'COUNT(o.id)',
+  spent: "COALESCE(SUM(o.total) FILTER (WHERE o.status NOT IN ('cancelled', 'returned')), 0)",
+  joined: 'u.created_at',
+};
+
 /** Guests: people who ordered without an account, one row per email (latest name and phone). */
 async function listGuests(req, res) {
   const { limit, page, offset } = paginate(req.query, { defaultLimit: 50 });
@@ -589,7 +611,8 @@ async function listGuests(req, res) {
        COUNT(*)::int AS order_count,
        COALESCE(SUM(o.total) FILTER (WHERE o.status NOT IN ('cancelled', 'returned')), 0)::int AS spent,
        MIN(o.created_at) AS first_order, MAX(o.created_at) AS last_order
-     FROM orders o ${sql} GROUP BY lower(o.email) ORDER BY MAX(o.created_at) DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
+     FROM orders o ${sql} GROUP BY lower(o.email)
+     ORDER BY ${sortOrder(req.query.sort, GUEST_COLUMNS, 'MAX(o.created_at) DESC')}, lower(o.email) LIMIT ${p(limit)} OFFSET ${p(offset)}`,
     list,
   );
   res.json({
@@ -614,7 +637,8 @@ router.get('/customers', async (req, res) => {
   const { n: total } = await db().one(`SELECT COUNT(*)::int AS n FROM users u ${sql}`, list);
   const rows = await db().all(
     `SELECT u.*, COUNT(o.id)::int AS order_count, COALESCE(SUM(o.total) FILTER (WHERE o.status NOT IN ('cancelled', 'returned')), 0)::int AS spent
-     FROM users u LEFT JOIN orders o ON o.user_id = u.id ${sql} GROUP BY u.id ORDER BY u.id DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
+     FROM users u LEFT JOIN orders o ON o.user_id = u.id ${sql} GROUP BY u.id
+     ORDER BY ${sortOrder(req.query.sort, CUSTOMER_COLUMNS, 'u.id DESC')}, u.id DESC LIMIT ${p(limit)} OFFSET ${p(offset)}`,
     list,
   );
   res.json({
@@ -653,7 +677,8 @@ const serializeCoupon = (c) => ({
 router.get('/coupons', async (req, res) => {
   const { limit, page, offset } = paginate(req.query, { defaultLimit: 25 });
   const { n: total } = await db().one('SELECT COUNT(*)::int AS n FROM coupons');
-  const rows = await db().all('SELECT * FROM coupons ORDER BY id DESC LIMIT $1 OFFSET $2', [limit, offset]);
+  const columns = { code: 'code', used: 'used_count', expires: 'expires_at', status: 'active' };
+  const rows = await db().all(`SELECT * FROM coupons ORDER BY ${sortOrder(req.query.sort, columns, 'id DESC')}, id DESC LIMIT $1 OFFSET $2`, [limit, offset]);
   res.json({ items: rows.map(serializeCoupon), total, page, pages: Math.ceil(total / limit) });
 });
 

@@ -131,6 +131,18 @@ export function formatMoney(cents, settings) {
   return settings.currencySymbolBefore ? `${sign}${symbol}${amount}` : `${sign}${amount} ${symbol}`;
 }
 
+/**
+ * ORDER BY for an admin list sorted by a column header: `sort` is a key of `columns`
+ * ("total", ascending) or the key with a minus ("-total", descending). Only the
+ * listed SQL expressions are ever used, never the text sent by the browser.
+ * Returns `fallback` when the list is not sorted by a column.
+ */
+export function sortOrder(sort, columns, fallback) {
+  const m = /^(-?)(\w+)$/.exec(String(sort || ''));
+  const expr = m && Object.hasOwn(columns, m[2]) ? columns[m[2]] : null;
+  return expr ? `${expr} ${m[1] ? 'DESC' : 'ASC'} NULLS LAST` : fallback;
+}
+
 export function paginate(query, { defaultLimit = 24, maxLimit = 100 } = {}) {
   const limit = Math.min(Math.max(parseInt(query.limit, 10) || defaultLimit, 1), maxLimit);
   const page = Math.max(parseInt(query.page, 10) || 1, 1);

@@ -11,7 +11,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { Checkbox, EmptyState, Field, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
 import { OrderItems, OrderTotals } from '../pages/OrderPage.jsx';
-import { Modal, PageHeader, SearchInput, useConfirm, useUnsavedGuard } from './components.jsx';
+import { Modal, PageHeader, SearchInput, useConfirm, useUnsavedGuard, SortTh } from './components.jsx';
 
 const STATUS_TABS = ['', 'pending', 'processing', 'shipped', 'delivered', 'returned', 'cancelled'];
 
@@ -20,8 +20,9 @@ export function OrderList() {
   const status = params.get('status') || '';
   const q = params.get('q') || '';
   const page = Number(params.get('page') || 1);
+  const sort = params.get('sort') || '';
   const filters = { status, q, from: params.get('from') || '', to: params.get('to') || '', customer: params.get('customer') || '' };
-  const { data, loading } = useFetch(`/admin/orders${qs({ ...filters, page })}`);
+  const { data, loading } = useFetch(`/admin/orders${qs({ ...filters, sort, page })}`);
 
   const update = (patch) => {
     const next = new URLSearchParams(params);
@@ -82,11 +83,21 @@ export function OrderList() {
             <table className="table clickable orders-table">
               <thead>
                 <tr>
-                  <th>{t('Order')}</th>
-                  <th>{t('Customer')}</th>
-                  <th>{t('Payment')}</th>
-                  <th>{t('Status')}</th>
-                  <th className="num">{t('Total')}</th>
+                  <SortTh field="order" desc sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Order')}
+                  </SortTh>
+                  <SortTh field="customer" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Customer')}
+                  </SortTh>
+                  <SortTh field="payment" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Payment')}
+                  </SortTh>
+                  <SortTh field="status" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Status')}
+                  </SortTh>
+                  <SortTh field="total" desc className="num" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Total')}
+                  </SortTh>
                 </tr>
               </thead>
               <tbody>

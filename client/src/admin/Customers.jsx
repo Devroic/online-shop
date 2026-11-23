@@ -7,7 +7,7 @@ import { t } from '../lib/i18n.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, PageLoader, Pagination } from '../components/ui.jsx';
-import { PageHeader, SearchInput, useConfirm } from './components.jsx';
+import { PageHeader, SearchInput, useConfirm, SortTh } from './components.jsx';
 
 export default function Customers() {
   const confirm = useConfirm();
@@ -16,7 +16,8 @@ export default function Customers() {
   const role = params.get('role') || '';
   const guests = role === 'guest';
   const page = Number(params.get('page') || 1);
-  const { data, reload } = useFetch(`/admin/customers${qs({ q, role, page })}`);
+  const sort = params.get('sort') || '';
+  const { data, reload } = useFetch(`/admin/customers${qs({ q, role, sort, page })}`);
   const { user } = useAuth();
   const toast = useToast();
   const update = (patch) => {
@@ -60,11 +61,19 @@ export default function Customers() {
             <table className="table clickable">
               <thead>
                 <tr>
-                  <th>{t('Customer')}</th>
+                  <SortTh field="customer" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Customer')}
+                  </SortTh>
                   <th>{t('Phone')}</th>
-                  <th>{t('Orders')}</th>
-                  <th className="num">{t('Spent')}</th>
-                  <th>{guests ? t('First order') : t('Joined')}</th>
+                  <SortTh field="orders" desc sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Orders')}
+                  </SortTh>
+                  <SortTh field="spent" desc className="num" sort={sort} onSort={(s) => update({ sort: s })}>
+                    {t('Spent')}
+                  </SortTh>
+                  <SortTh field="joined" desc sort={sort} onSort={(s) => update({ sort: s })}>
+                    {guests ? t('First order') : t('Joined')}
+                  </SortTh>
                   <th />
                 </tr>
               </thead>

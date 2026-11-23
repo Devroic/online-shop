@@ -7,7 +7,7 @@ import { t } from '../lib/i18n.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { EmptyState, Field, FieldWrap, FormAlert, PageLoader, Pagination, Spinner } from '../components/ui.jsx';
 import { rules, useValidation } from '../lib/validation.js';
-import { Modal, MoneyInput, PageHeader, Toggle, useConfirm } from './components.jsx';
+import { Modal, MoneyInput, PageHeader, Toggle, useConfirm, SortTh } from './components.jsx';
 
 const describe = (c) =>
   c.type === 'percent' ? `-${c.value}%` : c.type === 'fixed' ? `-${money(c.value)}` : t('Free shipping');
@@ -124,7 +124,12 @@ function CouponModal({ coupon, onClose, onSaved }) {
 
 export default function Coupons() {
   const [page, setPage] = useState(1);
-  const { data, reload } = useFetch(`/admin/coupons?page=${page}`);
+  const [sort, setSort] = useState('');
+  const { data, reload } = useFetch(`/admin/coupons?page=${page}${sort ? `&sort=${sort}` : ''}`);
+  const sortBy = (s) => {
+    setSort(s);
+    setPage(1);
+  };
   const [editing, setEditing] = useState(null);
   return (
     <>
@@ -147,11 +152,19 @@ export default function Coupons() {
             <table className="table clickable">
               <thead>
                 <tr>
-                  <th>{t('Code')}</th>
+                  <SortTh field="code" sort={sort} onSort={sortBy}>
+                    {t('Code')}
+                  </SortTh>
                   <th>{t('Discount')}</th>
-                  <th>{t('Used')}</th>
-                  <th>{t('Expires')}</th>
-                  <th>{t('Status')}</th>
+                  <SortTh field="used" desc sort={sort} onSort={sortBy}>
+                    {t('Used')}
+                  </SortTh>
+                  <SortTh field="expires" sort={sort} onSort={sortBy}>
+                    {t('Expires')}
+                  </SortTh>
+                  <SortTh field="status" desc sort={sort} onSort={sortBy}>
+                    {t('Status')}
+                  </SortTh>
                 </tr>
               </thead>
               <tbody>

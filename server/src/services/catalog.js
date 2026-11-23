@@ -1,5 +1,5 @@
 import { db } from '../db.js';
-import { normalizeSearch, params } from '../utils.js';
+import { normalizeSearch, params, sortOrder } from '../utils.js';
 
 export function serializeCategory(c) {
   return {
@@ -94,6 +94,15 @@ const BASE = `SELECT p.*, c.name AS category_name, c.slug AS category_slug,
   pc.name AS parent_category_name, pc.slug AS parent_category_slug FROM products p
   ${JOINS}`;
 
+// Admin list: columns its header sorts by ("stock", "-stock"); see sortOrder.
+const ADMIN_COLUMNS = {
+  name: 'lower(p.name)',
+  price: 'p.price * (100 - p.discount_percent)',
+  stock: 'COALESCE((SELECT SUM(v.stock) FROM product_variants v WHERE v.product_id = p.id), p.stock)',
+  featured: 'p.featured',
+  active: 'p.active',
+};
+
 const SORTS = {
   newest: 'p.created_at DESC, p.id DESC',
   price_asc: 'p.price * (100 - p.discount_percent) ASC, p.id',
@@ -185,7 +194,7 @@ export async function listProducts(
     list,
   );
   const rows = await db().all(
-    `${BASE} ${whereSql} ORDER BY ${SORTS[sort] || SORTS.featured} LIMIT ${p(limit)} OFFSET ${p(offset)}`,
+    `${BASE} ${whereSql} ORDER BY ${SORTS[sort] || (admin && sortOrder(sort, ADMIN_COLUMNS, null) ? `${sortOrder(sort, ADMIN_COLUMNS)}, p.id DESC` : SORTS.featured)} LIMIT ${p(limit)} OFFSET ${p(offset)}`,
     list,
   );
   return { items: await attachRelations(rows), total };

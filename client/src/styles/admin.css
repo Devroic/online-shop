@@ -1436,3 +1436,32 @@ input[type='range'] {
   background: color-mix(in srgb, var(--primary) 12%, transparent);
   border-radius: 6px;
 }
+
+/* Table headers that sort their list. */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.th-sort svg {
+  opacity: 0.35;
+}
+.th-sort:hover svg,
+.th-sort.active svg {
+  opacity: 1;
+}
+.th-sort.active {
+  color: var(--text);
+}
+th.num .th-sort {
+  flex-direction: row-reverse;
+}

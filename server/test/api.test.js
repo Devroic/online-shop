@@ -772,3 +772,25 @@ test('admin product list filters by visibility', async () => {
   assert.deepEqual(await names('hidden'), ['Vis filter hidden']);
   for (const p of [shown, hidden]) await admin.delete(`/api/admin/products/${p.id}`).expect(200);
 });
+
+test('admin lists sort by a column header; anything else keeps the usual order', async () => {
+  const { sortOrder } = await import('../src/utils.js');
+  const cols = { total: 'o.total' };
+  assert.equal(sortOrder('total', cols, 'x'), 'o.total ASC NULLS LAST');
+  assert.equal(sortOrder('-total', cols, 'x'), 'o.total DESC NULLS LAST');
+  assert.equal(sortOrder('o.total; DROP TABLE orders', cols, 'x'), 'x');
+  assert.equal(sortOrder('constructor', cols, 'x'), 'x');
+
+  const mk = (name, price, stock) => admin.post('/api/admin/products').send({ name, price, stock }).expect(201);
+  const made = [(await mk('Sort A', 300, 5)).body, (await mk('Sort B', 100, 9)).body, (await mk('Sort C', 200, 1)).body];
+  const names = async (sort) => (await admin.get(`/api/admin/products?q=sort&sort=${sort}`).expect(200)).body.items.map((p) => p.name);
+  assert.deepEqual(await names('price'), ['Sort B', 'Sort C', 'Sort A']);
+  assert.deepEqual(await names('-stock'), ['Sort B', 'Sort A', 'Sort C']);
+  assert.deepEqual(await names('-name'), ['Sort C', 'Sort B', 'Sort A']);
+  await admin.get('/api/admin/orders?sort=-total').expect(200);
+  await admin.get('/api/admin/orders?sort=status').expect(200);
+  await admin.get('/api/admin/customers?sort=-spent').expect(200);
+  await admin.get('/api/admin/customers?role=guest&sort=customer').expect(200);
+  await admin.get('/api/admin/coupons?sort=expires').expect(200);
+  for (const p of made) await admin.delete(`/api/admin/products/${p.id}`).expect(200);
+});
