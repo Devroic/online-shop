@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
+import { cleanPageView } from './lib/analytics.js';
 import App from './App.jsx';
 import { ShopProvider } from './context/ShopContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
@@ -17,6 +19,8 @@ function Root() {
         <CartProvider>
           <ToastProvider>
             <App />
+            {/* Page views for Vercel Web Analytics (only on Vercel; logged to the console locally). */}
+            <Analytics beforeSend={cleanPageView} />
           </ToastProvider>
         </CartProvider>
       </AuthProvider>
